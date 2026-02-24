@@ -342,7 +342,9 @@ spec:
               --destination="${PUSH_IMAGE}" \
               --cache=false \
               --insecure \
-              --insecure-pull
+              --insecure-pull \
+              --ignore-path /product_uuid \
+              --ignore-path /sys
             echo "  Built and pushed: $PUSH_IMAGE"
           else
             echo "  WARN: Dockerfile not found at ${FULL_DOCKERFILE}"
