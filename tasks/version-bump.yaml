@@ -42,6 +42,8 @@ spec:
     - name: bump
       image: mikefarah/yq:4
       workingDir: $(workspaces.source.path)
+      securityContext:
+        runAsUser: 0
       script: |
         #!/bin/sh
         set -e

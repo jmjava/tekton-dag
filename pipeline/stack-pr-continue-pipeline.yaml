@@ -1,0 +1,131 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: stack-pr-continue
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+spec:
+  description: >
+    Continuation pipeline: skips fetch/resolve/clone/build and starts from
+    deploy-intercepts. Use when the full PR pipeline failed after build-apps
+    succeeded. Pass the results from the failed run as params.
+    Usage: ./scripts/rerun-pr-from.sh <failed-pipelinerun-name>
+
+  params:
+    - name: stack-json
+      type: string
+      description: "Full stack graph JSON (from resolve-stack result of failed run)"
+    - name: build-apps
+      type: string
+      description: "Space-separated app list (from resolve-stack result)"
+    - name: propagation-chain
+      type: string
+      description: "Propagation chain (from resolve-stack result)"
+    - name: intercept-header-value
+      type: string
+      description: "Intercept header value (from resolve-stack result)"
+    - name: app-list
+      type: string
+      description: "Ordered app list (from resolve-stack result)"
+    - name: entry-app
+      type: string
+      description: "Entry-point app (from resolve-stack result)"
+    - name: built-images
+      type: string
+      description: "JSON map of app → image URI (from build-apps result)"
+    - name: bumped-versions
+      type: string
+      description: "JSON map of app → version (from bump-rc-version result)"
+    - name: git-url
+      type: string
+      description: "Platform repo URL (for push-version-commit)"
+    - name: git-revision
+      type: string
+      description: "Branch, tag, or SHA"
+
+  workspaces:
+    - name: shared-workspace
+      description: "Shared PVC — must be the SAME PVC from the failed run (still has source + built artifacts)"
+    - name: ssh-key
+      description: "SSH key for git push"
+
+  results:
+    - name: test-summary
+      value: $(tasks.run-tests.results.test-summary)
+
+  tasks:
+    - name: deploy-intercepts
+      taskRef:
+        name: deploy-stack-intercepts
+      params:
+        - name: stack-json
+          value: $(params.stack-json)
+        - name: build-apps
+          value: $(params.build-apps)
+        - name: propagation-chain
+          value: $(params.propagation-chain)
+        - name: built-images
+          value: $(params.built-images)
+        - name: intercept-header-value
+          value: $(params.intercept-header-value)
+
+    - name: validate-propagation
+      taskRef:
+        name: validate-stack-propagation
+      params:
+        - name: stack-json
+          value: $(params.stack-json)
+        - name: propagation-chain
+          value: $(params.propagation-chain)
+        - name: build-apps
+          value: $(params.build-apps)
+        - name: intercept-header-value
+          value: $(params.intercept-header-value)
+      runAfter:
+        - deploy-intercepts
+
+    - name: run-tests
+      taskRef:
+        name: run-stack-tests
+      params:
+        - name: stack-json
+          value: $(params.stack-json)
+        - name: app-list
+          value: $(params.app-list)
+        - name: entry-app
+          value: $(params.entry-app)
+        - name: propagation-chain
+          value: $(params.propagation-chain)
+        - name: build-apps
+          value: $(params.build-apps)
+        - name: intercept-header-value
+          value: $(params.intercept-header-value)
+      workspaces:
+        - name: test-source
+          workspace: shared-workspace
+      runAfter:
+        - validate-propagation
+
+    - name: push-version-commit
+      taskRef:
+        name: git-cli
+      params:
+        - name: GIT_SCRIPT
+          value: |
+            git push origin HEAD
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      runAfter:
+        - run-tests
+
+  finally:
+    - name: cleanup
+      taskRef:
+        name: cleanup-stack-pods
+      params:
+        - name: deployed-pods
+          value: $(tasks.deploy-intercepts.results.deployed-pods)
+        - name: stack-json
+          value: $(params.stack-json)

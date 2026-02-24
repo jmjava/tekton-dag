@@ -27,6 +27,9 @@ spec:
     - name: shared-workspace
     - name: ssh-key
       description: "Volume with SSH key (id_ed25519 or id_rsa) for cloning app repos; required for SSH pull"
+    - name: build-cache
+      optional: true
+      description: "Persistent dependency cache (.m2, .npm, etc.). Create once, reuse across runs."
   tasks:
     - name: fetch-source
       taskRef:
@@ -91,6 +94,8 @@ spec:
       workspaces:
         - name: source
           workspace: shared-workspace
+        - name: build-cache
+          workspace: build-cache
       runAfter:
         - clone-app-repos
 

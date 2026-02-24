@@ -128,6 +128,9 @@ spec:
     - name: ssh-key
       secret:
         secretName: "${GIT_SSH_SECRET_NAME}"
+    - name: build-cache
+      persistentVolumeClaim:
+        claimName: build-cache
 EOF
 
 elif [[ "$MODE" == "merge" ]]; then
@@ -171,6 +174,9 @@ spec:
     - name: ssh-key
       secret:
         secretName: "${GIT_SSH_SECRET_NAME}"
+    - name: build-cache
+      persistentVolumeClaim:
+        claimName: build-cache
 EOF
 
 else

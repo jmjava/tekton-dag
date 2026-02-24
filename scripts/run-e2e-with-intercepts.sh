@@ -61,6 +61,24 @@ echo "  Stack: $STACK_FILE  changed-app: $CHANGED_APP  pr: $PR_NUMBER"
 echo "  Registry: $IMAGE_REGISTRY"
 echo "=============================================="
 
+# Ensure persistent build-cache PVC exists (survives across runs)
+CACHE_PVC="build-cache"
+if ! kubectl get pvc "$CACHE_PVC" -n tekton-pipelines &>/dev/null; then
+  echo "  Creating persistent build-cache PVC..."
+  kubectl apply -f - <<CACHEPVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: $CACHE_PVC
+  namespace: tekton-pipelines
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 5Gi
+CACHEPVC
+fi
+
 # 1. Bootstrap: build all apps, deploy full stack
 echo ""
 echo ">>> Step 1: Bootstrap (build all + deploy full stack)"
@@ -97,6 +115,9 @@ spec:
     - name: ssh-key
       secret:
         secretName: $GIT_SSH_SECRET_NAME
+    - name: build-cache
+      persistentVolumeClaim:
+        claimName: $CACHE_PVC
 EOF
 )
 BOOTSTRAP_NAME=$(echo "$BOOTSTRAP_RUN" | sed 's|.*/||')

@@ -32,6 +32,9 @@ spec:
       description: "Prefix for image tag (pr- for PR builds, v for releases, empty for merge)"
   workspaces:
     - name: source
+    - name: build-cache
+      optional: true
+      description: "Persistent volume for dependency caches (.m2, .npm, .gradle, .pip, .composer). Survives across runs."
   results:
     - name: built-images
       description: "JSON map of app-name → full image URI"
@@ -53,6 +56,18 @@ spec:
         set -e
 
         apt-get update -qq && apt-get install -y -qq curl jq ca-certificates gnupg >/dev/null 2>&1
+
+        # ----- persistent dependency cache (optional workspace) -----
+        if [ "$(workspaces.build-cache.bound)" = "true" ]; then
+          CACHE="$(workspaces.build-cache.path)"
+          echo "  Build cache enabled: $CACHE"
+          mkdir -p "$CACHE/.m2/repository" "$CACHE/.npm" "$CACHE/.gradle" "$CACHE/.pip" "$CACHE/.composer"
+          export MAVEN_OPTS="-Dmaven.repo.local=$CACHE/.m2/repository"
+          export npm_config_cache="$CACHE/.npm"
+          export GRADLE_USER_HOME="$CACHE/.gradle"
+          export PIP_CACHE_DIR="$CACHE/.pip"
+          export COMPOSER_CACHE_DIR="$CACHE/.composer"
+        fi
 
         # ----- tool installers (called lazily, at most once each) -----
         NODE_READY=false
@@ -249,9 +264,9 @@ spec:
               else
                 echo "  Running default pip install..."
                 if [ -f requirements.txt ]; then
-                  pip3 install --no-cache-dir -r requirements.txt
+                  pip3 install -r requirements.txt
                 elif [ -f setup.py ] || [ -f pyproject.toml ]; then
-                  pip3 install --no-cache-dir .
+                  pip3 install .
                 else
                   echo "  WARN: No requirements.txt, setup.py, or pyproject.toml found"
                 fi
