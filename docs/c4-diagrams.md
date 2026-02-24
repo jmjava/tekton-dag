@@ -1,64 +1,68 @@
-# C4 Architecture Diagrams — Tekton Job Standardization
+# C4 Architecture Diagrams — Tekton DAG (current code)
+
+These diagrams reflect the **current** pipeline and task layout: platform repo (tekton-dag) with `stacks/` and `versions.yaml`; app repos are **separate** Git repos cloned per stack. Runs locally on Kind or in cloud; no AWS required.
 
 ## Level 1: System Context
 
-Who interacts with the system and what external systems does it depend on.
+Who interacts with the system and what external systems it depends on.
 
 ```mermaid
 C4Context
-    title System Context — Tekton Job Standardization
+    title System Context — Tekton DAG
 
-    Person(dev, "Developer", "Opens PRs against app repos")
+    Person(dev, "Developer", "Opens PRs against app repos; runs/debugs locally via generate-run.sh")
     Person(platform, "Platform Engineer", "Defines stacks, manages versions")
 
-    System(tekton_std, "Tekton Job Standardization", "Universal pipeline system that adapts to any app stack, manages versioning and header propagation")
+    System(tekton_std, "Tekton DAG", "Universal pipeline: clone platform + app repos, resolve DAG, build per toolchain, deploy intercepts, validate, test, version. Local (Kind) or cloud.")
 
-    System_Ext(github, "GitHub", "Source control, PR/merge webhooks")
-    System_Ext(ecr, "Container Registry (ECR)", "Stores RC and release images")
-    System_Ext(k8s, "Kubernetes Cluster", "Runs app deployments, Telepresence intercepts")
-    System_Ext(argocd, "ArgoCD", "GitOps deployment, syncs from registry")
-    System_Ext(argo_rollouts, "Argo Rollouts", "Blue/green production promotion")
+    System_Ext(github, "GitHub", "Platform repo (tekton-dag) + app repos (jmjava/tekton-dag-*). Webhooks or manual generate-run.sh")
+    System_Ext(registry, "Container Registry", "Local (localhost:5000) or ECR. Stores RC and release images")
+    System_Ext(k8s, "Kubernetes Cluster", "Kind or cloud. Runs app deployments, Telepresence intercepts")
+    System_Ext(argocd, "ArgoCD", "Optional GitOps; syncs from registry")
+    System_Ext(argo_rollouts, "Argo Rollouts", "Optional blue/green production promotion")
 
     Rel(dev, github, "Opens PR / merges PR")
-    Rel(github, tekton_std, "Webhook: PR opened, merged")
-    Rel(tekton_std, ecr, "Pushes RC and release images")
+    Rel(github, tekton_std, "Webhook or manual pipeline run")
+    Rel(tekton_std, registry, "Pushes RC and release images")
     Rel(tekton_std, k8s, "Deploys PR pods, Telepresence intercepts")
     Rel(tekton_std, github, "Pushes version bump commits")
     Rel(platform, tekton_std, "Defines stacks, sets version overrides")
-    Rel(ecr, argocd, "ArgoCD syncs tagged images")
+    Rel(registry, argocd, "ArgoCD syncs tagged images")
     Rel(argocd, argo_rollouts, "Triggers blue/green rollout")
 ```
 
 ## Level 2: Container Diagram
 
-The major components inside the standardization system.
+The major components inside the system (platform repo + pipelines + config).
 
 ```mermaid
 C4Container
-    title Container Diagram — Tekton Job Standardization
+    title Container Diagram — Tekton DAG
 
     Person(dev, "Developer")
     Person(platform, "Platform Engineer")
 
-    System_Boundary(tekton_std, "Tekton Job Standardization") {
+    System_Boundary(tekton_std, "Tekton DAG") {
 
-        Container(event_listener, "EventListener", "Tekton Triggers", "Routes GitHub webhooks to PR or merge pipeline based on event type")
+        Container(event_listener, "EventListener", "Tekton Triggers", "Optional. Routes GitHub webhooks to PR or merge pipeline. Manual: generate-run.sh")
 
-        Container(pr_pipeline, "stack-pr-test", "Tekton Pipeline", "Universal PR pipeline: resolve → bump RC → build → intercept → validate → test → push")
+        Container(pr_pipeline, "stack-pr-test", "Tekton Pipeline", "PR: fetch platform → resolve → clone-app-repos → bump RC → build → deploy intercepts → validate → test → push version → cleanup")
 
-        Container(merge_pipeline, "stack-merge-release", "Tekton Pipeline", "Universal merge pipeline: resolve → release version → build → tag image → push")
+        Container(merge_pipeline, "stack-merge-release", "Tekton Pipeline", "Merge: fetch → resolve → clone-app-repos → release version → build → tag-release-images → push version")
 
-        Container(stack_defs, "Stack Definitions", "YAML files", "DAG graphs defining apps, downstream links, propagation roles, build configs")
+        Container(dag_verify, "stack-dag-verify", "Tekton Pipeline", "Local verification: fetch + resolve only (no build/deploy)")
 
-        Container(version_reg, "Version Registry", "versions.yaml", "Infrastructure-level semver tracking per app, independent of app code")
+        Container(stack_defs, "Stack Definitions", "stacks/*.yaml", "DAG graphs: apps, downstream, propagation, build tool per app")
 
-        Container(stack_registry, "Stack Registry", "registry.yaml", "Maps repo names to stack definition files")
+        Container(version_reg, "Version Registry", "stacks/versions.yaml", "Per-app version and last-released; RC bumps and release promotion")
 
-        Container(scripts, "CLI Scripts", "Bash", "stack-graph.sh (query/validate), generate-run.sh (manual runs)")
+        Container(stack_registry, "Stack Registry", "stacks/registry.yaml", "Maps repo name → stack file")
+
+        Container(scripts, "CLI Scripts", "Bash", "stack-graph.sh, generate-run.sh, verify-dag-phase1/2, run-all-setup-and-test")
     }
 
     System_Ext(github, "GitHub")
-    System_Ext(ecr, "Container Registry")
+    System_Ext(registry, "Container Registry")
     System_Ext(k8s, "Kubernetes Cluster")
 
     Rel(dev, github, "PR / merge")
@@ -68,11 +72,11 @@ C4Container
     Rel(pr_pipeline, stack_defs, "Reads stack graph")
     Rel(pr_pipeline, version_reg, "Reads/bumps RC version")
     Rel(merge_pipeline, stack_defs, "Reads stack graph")
-    Rel(merge_pipeline, version_reg, "Promotes to release, bumps next dev")
+    Rel(merge_pipeline, version_reg, "Promotes release, bumps next dev")
     Rel(event_listener, stack_registry, "Resolves repo → stack")
-    Rel(pr_pipeline, ecr, "Pushes v0.1.0-rc.N images")
+    Rel(pr_pipeline, registry, "Pushes v0.1.0-rc.N images")
     Rel(pr_pipeline, k8s, "Deploys intercept pods")
-    Rel(merge_pipeline, ecr, "Pushes v0.1.0 release images")
+    Rel(merge_pipeline, registry, "Pushes v0.1.0 release images")
     Rel(platform, stack_defs, "Defines/updates stacks")
     Rel(platform, version_reg, "Manual major/minor bumps")
     Rel(platform, scripts, "Queries graphs, triggers manual runs")
@@ -80,7 +84,7 @@ C4Container
 
 ## Level 3: Component Diagram — PR Pipeline
 
-The Tekton Tasks inside the PR pipeline and how they interact.
+The Tekton Tasks inside **stack-pr-test** and how they interact (current code).
 
 ```mermaid
 C4Component
@@ -88,44 +92,47 @@ C4Component
 
     Container_Boundary(pr_pipeline, "stack-pr-test Pipeline") {
 
-        Component(git_clone, "fetch-source", "Tekton Task", "Clones the source repo")
+        Component(fetch_source, "fetch-source", "git-clone", "Clones platform repo (tekton-dag) with stacks/ and versions.yaml")
 
-        Component(resolve, "resolve-stack", "Tekton Task", "Parses stack YAML, computes topo order, resolves versions with overrides, derives propagation chain and entry point")
+        Component(resolve, "resolve-stack", "resolve-stack", "Parses stack YAML, topo order, versions + overrides, propagation chain, entry-app, build-apps, intercept-header-value")
 
-        Component(bump_rc, "bump-rc-version", "Tekton Task", "Increments RC suffix in versions.yaml (0.1.0-rc.3 → rc.4), determines image tag")
+        Component(clone_apps, "clone-app-repos", "clone-app-repos", "Clones each app repo from stack .apps[].repo (e.g. jmjava/tekton-dag-vue-fe) into workspace/<app-name> via SSH")
 
-        Component(build, "build-stack-apps", "Tekton Task", "Phase 1: compile per toolchain (npm/maven/gradle/composer/pip). Phase 2: containerize with Kaniko. Pushes RC-tagged images")
+        Component(bump_rc, "bump-rc-version", "version-bump", "Increments RC in versions.yaml (0.1.0-rc.3 → rc.4); emits bumped-versions for image tags")
 
-        Component(deploy, "deploy-stack-intercepts", "Tekton Task", "Deploys PR pods ONLY for changed app(s). Sets up Telepresence intercept with header matching. Logs propagation role context")
+        Component(build, "build-apps", "build-stack-apps", "Per app: compile (npm/maven/gradle/composer/pip) then Kaniko containerize. Pushes RC-tagged images")
 
-        Component(validate, "validate-stack-propagation", "Tekton Task", "Sends request through entry point. Verifies header reaches intercepted app(s). Header only required up to deepest intercept")
+        Component(deploy, "deploy-intercepts", "deploy-stack-intercepts", "Deploys PR pods for build-apps, Telepresence intercept with header matching")
 
-        Component(test, "run-stack-tests", "Tekton Task", "Phase 1: E2E through entry point (full chain). Phase 2: per-app Postman/Playwright/Artillery")
+        Component(validate, "validate-propagation", "validate-stack-propagation", "Request through entry; verifies header reaches intercepted app(s)")
 
-        Component(push_ver, "push-version-commit", "Tekton Task", "Pushes RC bump commit back to repo")
+        Component(test, "run-tests", "run-stack-tests", "E2E through entry; per-app Postman/Playwright/Artillery")
 
-        Component(cleanup, "cleanup-stack-pods", "Tekton Task", "Finally: deletes all PR pods regardless of pass/fail")
+        Component(push_ver, "push-version-commit", "git-cli", "Pushes RC bump commit to platform repo")
+
+        Component(cleanup, "cleanup", "cleanup-stack-pods", "Finally: deletes PR pods (always)")
     }
 
-    System_Ext(ecr, "Container Registry")
+    System_Ext(registry, "Container Registry")
     System_Ext(k8s, "K8s Cluster")
     System_Ext(github, "GitHub")
     Container_Ext(stack_defs, "Stack Definitions")
     Container_Ext(version_reg, "Version Registry")
 
-    Rel(git_clone, resolve, " ")
+    Rel(fetch_source, resolve, "workspace")
     Rel(resolve, stack_defs, "Reads stack YAML")
-    Rel(resolve, version_reg, "Reads versions, merges overrides")
-    Rel(resolve, bump_rc, "app-list, build-apps, versions")
+    Rel(resolve, version_reg, "Reads versions, overrides")
+    Rel(resolve, clone_apps, "stack-json, build-apps")
+    Rel(clone_apps, bump_rc, "workspace with app sources")
     Rel(bump_rc, version_reg, "Writes bumped RC")
     Rel(bump_rc, build, "bumped-versions (image tags)")
-    Rel(build, ecr, "Pushes v0.1.0-rc.N")
+    Rel(build, registry, "Pushes v0.1.0-rc.N")
     Rel(build, deploy, "built-images")
     Rel(deploy, k8s, "Creates PR pods + intercepts")
     Rel(deploy, validate, " ")
-    Rel(validate, k8s, "Sends test request through chain")
+    Rel(validate, k8s, "Test request through chain")
     Rel(validate, test, " ")
-    Rel(test, k8s, "Runs test suites against services")
+    Rel(test, k8s, "Runs test suites")
     Rel(test, push_ver, " ")
     Rel(push_ver, github, "Pushes version commit")
     Rel(cleanup, k8s, "Deletes PR pods (finally)")
@@ -133,36 +140,41 @@ C4Component
 
 ## Level 3: Component Diagram — Merge Pipeline
 
+The Tekton Tasks inside **stack-merge-release** (current code).
+
 ```mermaid
 C4Component
     title Component Diagram — stack-merge-release Pipeline
 
     Container_Boundary(merge_pipeline, "stack-merge-release Pipeline") {
 
-        Component(git_clone, "fetch-source", "Tekton Task", "Clones source at merge commit")
+        Component(fetch_source, "fetch-source", "git-clone", "Clones platform repo at merge commit")
 
-        Component(resolve, "resolve-stack", "Tekton Task", "Parses stack, resolves versions")
+        Component(resolve, "resolve-stack", "resolve-stack", "Parses stack, resolves versions, build-apps")
 
-        Component(release_ver, "release-version", "Tekton Task", "Promotes RC to release (0.1.0-rc.4 → 0.1.0). Sets last-released. Bumps patch for next cycle (0.1.1-rc.0)")
+        Component(clone_apps, "clone-app-repos", "clone-app-repos", "Clones each app repo from stack into workspace/<app-name>")
 
-        Component(build, "build-stack-apps", "Tekton Task", "Full deployment build. Compile per toolchain + Kaniko containerize")
+        Component(release_ver, "release-version", "version-bump", "Promotes RC → release (0.1.0-rc.4 → 0.1.0), sets last-released, bumps next cycle (0.1.1-rc.0)")
 
-        Component(tag, "tag-release-images", "Tekton Task", "Uses crane to re-tag build image as v0.1.0 in registry")
+        Component(build, "build-apps", "build-stack-apps", "Full build: compile per toolchain + Kaniko. Tags as merge-<sha>")
 
-        Component(push_ver, "push-version-commit", "Tekton Task", "Pushes release + next-dev version commit")
+        Component(tag, "tag-release", "tag-release-images", "Re-tags built images with release semver (e.g. v0.1.0) via crane")
+
+        Component(push_ver, "push-version-commit", "git-cli", "Pushes release + next-dev version commit to platform repo")
     }
 
-    System_Ext(ecr, "Container Registry")
+    System_Ext(registry, "Container Registry")
     System_Ext(github, "GitHub")
     Container_Ext(version_reg, "Version Registry")
 
-    Rel(git_clone, resolve, " ")
-    Rel(resolve, release_ver, "build-apps, versions")
+    Rel(fetch_source, resolve, "workspace")
+    Rel(resolve, clone_apps, "stack-json, build-apps")
+    Rel(clone_apps, release_ver, "workspace with app sources")
     Rel(release_ver, version_reg, "Writes release + next-dev")
-    Rel(release_ver, build, "release-versions")
-    Rel(build, ecr, "Pushes merge-<sha>")
+    Rel(release_ver, build, "release-versions (for tag step)")
+    Rel(build, registry, "Pushes merge-<sha>")
     Rel(build, tag, "built-images")
-    Rel(tag, ecr, "Tags as v0.1.0")
+    Rel(tag, registry, "Tags as v0.1.0")
     Rel(tag, push_ver, " ")
     Rel(push_ver, github, "Pushes version commit")
 ```
@@ -379,7 +391,7 @@ flowchart LR
 
 ## Dynamic Diagram: Stack Graph Resolution
 
-How the system processes an arbitrary DAG at runtime.
+How **resolve-stack** processes an arbitrary DAG at runtime. Example matches **stacks/stack-two-vendor.yaml** and **stacks/registry.yaml**.
 
 ```mermaid
 flowchart TB

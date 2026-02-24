@@ -2,6 +2,84 @@
 
 Standalone Tekton pipeline system for **local development and proof-of-concept**. No AWS. Run on Kind (or any Kubernetes) with a local registry and optional Telepresence. Proves out the stack DAG and pipelines locally; [share back to reference-architecture-poc](SHARING-BACK.md) when ready.
 
+## Overview
+
+**System context** — who uses the system and what it talks to:
+
+```mermaid
+C4Context
+    title System Context — Tekton DAG
+
+    Person(dev, "Developer", "Opens PRs; runs/debugs locally via generate-run.sh")
+    Person(platform, "Platform Engineer", "Defines stacks, manages versions")
+
+    System(tekton_std, "Tekton DAG", "Clone platform + app repos, resolve DAG, build, deploy intercepts, validate, test, version. Kind or cloud.")
+
+    System_Ext(github, "GitHub", "Platform + app repos; webhooks or manual run")
+    System_Ext(registry, "Container Registry", "Local or ECR. RC and release images")
+    System_Ext(k8s, "Kubernetes", "Kind or cloud. App deployments, Telepresence")
+    System_Ext(argocd, "ArgoCD", "Optional GitOps")
+    System_Ext(argo_rollouts, "Argo Rollouts", "Optional blue/green")
+
+    Rel(dev, github, "PR / merge")
+    Rel(github, tekton_std, "Webhook or manual")
+    Rel(tekton_std, registry, "Pushes images")
+    Rel(tekton_std, k8s, "Deploys PR pods")
+    Rel(tekton_std, github, "Version commits")
+    Rel(platform, tekton_std, "Stacks, overrides")
+    Rel(registry, argocd, "Syncs images")
+    Rel(argocd, argo_rollouts, "Rollout")
+```
+
+> **Where is ArgoCD?** ArgoCD and Argo Rollouts are **not in this repo**. They are optional **downstream** systems (production): this repo’s pipelines push RC and release images to a container registry; in a full production setup, ArgoCD would sync from that registry and Argo Rollouts would perform blue/green promotion. For local/dev you only need Kind, Tekton, and the registry.
+
+**Main pieces** — pipelines and config inside the system:
+
+```mermaid
+C4Container
+    title Container Diagram — Tekton DAG
+
+    Person(dev, "Developer")
+    Person(platform, "Platform Engineer")
+
+    System_Boundary(tekton_std, "Tekton DAG") {
+
+        Container(event_listener, "EventListener", "Tekton Triggers", "Webhooks or manual generate-run.sh")
+
+        Container(pr_pipeline, "stack-pr-test", "Tekton Pipeline", "PR: fetch → resolve → clone-app-repos → bump RC → build → deploy → validate → test → push → cleanup")
+
+        Container(merge_pipeline, "stack-merge-release", "Tekton Pipeline", "Merge: fetch → resolve → clone-app-repos → release → build → tag → push")
+
+        Container(dag_verify, "stack-dag-verify", "Tekton Pipeline", "Verify: fetch + resolve only")
+
+        Container(stack_defs, "Stack Definitions", "stacks/*.yaml", "DAG: apps, downstream, build tool")
+        Container(version_reg, "Version Registry", "stacks/versions.yaml", "Per-app version, RC, release")
+        Container(stack_registry, "Stack Registry", "stacks/registry.yaml", "Repo → stack file")
+        Container(scripts, "CLI Scripts", "Bash", "stack-graph, generate-run, verify-dag-phase1/2")
+    }
+
+    System_Ext(github, "GitHub")
+    System_Ext(registry, "Container Registry")
+    System_Ext(k8s, "Kubernetes")
+
+    Rel(dev, github, "PR / merge")
+    Rel(github, event_listener, "Webhook")
+    Rel(event_listener, pr_pipeline, "PR")
+    Rel(event_listener, merge_pipeline, "Merge")
+    Rel(pr_pipeline, stack_defs, "Read")
+    Rel(pr_pipeline, version_reg, "Read/bump")
+    Rel(merge_pipeline, stack_defs, "Read")
+    Rel(merge_pipeline, version_reg, "Promote")
+    Rel(pr_pipeline, registry, "Push RC")
+    Rel(pr_pipeline, k8s, "Deploy")
+    Rel(merge_pipeline, registry, "Push release")
+    Rel(platform, stack_defs, "Define")
+    Rel(platform, version_reg, "Bump")
+    Rel(platform, scripts, "Run")
+```
+
+Full diagram set (PR/merge task-level, intercept scenarios, version lifecycle, stack resolution): [docs/c4-diagrams.md](docs/c4-diagrams.md).
+
 ## Quick start (local)
 
 ```bash
@@ -84,6 +162,25 @@ So: run the entire workflow locally, inspect every step with `kubectl`/`tkn`, an
 ## App repos (no monorepo)
 
 Apps are **separate standalone Git repos**, not subdirectories of this repo. The pipeline (1) clones the **platform repo** (this repo, tekton-dag) for stacks and versions, (2) resolves the stack to get `build-apps`, then (3) **clones each app repo** from `stacks/*.yaml` (`.apps[].repo`, e.g. `jmjava/tekton-dag-vue-fe`) into `workspace/<app-name>` and builds. Create and push the sample app repos with `./scripts/create-and-push-sample-repos.sh` so the pipeline can clone them.
+
+Clone the sample app repos into e.g. `~/github/jmjava` — see [sample-repos/README.md](sample-repos/README.md).
+
+### Including sample repos in the VS Code workspace
+
+The launch configs in `.vscode/launch.json` use **multi-root workspace folder** paths (e.g. `${workspaceFolder:tekton-dag-vue-fe}`). To run and debug apps from the IDE:
+
+1. **Open a multi-root workspace** that includes this repo (tekton-dag) plus each sample app repo you care about (e.g. `~/github/jmjava/tekton-dag-vue-fe`, `~/github/jmjava/tekton-dag-spring-boot`).
+2. **Add folders** via **File → Add Folder to Workspace…** and choose the cloned app repo directories.
+3. **Folder names must match** what the launch configs expect. VS Code uses the **folder name** (last segment of the path) as the workspace folder identifier. Use exactly:
+   - `tekton-dag-vue-fe`
+   - `tekton-dag-spring-boot`
+   - `tekton-dag-spring-boot-gradle`
+   - `tekton-dag-spring-legacy`
+   - `tekton-dag-flask`
+   - `tekton-dag-php`
+4. **Save the workspace** (File → Save Workspace As…) as e.g. `tekton-dag.code-workspace` in this repo so you can reopen it and get all roots + launch configs in one place.
+
+After that, the Run and Debug dropdown will list configs like **Vue (demo-fe): Launch & debug** and **Spring Boot (release-lifecycle-demo): Attach**; they resolve `cwd` and sources from the matching workspace folder. See [.vscode/README.md](.vscode/README.md) for the step-debug flow with Telepresence intercepts.
 
 ## Layout
 
