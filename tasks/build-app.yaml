@@ -182,8 +182,16 @@ spec:
             npm)
               install_node "$NODE_VER"
               if [ -n "$CMD" ]; then
-                echo "  Running: $CMD"
-                eval "$CMD"
+                # npm ci requires package-lock.json; use npm install when it's missing
+                RUN_CMD="$CMD"
+                if echo "$CMD" | grep -q "npm ci"; then
+                  if [ ! -f "$APP_DIR/package-lock.json" ]; then
+                    echo "  No package-lock.json in $APP_DIR; using npm install instead of npm ci"
+                    RUN_CMD=$(echo "$CMD" | sed 's/npm ci/npm install/g')
+                  fi
+                fi
+                echo "  Running: $RUN_CMD"
+                eval "$RUN_CMD"
               else
                 echo "  Running default npm build..."
                 [ -f package-lock.json ] && npm ci || npm install

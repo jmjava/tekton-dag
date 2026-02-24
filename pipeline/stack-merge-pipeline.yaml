@@ -39,6 +39,8 @@ spec:
   workspaces:
     - name: shared-workspace
       description: "Shared PVC for source code"
+    - name: ssh-key
+      description: "Volume with SSH key (id_ed25519 or id_rsa) for cloning app repos; required for SSH pull"
 
   results:
     - name: released-images
@@ -77,6 +79,25 @@ spec:
       runAfter:
         - fetch-source
 
+    # Clone each app repo (from stack .apps[].repo) via SSH into workspace/<app-name>
+    - name: clone-app-repos
+      taskRef:
+        name: clone-app-repos
+      params:
+        - name: stack-json
+          value: $(tasks.resolve-stack.results.stack-json)
+        - name: build-apps
+          value: $(tasks.resolve-stack.results.build-apps)
+        - name: git-revision
+          value: $(params.git-revision)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+        - name: ssh-key
+          workspace: ssh-key
+      runAfter:
+        - resolve-stack
+
     # Promote RC → release (0.1.0-rc.4 → 0.1.0) and set next dev cycle
     - name: release-version
       taskRef:
@@ -90,7 +111,7 @@ spec:
         - name: source
           workspace: shared-workspace
       runAfter:
-        - resolve-stack
+        - clone-app-repos
 
     # Full deployment build, tagged with the release version
     - name: build-apps

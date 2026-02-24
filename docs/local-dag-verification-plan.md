@@ -176,7 +176,24 @@ Verify by checking task logs or Tekton task results for the build task: list of 
 
 Check task params passed to `deploy-stack-intercepts` and `validate-stack-propagation`: they should receive the same `propagation-chain` and `entry-app` as produced by resolve (and as the CLI shows).
 
-### 3.3 Checklist summary
+### 3.3 Artillery E2E — all intercept variants
+
+To prove every intercept variant (each app as `changed-app`) with Artillery E2E:
+
+- **stack-one**: 3 variants (demo-fe, release-lifecycle-demo, demo-api)
+- **stack-two-vendor**: 5 variants (vendor-fe, vendor-middleware, vendor-adapter, internal-api, notifications-svc)
+
+Run from repo root (requires `artillery`, `yq`, `jq`). Use `ENTRY_URL` if the entry service is reached via port-forward.
+
+```bash
+./scripts/run-artillery-variants.sh --stack stacks/stack-one.yaml --pr 1
+./scripts/run-artillery-variants.sh --stack stacks/stack-two-vendor.yaml --pr 1
+ENTRY_URL=http://localhost:3000 ./scripts/run-artillery-variants.sh --stack stacks/stack-one.yaml --pr 1
+```
+
+See [tests/artillery/README.md](../tests/artillery/README.md) for details and generated configs/reports.
+
+### 3.4 Checklist summary
 
 | Check | How to verify |
 |-------|----------------|
@@ -186,6 +203,7 @@ Check task params passed to `deploy-stack-intercepts` and `validate-stack-propag
 | Resolve task outputs match CLI | Phase 2.3 |
 | build-apps = one app (PR/single) or full topo (merge) | Phase 2.3, Phase 3.1 |
 | Deploy/validate receive correct chain and entry | Phase 3.2 |
+| All intercept variants exercised with Artillery E2E | Phase 3.3 |
 
 ---
 

@@ -29,7 +29,7 @@ defaults:
 
 apps:
   - name: vendor-fe
-    repo: menkelabs/vendor-fe
+    repo: jmjava/tekton-dag-vue-fe
     role: frontend
     propagation-role: originator
     container-port: "3000"
@@ -39,14 +39,14 @@ apps:
       tool: npm
       runtime: vue
       node-version: "22"
-      build-command: "npm ci && npm run build"
+      build-command: "npm install && npm run build"
     downstream:
       - vendor-middleware
     tests:
       playwright: tests/e2e
 
   - name: vendor-middleware
-    repo: menkelabs/vendor-middleware
+    repo: jmjava/tekton-dag-spring-boot-gradle
     role: middleware
     propagation-role: forwarder
     context-dir: "."
@@ -64,7 +64,7 @@ apps:
       postman: tests/postman/middleware-tests.json
 
   - name: vendor-adapter
-    repo: menkelabs/vendor-adapter
+    repo: jmjava/tekton-dag-php
     role: middleware-vendor
     propagation-role: terminal
     context-dir: "."
@@ -84,7 +84,7 @@ apps:
       postman: tests/postman/adapter-tests.json
 
   - name: internal-api
-    repo: menkelabs/internal-api
+    repo: jmjava/tekton-dag-spring-legacy
     role: persistence
     propagation-role: terminal
     context-dir: "."
@@ -101,7 +101,7 @@ apps:
       postman: tests/postman/api-tests.json
 
   - name: notifications-svc
-    repo: menkelabs/notifications-svc
+    repo: jmjava/tekton-dag-flask
     role: middleware
     propagation-role: terminal
     container-port: "5000"

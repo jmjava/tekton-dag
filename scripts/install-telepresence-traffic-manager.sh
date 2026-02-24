@@ -22,13 +22,25 @@ need() { command -v "$1" >/dev/null 2>&1 || { echo "Required: $1" >&2; exit 1; }
 need helm
 need kubectl
 
+# Use writable dirs for Helm cache/config so helm template can pull the chart without touching /root
+HELM_RUN_DIR="${TMPDIR:-/tmp}/helm-telepresence-$$"
+mkdir -p "$HELM_RUN_DIR"
+export HELM_CACHE_HOME="${HELM_RUN_DIR}/cache"
+export HELM_CONFIG_HOME="${HELM_RUN_DIR}/config"
+export XDG_CACHE_HOME="${HELM_RUN_DIR}/xdg-cache"
+export XDG_CONFIG_HOME="${HELM_RUN_DIR}/xdg-config"
+trap "rm -rf '$HELM_RUN_DIR'" EXIT
+
 echo "=============================================="
 echo "  Install Telepresence Traffic Manager"
 echo "  Version:  $TELEPRESENCE_VERSION"
 echo "  Namespace: $NAMESPACE"
 echo "=============================================="
 
-# Install or upgrade so idempotent
+# Install or upgrade (idempotent). If helm is snap-installed, it may fail in restricted
+# environments with "mkdir /root/snap: permission denied"; then run this script with
+# full permissions or install helm without snap (e.g. get.helm.sh).
+kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 if helm status traffic-manager -n "$NAMESPACE" >/dev/null 2>&1; then
   echo "  Upgrading existing traffic-manager..."
   helm upgrade --namespace "$NAMESPACE" --reuse-values \

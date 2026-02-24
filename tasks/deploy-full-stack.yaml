@@ -1,0 +1,111 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: deploy-full-stack
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+spec:
+  description: >
+    Deploys the full stack so every app has a Deployment and Service in the cluster.
+    Used once (bootstrap) before running PR pipeline with intercepts. deploy-stack-intercepts
+    expects these Services to exist; it only adds PR pods + Telepresence intercept for changed app(s).
+  params:
+    - name: stack-json
+      type: string
+      description: "Full stack graph JSON (apps, defaults.namespace, ports)"
+    - name: built-images
+      type: string
+      description: "JSON map of app name → image URI"
+    - name: default-namespace
+      type: string
+      default: "staging"
+      description: "Namespace for apps that do not specify one"
+  steps:
+    - name: deploy
+      image: bitnami/kubectl:latest
+      script: |
+        #!/bin/bash
+        set -e
+        STACK_JSON='$(params.stack-json)'
+        BUILT='$(params.built-images)'
+        DEFAULT_NS="$(params.default-namespace)"
+
+        echo "============================================="
+        echo "  Deploy full stack (base for intercept E2E)"
+        echo "============================================="
+
+        for APP in $(echo "$STACK_JSON" | jq -r '.apps[].name'); do
+          IMAGE=$(echo "$BUILT" | jq -r --arg a "$APP" '.[$a]')
+          if [ -z "$IMAGE" ] || [ "$IMAGE" = "null" ]; then
+            echo "  SKIP $APP: no image in built-images"
+            continue
+          fi
+          NS=$(echo "$STACK_JSON" | jq -r --arg a "$APP" --arg d "$DEFAULT_NS" \
+            '(.defaults.namespace // $d) as $dn | .apps[]|select(.name==$a)|.namespace // $dn')
+          CPORT=$(echo "$STACK_JSON" | jq -r --arg a "$APP" \
+            '(.defaults."container-port" // "8080") as $dp | .apps[]|select(.name==$a)|."container-port" // $dp')
+          SPORT=$(echo "$STACK_JSON" | jq -r --arg a "$APP" \
+            '(.defaults."service-port" // "80") as $dp | .apps[]|select(.name==$a)|."service-port" // $dp')
+
+          echo ""
+          echo "  Deploying $APP -> $NS (image: $IMAGE)"
+          kubectl create namespace "$NS" --dry-run=client -o yaml | kubectl apply -f -
+
+          kubectl apply -f - <<EOF
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: ${APP}
+          namespace: ${NS}
+          labels:
+            app: ${APP}
+            app.kubernetes.io/part-of: tekton-stack
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: ${APP}
+          template:
+            metadata:
+              labels:
+                app: ${APP}
+            spec:
+              containers:
+              - name: app
+                image: ${IMAGE}
+                ports:
+                - containerPort: ${CPORT}
+                readinessProbe:
+                  tcpSocket:
+                    port: ${CPORT}
+                  initialDelaySeconds: 15
+                  periodSeconds: 10
+        ---
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: ${APP}
+          namespace: ${NS}
+          labels:
+            app: ${APP}
+        spec:
+          selector:
+            app: ${APP}
+          ports:
+          - port: ${SPORT}
+            targetPort: ${CPORT}
+            name: http
+        EOF
+        done
+
+        echo ""
+        echo "  Waiting for Deployments to be available..."
+        for APP in $(echo "$STACK_JSON" | jq -r '.apps[].name'); do
+          IMAGE=$(echo "$BUILT" | jq -r --arg a "$APP" '.[$a]')
+          [ -z "$IMAGE" ] || [ "$IMAGE" = "null" ] && continue
+          NS=$(echo "$STACK_JSON" | jq -r --arg a "$APP" --arg d "$DEFAULT_NS" \
+            '(.defaults.namespace // $d) as $dn | .apps[]|select(.name==$a)|.namespace // $dn')
+          kubectl wait --for=condition=Available "deployment/${APP}" -n "$NS" --timeout=300s 2>/dev/null || echo "  WARN: $APP not ready yet"
+        done
+        echo "  Full stack deployed."

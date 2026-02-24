@@ -12,3 +12,22 @@ standalone-repo-output/
 # OS
 .DS_Store
 Thumbs.db
+
+# -----------------------------------------------------------------------------
+# sample-repos/ — nested standalone app repos (each can have its own .git)
+# Parent repo tracks source only; ignore nested .git and build artifacts.
+# -----------------------------------------------------------------------------
+# Nested repos: ignore .git so they stay standalone (push via create-and-push-sample-repos.sh)
+sample-repos/*/.git/
+# Build / deps so parent doesn't track artifacts (each sample has its own .gitignore too)
+sample-repos/*/node_modules/
+sample-repos/*/dist/
+sample-repos/*/target/
+sample-repos/*/build/
+sample-repos/*/.gradle/
+sample-repos/*/vendor/
+sample-repos/*/__pycache__/
+sample-repos/*/.venv/
+sample-repos/*/venv/
+sample-repos/*/output/
+sample-repos/*/.mvn/wrapper/maven-wrapper.jar

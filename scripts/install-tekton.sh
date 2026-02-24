@@ -9,6 +9,8 @@ MILESTONE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$MILESTONE_DIR"
 
 TEKTON_PIPELINE_URL="${TEKTON_PIPELINE_URL:-https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml}"
+TEKTON_TRIGGERS_URL="${TEKTON_TRIGGERS_URL:-https://storage.googleapis.com/tekton-releases/triggers/latest/release.yaml}"
+TEKTON_TRIGGERS_INTERCEPTORS_URL="${TEKTON_TRIGGERS_INTERCEPTORS_URL:-https://storage.googleapis.com/tekton-releases/triggers/latest/interceptors.yaml}"
 TEKTON_GIT_CLONE_URL="${TEKTON_GIT_CLONE_URL:-https://raw.githubusercontent.com/tektoncd/catalog/main/task/git-clone/0.9/git-clone.yaml}"
 NAMESPACE="${NAMESPACE:-tekton-pipelines}"
 
@@ -19,7 +21,10 @@ echo "=============================================="
 echo "  Install Tekton (Pipelines + git-clone + stack tasks/pipelines)"
 echo "=============================================="
 
-# 1. Tekton Pipelines
+# Ensure namespace exists (Tekton release may create it; create if not)
+kubectl get namespace "$NAMESPACE" &>/dev/null || kubectl create namespace "$NAMESPACE"
+
+# 1. Tekton Pipelines (kubectl apply is idempotent)
 echo "  Installing Tekton Pipelines..."
 kubectl apply -f "$TEKTON_PIPELINE_URL"
 # Relax Pod Security for tekton-pipelines (Kind enforces restricted; catalog/git-clone task pods need it)
@@ -30,12 +35,19 @@ kubectl label namespace tekton-pipelines pod-security.kubernetes.io/warn=privile
 echo "  Waiting for Tekton Pipelines to be ready..."
 kubectl wait --for=condition=Ready pods -l app.kubernetes.io/part-of=tekton-pipelines -n tekton-pipelines --timeout=120s 2>/dev/null || true
 
-# 2. git-clone task (into tekton-pipelines namespace so our pipelines can reference it)
+# 2. Tekton Triggers (required for pipeline/triggers.yaml — EventListener, TriggerBinding, TriggerTemplate)
+echo "  Installing Tekton Triggers..."
+kubectl apply -f "$TEKTON_TRIGGERS_URL"
+kubectl apply -f "$TEKTON_TRIGGERS_INTERCEPTORS_URL"
+echo "  Waiting for Tekton Triggers to be ready..."
+kubectl wait --for=condition=Ready pods -l app.kubernetes.io/part-of=tekton-triggers -n tekton-pipelines --timeout=120s 2>/dev/null || true
+
+# 3. git-clone task (into tekton-pipelines namespace so our pipelines can reference it)
 echo "  Installing git-clone task..."
 kubectl apply -f "$TEKTON_GIT_CLONE_URL" -n "$NAMESPACE" 2>/dev/null || \
   kubectl apply -f "$TEKTON_GIT_CLONE_URL" -n "$NAMESPACE" --server-side=true 2>/dev/null || true
 
-# 3. This repo's tasks and pipelines
+# 4. This repo's tasks and pipelines (kubectl apply is idempotent; triggers apply now that Triggers is installed)
 echo "  Applying stack tasks and pipelines..."
 kubectl apply -f "$MILESTONE_DIR/tasks/" -n "$NAMESPACE"
 kubectl apply -f "$MILESTONE_DIR/pipeline/" -n "$NAMESPACE"

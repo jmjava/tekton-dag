@@ -22,9 +22,9 @@ spec:
 
   params:
     - name: git-url
-      description: "SSH or HTTPS URL to clone"
+      description: "Platform repo URL (e.g. tekton-dag) — has stacks/, versions; app repos are cloned separately from stack"
     - name: git-revision
-      description: "Branch, tag, or SHA to check out"
+      description: "Branch, tag, or SHA for platform repo and (unless overridden) app repos"
     - name: stack-file
       description: "Path to the stack YAML relative to repo root"
       default: "stacks/stack-one.yaml"
@@ -42,6 +42,8 @@ spec:
   workspaces:
     - name: shared-workspace
       description: "Shared PVC for source code and test data"
+    - name: ssh-key
+      description: "Volume with SSH key (id_ed25519 or id_rsa) for cloning app repos; required for SSH pull"
 
   results:
     - name: test-summary
@@ -82,6 +84,25 @@ spec:
       runAfter:
         - fetch-source
 
+    # Clone each app repo (from stack .apps[].repo) via SSH into workspace/<app-name>
+    - name: clone-app-repos
+      taskRef:
+        name: clone-app-repos
+      params:
+        - name: stack-json
+          value: $(tasks.resolve-stack.results.stack-json)
+        - name: build-apps
+          value: $(tasks.resolve-stack.results.build-apps)
+        - name: git-revision
+          value: $(params.git-revision)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+        - name: ssh-key
+          workspace: ssh-key
+      runAfter:
+        - resolve-stack
+
     # RC bump happens BEFORE build so the image tag is the new RC version
     - name: bump-rc-version
       taskRef:
@@ -95,7 +116,7 @@ spec:
         - name: source
           workspace: shared-workspace
       runAfter:
-        - resolve-stack
+        - clone-app-repos
 
     # Build images tagged with the RC version (e.g. v0.1.0-rc.4)
     - name: build-apps

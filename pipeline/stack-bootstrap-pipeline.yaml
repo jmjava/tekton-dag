@@ -1,0 +1,108 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: stack-bootstrap
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+spec:
+  description: >
+    One-time bootstrap: clone, resolve, build all stack apps, deploy full stack.
+    Run this so the cluster has every app running (Services by app name). Then run
+    stack-pr-test with a changed-app to add intercepts and run E2E.
+  params:
+    - name: git-url
+      description: "Platform repo URL (has stacks/; app repos come from stack)"
+    - name: git-revision
+      description: "Branch, tag, or SHA"
+    - name: stack-file
+      description: "Path to stack YAML relative to repo root"
+      default: "stacks/stack-one.yaml"
+    - name: image-registry
+      description: "Container registry base (e.g. localhost:5000)"
+    - name: image-tag
+      description: "Tag for base images (e.g. base-1)"
+      default: "base-1"
+  workspaces:
+    - name: shared-workspace
+    - name: ssh-key
+      description: "Volume with SSH key (id_ed25519 or id_rsa) for cloning app repos; required for SSH pull"
+  tasks:
+    - name: fetch-source
+      taskRef:
+        name: git-clone
+      params:
+        - name: url
+          value: $(params.git-url)
+        - name: revision
+          value: $(params.git-revision)
+        - name: deleteExisting
+          value: "true"
+      workspaces:
+        - name: output
+          workspace: shared-workspace
+
+    - name: resolve-stack
+      taskRef:
+        name: resolve-stack
+      params:
+        - name: stack-file
+          value: $(params.stack-file)
+        - name: version-overrides
+          value: "{}"
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      runAfter:
+        - fetch-source
+
+    - name: clone-app-repos
+      taskRef:
+        name: clone-app-repos
+      params:
+        - name: stack-json
+          value: $(tasks.resolve-stack.results.stack-json)
+        - name: build-apps
+          value: $(tasks.resolve-stack.results.build-apps)
+        - name: git-revision
+          value: $(params.git-revision)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+        - name: ssh-key
+          workspace: ssh-key
+      runAfter:
+        - resolve-stack
+
+    - name: build-apps
+      taskRef:
+        name: build-stack-apps
+      params:
+        - name: stack-json
+          value: $(tasks.resolve-stack.results.stack-json)
+        - name: build-apps
+          value: $(tasks.resolve-stack.results.build-apps)
+        - name: image-registry
+          value: $(params.image-registry)
+        - name: image-tag
+          value: $(params.image-tag)
+        - name: tag-prefix
+          value: ""
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      runAfter:
+        - clone-app-repos
+
+    - name: deploy-full-stack
+      taskRef:
+        name: deploy-full-stack
+      params:
+        - name: stack-json
+          value: $(tasks.resolve-stack.results.stack-json)
+        - name: built-images
+          value: $(tasks.build-apps.results.built-images)
+        - name: default-namespace
+          value: "staging"
+      runAfter:
+        - build-apps

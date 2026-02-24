@@ -1,0 +1,17 @@
+# E2E Artillery: hit stack entry point with intercept header.
+# Invoked by run-artillery-variants.sh with generated config (target + headers per variant).
+# Standalone: copy this and set config.target and config.defaults.headers, or use --target and a generated override.
+config:
+  target: "http://localhost:8080"
+  phases:
+    - duration: 15
+      arrivalRate: 2
+  defaults:
+    headers:
+      "x-dev-session": "pr-1"
+      "baggage": "dev-session=pr-1"
+scenarios:
+  - name: "Entry E2E with intercept header"
+    flow:
+      - get:
+          url: "/"

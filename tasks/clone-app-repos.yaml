@@ -1,0 +1,78 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: clone-app-repos
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+spec:
+  description: >
+    Clones each app repo from the stack into workspace/<app-name> via SSH.
+    Run after fetch-source and resolve-stack. Stack .apps[].repo (e.g.
+    jmjava/tekton-dag-vue-fe) becomes git@github.com:<repo>.git. Workspace
+    ssh-key (required) must hold the SSH private key (id_ed25519 or id_rsa)
+    for GitHub auth.
+  params:
+    - name: stack-json
+      type: string
+      description: "Stack graph JSON (from resolve-stack)"
+    - name: build-apps
+      type: string
+      description: "Space-separated list of app names to clone"
+    - name: git-revision
+      type: string
+      default: "main"
+      description: "Branch or SHA to check out for all app repos"
+  workspaces:
+    - name: source
+      description: "Workspace with platform repo at root; app repos will be cloned into source/<app-name>"
+    - name: ssh-key
+      description: "Volume with SSH private key (id_ed25519 or id_rsa) for git clone; required for SSH pull"
+  steps:
+    - name: clone-apps
+      image: alpine/git:latest
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/bin/sh
+        set -e
+        apk add --no-cache jq >/dev/null 2>&1
+
+        STACK_JSON='$(params.stack-json)'
+        BUILD_APPS="$(params.build-apps)"
+        REVISION="$(params.git-revision)"
+        WORKSPACE="$(workspaces.source.path)"
+
+        # SSH clone: use git@github.com:<repo>.git; ssh-key workspace is required
+        mkdir -p /root/.ssh
+        chmod 700 /root/.ssh
+        KEY_DIR="$(workspaces.ssh-key.path)"
+        if [ -f "$KEY_DIR/id_ed25519" ]; then
+          cp "$KEY_DIR/id_ed25519" /root/.ssh/id_ed25519
+          chmod 600 /root/.ssh/id_ed25519
+        elif [ -f "$KEY_DIR/id_rsa" ]; then
+          cp "$KEY_DIR/id_rsa" /root/.ssh/id_rsa
+          chmod 600 /root/.ssh/id_rsa
+        else
+          echo "  ERROR: ssh-key workspace must contain id_ed25519 or id_rsa" >&2
+          exit 1
+        fi
+        ssh-keyscan -H github.com >> /root/.ssh/known_hosts 2>/dev/null || true
+
+        for APP in $BUILD_APPS; do
+          REPO=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.repo')
+          if [ -z "$REPO" ] || [ "$REPO" = "null" ]; then
+            echo "  WARN: No repo for app $APP in stack, skipping"
+            continue
+          fi
+          # SSH URL: git@github.com:org/repo.git
+          URL="git@github.com:${REPO}.git"
+          echo "  Cloning $APP from $URL (revision: $REVISION) -> $WORKSPACE/$APP"
+          git clone --depth 1 "$URL" "$WORKSPACE/$APP"
+          (cd "$WORKSPACE/$APP" && git fetch --depth 1 origin "$REVISION" 2>/dev/null && git checkout "$REVISION" 2>/dev/null || true)
+          echo "  Done: $APP"
+        done
+        echo ""
+        echo "App repos cloned. Listing:"
+        for APP in $BUILD_APPS; do
+          [ -d "$WORKSPACE/$APP" ] && echo "  $WORKSPACE/$APP" || true
+        done

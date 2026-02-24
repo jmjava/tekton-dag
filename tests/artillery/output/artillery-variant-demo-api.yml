@@ -1,0 +1,14 @@
+config:
+  target: "http://demo-fe.staging.svc.cluster.local:3000"
+  phases:
+    - duration: 15
+      arrivalRate: 2
+  defaults:
+    headers:
+      x-dev-session: "pr-42"
+      baggage: "dev-session=pr-42"
+scenarios:
+  - name: "Entry E2E (intercepted app: demo-api)"
+    flow:
+      - get:
+          url: "/"

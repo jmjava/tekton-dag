@@ -1,0 +1,86 @@
+# PostgreSQL with emptyDir (no PVC) — for Kind or when no StorageClass exists.
+# Data is lost on pod restart; use for local/test only. Same service name for Tekton Results.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tekton-results-postgres
+  namespace: tekton-pipelines
+  labels:
+    app: tekton-results-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tekton-results-postgres
+  template:
+    metadata:
+      labels:
+        app: tekton-results-postgres
+    spec:
+      securityContext:
+        runAsNonRoot: false
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+              name: postgres
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: POSTGRES_DB
+              value: tekton-results
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: tekton-results-postgres
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: tekton-results-postgres
+                  key: POSTGRES_PASSWORD
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - postgres
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - postgres
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tekton-results-postgres-service
+  namespace: tekton-pipelines
+  labels:
+    app: tekton-results-postgres
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+      protocol: TCP
+      name: postgres
+  selector:
+    app: tekton-results-postgres
+  clusterIP: None

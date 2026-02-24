@@ -17,7 +17,7 @@ defaults:
 
 apps:
   - name: analytics-api
-    repo: menkelabs/analytics-api
+    repo: jmjava/tekton-dag-flask
     role: persistence
     propagation-role: terminal
     context-dir: "."

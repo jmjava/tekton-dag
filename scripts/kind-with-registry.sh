@@ -41,16 +41,20 @@ else
   echo "  Registry ${reg_name} already running."
 fi
 
-# 2. Create kind cluster with containerd config so localhost:REG_PORT points at the registry
-echo "  Creating kind cluster: $KIND_CLUSTER_NAME ..."
-cat <<EOF | kind create cluster --name "${KIND_CLUSTER_NAME}" --config=-
+# 2. Create kind cluster with containerd config (skip if already exists)
+if kind get clusters 2>/dev/null | grep -qx "${KIND_CLUSTER_NAME}"; then
+  echo "  Cluster $KIND_CLUSTER_NAME already exists; skipping creation."
+else
+  echo "  Creating kind cluster: $KIND_CLUSTER_NAME ..."
+  cat <<EOF | kind create cluster --name "${KIND_CLUSTER_NAME}" --config=-
 kind: Cluster
-apiVersion: kind.x-k8s.io/v1alpha4
+apiVersion: kind.x.k8s.io/v1alpha4
 containerdConfigPatches:
 - |-
   [plugins."io.containerd.grpc.v1.cri".registry]
     config_path = "/etc/containerd/certs.d"
 EOF
+fi
 
 # 3. Tell containerd on each node to use the registry for localhost:REG_PORT
 #    (localhost in a node is not the host; we alias it to the registry container)

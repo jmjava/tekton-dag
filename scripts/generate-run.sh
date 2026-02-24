@@ -42,6 +42,7 @@ GIT_REV=""
 IMAGE_REGISTRY=""
 STORAGE_CLASS="${STORAGE_CLASS:-gp3}"
 VERSION_OVERRIDES="{}"
+GIT_SSH_SECRET_NAME="${GIT_SSH_SECRET_NAME:-git-ssh-key}"
 APPLY=false
 
 while [[ $# -gt 0 ]]; do
@@ -56,6 +57,7 @@ while [[ $# -gt 0 ]]; do
     --git-revision)       GIT_REV="$2"; shift 2 ;;
     --registry)           IMAGE_REGISTRY="$2"; shift 2 ;;
     --storage-class)      STORAGE_CLASS="$2"; shift 2 ;;
+    --ssh-secret)         GIT_SSH_SECRET_NAME="$2"; shift 2 ;;
     --apply)              APPLY=true; shift ;;
     --dry-run)            APPLY=false; shift ;;
     *)                    die "Unknown option: $1" ;;
@@ -77,7 +79,7 @@ fi
 STACK_PATH="stacks/$STACK"
 [[ -f "$STACKS_DIR/$STACK" ]] || die "Stack file not found: $STACKS_DIR/$STACK"
 
-# Defaults
+# Defaults: git-url is the platform repo (tekton-dag) with stacks/ and versions; app repos are cloned separately from stack .apps[].repo (e.g. jmjava/tekton-dag-vue-fe)
 GIT_URL="${GIT_URL:-https://github.com/jmjava/tekton-dag.git}"
 GIT_REV="${GIT_REV:-$(git rev-parse --short HEAD 2>/dev/null || echo 'main')}"
 IMAGE_REGISTRY="${IMAGE_REGISTRY:-\${IMAGE_REGISTRY}}"
@@ -123,6 +125,9 @@ spec:
           resources:
             requests:
               storage: 5Gi
+    - name: ssh-key
+      secret:
+        secretName: "${GIT_SSH_SECRET_NAME}"
 EOF
 
 elif [[ "$MODE" == "merge" ]]; then
@@ -163,6 +168,9 @@ spec:
           resources:
             requests:
               storage: 5Gi
+    - name: ssh-key
+      secret:
+        secretName: "${GIT_SSH_SECRET_NAME}"
 EOF
 
 else

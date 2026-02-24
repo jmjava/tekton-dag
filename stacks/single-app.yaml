@@ -18,7 +18,7 @@ defaults:
 
 apps:
   - name: inventory-api
-    repo: menkelabs/inventory-api
+    repo: jmjava/tekton-dag-spring-boot
     role: persistence
     propagation-role: terminal
     context-dir: "."

@@ -54,6 +54,9 @@ spec:
     - name: resolve
       image: mikefarah/yq:4
       workingDir: $(workspaces.source.path)
+      # apk add needs root; image runs non-root by default
+      securityContext:
+        runAsUser: 0
       script: |
         #!/bin/sh
         set -e
@@ -126,6 +129,13 @@ spec:
         # Topological order
         # ----------------------------------------------------------
         TOPO=$(cat /tmp/stack.json | jq -r '
+          def vis($n;$adj):
+            if (.t|index($n)) then .err=true
+            elif (.v|index($n)) then .
+            else .t+=[$n] |
+              reduce ($adj[$n]//[])[] as $d (.;vis($d;$adj)) |
+              .t-=[$n] | .v+=[$n] | .o+=[$n]
+            end;
           def topo:
             . as $g |
             ($g.apps | map({key:.name, value:.downstream}) | from_entries) as $adj |
@@ -135,13 +145,6 @@ spec:
               if (.v|index($n)) then . else .|vis($n;$adj) end
             ) |
             if .err then error("cycle") else .o|reverse end;
-          def vis($n;$adj):
-            if (.t|index($n)) then .err=true
-            elif (.v|index($n)) then .
-            else .t+=[$n] |
-              reduce ($adj[$n]//[])[] as $d (.;vis($d;$adj)) |
-              .t-=[$n] | .v+=[$n] | .o+=[$n]
-            end;
           topo | join(" ")
         ')
         echo -n "$TOPO" | tee $(results.app-list.path)
