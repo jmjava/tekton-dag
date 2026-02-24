@@ -5,7 +5,7 @@ standalone-repo-output/
 
 # IDE
 .idea/
-.vscode/
+# .vscode/ checked in for launch configs (intercept step-debug)
 *.swp
 *.swo
 

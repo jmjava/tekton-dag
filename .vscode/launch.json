@@ -1,0 +1,92 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Vue (demo-fe): Launch & debug",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "env": { "NODE_OPTIONS": "--inspect" },
+      "cwd": "${workspaceFolder:tekton-dag-vue-fe}",
+      "serverReadyAction": { "pattern": "Local:.+(https?://[^\\s]+)", "uriFormat": "%s", "action": "debugWithChrome" },
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
+    },
+    {
+      "name": "Vue (demo-fe): Attach",
+      "type": "node",
+      "request": "attach",
+      "port": 9229,
+      "restart": true,
+      "cwd": "${workspaceFolder:tekton-dag-vue-fe}",
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+      "resolveSourceMapLocations": ["${workspaceFolder:tekton-dag-vue-fe}/**", "!**/node_modules/**"]
+    },
+    {
+      "name": "Spring Boot (release-lifecycle-demo): Launch & debug",
+      "type": "java",
+      "request": "launch",
+      "mainClass": "com.example.dag.Application",
+      "projectName": "tekton-dag-spring-boot",
+      "cwd": "${workspaceFolder:tekton-dag-spring-boot}",
+      "vmArgs": "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+    },
+    {
+      "name": "Spring Boot (release-lifecycle-demo): Attach",
+      "type": "java",
+      "request": "attach",
+      "hostName": "localhost",
+      "port": 5005,
+      "projectName": "tekton-dag-spring-boot"
+    },
+    {
+      "name": "Spring Boot Gradle (demo-api): Launch & debug",
+      "type": "java",
+      "request": "launch",
+      "mainClass": "com.example.dag.Application",
+      "projectName": "tekton-dag-spring-boot-gradle",
+      "cwd": "${workspaceFolder:tekton-dag-spring-boot-gradle}",
+      "vmArgs": "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+    },
+    {
+      "name": "Spring Boot Gradle (demo-api): Attach",
+      "type": "java",
+      "request": "attach",
+      "hostName": "localhost",
+      "port": 5005,
+      "projectName": "tekton-dag-spring-boot-gradle"
+    },
+    {
+      "name": "Spring Legacy (internal-api): Attach",
+      "type": "java",
+      "request": "attach",
+      "hostName": "localhost",
+      "port": 5005,
+      "projectName": "tekton-dag-spring-legacy"
+    },
+    {
+      "name": "Flask (notifications-svc): Launch & debug",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "flask",
+      "args": ["run", "--host=0.0.0.0", "--port=5000"],
+      "env": { "FLASK_APP": "app.py", "FLASK_DEBUG": "1" },
+      "cwd": "${workspaceFolder:tekton-dag-flask}",
+      "justMyCode": false
+    },
+    {
+      "name": "Flask (notifications-svc): Attach",
+      "type": "debugpy",
+      "request": "attach",
+      "connect": { "host": "localhost", "port": 5678 },
+      "pathMappings": [{ "localRoot": "${workspaceFolder:tekton-dag-flask}", "remoteRoot": "." }],
+      "justMyCode": false
+    },
+    {
+      "name": "PHP (vendor-adapter): Listen for Xdebug",
+      "type": "php",
+      "request": "launch",
+      "port": 9003
+    }
+  ]
+}
