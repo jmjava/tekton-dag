@@ -1,0 +1,41 @@
+# Single App Stack: standalone service with no downstream dependencies.
+# A standalone app is both originator and terminal — it accepts the
+# header for routing but has nothing downstream to forward to.
+
+name: standalone-api
+description: "Single standalone Spring Boot API service (no graph, no downstream)"
+
+propagation:
+  header-name: x-dev-session
+  baggage-key: dev-session
+  strategy: w3c-baggage
+
+defaults:
+  namespace: staging
+  image-registry: "${IMAGE_REGISTRY}"
+  service-port: "80"
+  container-port: "8080"
+
+apps:
+  - name: inventory-api
+    repo: menkelabs/inventory-api
+    role: persistence
+    propagation-role: terminal
+    context-dir: "."
+    dockerfile: Dockerfile
+    build:
+      tool: maven
+      runtime: spring-boot
+      java-version: "21"
+      build-command: "mvn -B clean package -DskipTests"
+      # Optional legacy/custom build (uncomment and adjust per enterprise needs)
+      # env:
+      #   JAVA_HOME: "/usr/lib/jvm/java-21-openjdk-amd64"
+      # legacy:
+      #   MAVEN_OPTS: "-Xmx2g -Dlegacy.profile=old"
+      #   JAVA_TOOL_OPTIONS: "-Dfile.encoding=UTF-8"
+      # pre-command: "./scripts/apply-legacy-patches.sh || true"
+    downstream: []
+    tests:
+      postman: tests/postman/inventory-tests.json
+      artillery: tests/artillery/load-test.yml

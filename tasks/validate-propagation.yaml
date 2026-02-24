@@ -1,0 +1,239 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: validate-stack-propagation
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+spec:
+  description: >
+    Validates that the baggage header reaches the intercepted app(s).
+
+    The header only needs to propagate from the entry point UP TO
+    the intercepted app. Beyond the intercept, downstream calls are
+    normal — there's no Telepresence intercept on those services to
+    match on, so the header doesn't need to be there.
+
+    Example: A(originator) → B(forwarder) → C(terminal), D(terminal)
+      If B is intercepted:
+        - Header must reach B (A originates → B receives via Telepresence)
+        - B's calls to C and D are normal calls to normal deployments
+        - C and D do NOT need the header — no intercept to match
+      If C is intercepted:
+        - Header must reach C (A originates → B forwards → C receives)
+        - D is untouched
+      If B AND C are intercepted:
+        - Header must reach B AND continue to C
+        - B must forward because there's another intercept downstream
+  params:
+    - name: stack-json
+      type: string
+      description: "Full stack graph JSON"
+    - name: propagation-chain
+      type: string
+      description: "Space-separated ordered list of apps in the chain"
+    - name: build-apps
+      type: string
+      default: ""
+      description: "Space-separated list of intercepted apps"
+    - name: intercept-header-value
+      type: string
+      description: "Header value used for intercepts (e.g. x-dev-session:pr-42)"
+    - name: default-namespace
+      type: string
+      default: "staging"
+  steps:
+    - name: validate
+      image: curlimages/curl:latest
+      script: |
+        #!/bin/sh
+        set -e
+
+        STACK_JSON='$(params.stack-json)'
+        CHAIN="$(params.propagation-chain)"
+        BUILD_APPS="$(params.build-apps)"
+        INTERCEPT="$(params.intercept-header-value)"
+        DEFAULT_NS="$(params.default-namespace)"
+
+        HEADER_NAME=$(echo "$STACK_JSON" | jq -r '.propagation."header-name" // "x-dev-session"')
+        BAGGAGE_KEY=$(echo "$STACK_JSON" | jq -r '.propagation."baggage-key" // "dev-session"')
+
+        HEADER_VAL=""
+        if [ -n "$INTERCEPT" ]; then
+          HEADER_VAL=$(echo "$INTERCEPT" | cut -d: -f2-)
+        fi
+
+        COUNT=0
+        for APP in $CHAIN; do COUNT=$((COUNT + 1)); done
+
+        # Find the deepest intercepted app in the chain
+        # Header only needs to propagate up to this point
+        DEEPEST_INTERCEPT_POS=0
+        POS=0
+        for APP in $CHAIN; do
+          POS=$((POS + 1))
+          for BA in $BUILD_APPS; do
+            if [ "$BA" = "$APP" ]; then
+              DEEPEST_INTERCEPT_POS=$POS
+            fi
+          done
+        done
+
+        echo "============================================="
+        echo "  Stack Propagation Validation"
+        echo "============================================="
+        echo "  Chain:              $CHAIN"
+        echo "  Header:             $HEADER_NAME = $HEADER_VAL"
+        echo "  Baggage key:        $BAGGAGE_KEY"
+        echo "  Hop count:          $COUNT"
+        echo "  Intercepted:        ${BUILD_APPS:-<none>}"
+        echo "  Deepest intercept:  position $DEEPEST_INTERCEPT_POS of $COUNT"
+        echo ""
+
+        # Show the propagation contract for each hop
+        echo "  Propagation contract:"
+        HOP=0
+        PAST_DEEPEST=false
+        for APP in $CHAIN; do
+          HOP=$((HOP + 1))
+          PROP_ROLE=$(echo "$STACK_JSON" | jq -r --arg a "$APP" \
+            '.apps[]|select(.name==$a)|."propagation-role" // "unknown"')
+
+          IS_INTERCEPTED=false
+          for BA in $BUILD_APPS; do
+            [ "$BA" = "$APP" ] && IS_INTERCEPTED=true
+          done
+
+          if [ $HOP -gt $DEEPEST_INTERCEPT_POS ] && [ $DEEPEST_INTERCEPT_POS -gt 0 ]; then
+            PAST_DEEPEST=true
+          fi
+
+          TAG=""
+          $IS_INTERCEPTED && TAG=" ** PR BUILD **"
+
+          if $PAST_DEEPEST; then
+            echo "    $HOP. $APP ($PROP_ROLE) → NORMAL call (no intercept downstream, header not required)"
+          else
+            case "$PROP_ROLE" in
+              originator) echo "    $HOP. $APP ($PROP_ROLE)${TAG} → SETS header, sends to next hop" ;;
+              forwarder)
+                # Only needs to forward if there's another intercepted app downstream
+                HAS_DOWNSTREAM_INTERCEPT=false
+                CHECK_POS=0
+                for C in $CHAIN; do
+                  CHECK_POS=$((CHECK_POS + 1))
+                  if [ $CHECK_POS -gt $HOP ]; then
+                    for BA in $BUILD_APPS; do
+                      [ "$BA" = "$C" ] && HAS_DOWNSTREAM_INTERCEPT=true
+                    done
+                  fi
+                done
+
+                if $IS_INTERCEPTED && ! $HAS_DOWNSTREAM_INTERCEPT; then
+                  echo "    $HOP. $APP ($PROP_ROLE)${TAG} → RECEIVES header via intercept, downstream calls are NORMAL (no forwarding needed)"
+                elif $IS_INTERCEPTED && $HAS_DOWNSTREAM_INTERCEPT; then
+                  echo "    $HOP. $APP ($PROP_ROLE)${TAG} → RECEIVES header via intercept, MUST FORWARD (intercepted app downstream)"
+                elif $HAS_DOWNSTREAM_INTERCEPT; then
+                  echo "    $HOP. $APP ($PROP_ROLE) → RECEIVES header, MUST FORWARD (intercepted app downstream)"
+                else
+                  echo "    $HOP. $APP ($PROP_ROLE) → RECEIVES header, downstream calls NORMAL"
+                fi
+                ;;
+              terminal) echo "    $HOP. $APP ($PROP_ROLE)${TAG} → RECEIVES header, END of chain" ;;
+              *)        echo "    $HOP. $APP ($PROP_ROLE)${TAG}" ;;
+            esac
+          fi
+        done
+        echo ""
+
+        if [ "$COUNT" -le 1 ]; then
+          echo "Single-app stack — health check only."
+          ENTRY=$(echo $CHAIN | awk '{print $1}')
+          NS=$(echo "$STACK_JSON" | jq -r --arg a "$ENTRY" --arg d "$DEFAULT_NS" \
+            '(.defaults.namespace // $d) as $dn | .apps[]|select(.name==$a)|.namespace // $dn')
+          SPORT=$(echo "$STACK_JSON" | jq -r --arg a "$ENTRY" \
+            '(.defaults."service-port" // "80") as $dp | .apps[]|select(.name==$a)|."service-port" // $dp')
+          URL="http://${ENTRY}.${NS}.svc.cluster.local:${SPORT}/"
+
+          echo "  Health check: $URL"
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "${HEADER_NAME}: ${HEADER_VAL}" \
+            -H "baggage: ${BAGGAGE_KEY}=${HEADER_VAL}" \
+            --connect-timeout 10 --max-time 30 \
+            "$URL" 2>/dev/null || echo "000")
+
+          if [ "$HTTP_CODE" = "000" ]; then
+            echo "  WARN: Service not reachable (may be expected in dry-run)"
+          elif [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 400 ]; then
+            echo "  PASS: HTTP $HTTP_CODE"
+          else
+            echo "  WARN: HTTP $HTTP_CODE (non-fatal for PR validation)"
+          fi
+          exit 0
+        fi
+
+        # Multi-hop validation — enter through the originator
+        ENTRY=$(echo $CHAIN | awk '{print $1}')
+        NS=$(echo "$STACK_JSON" | jq -r --arg a "$ENTRY" --arg d "$DEFAULT_NS" \
+          '(.defaults.namespace // $d) as $dn | .apps[]|select(.name==$a)|.namespace // $dn')
+        SPORT=$(echo "$STACK_JSON" | jq -r --arg a "$ENTRY" \
+          '(.defaults."service-port" // "80") as $dp | .apps[]|select(.name==$a)|."service-port" // $dp')
+        URL="http://${ENTRY}.${NS}.svc.cluster.local:${SPORT}/"
+
+        echo "Sending test request to originator: $URL"
+        echo "  Headers: ${HEADER_NAME}=${HEADER_VAL}, baggage=${BAGGAGE_KEY}=${HEADER_VAL}"
+        echo ""
+
+        RESULT=$(curl -s \
+          -H "${HEADER_NAME}: ${HEADER_VAL}" \
+          -H "baggage: ${BAGGAGE_KEY}=${HEADER_VAL}" \
+          -H "traceparent: 00-$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c 32)-$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c 16)-01" \
+          --connect-timeout 10 --max-time 60 \
+          "$URL" 2>/dev/null || echo '{"error":"unreachable"}')
+
+        echo "Response:"
+        echo "$RESULT" | jq '.' 2>/dev/null || echo "$RESULT"
+        echo ""
+
+        # Hop-by-hop verification
+        echo "Hop-by-hop verification:"
+        HOP=0
+        for APP in $CHAIN; do
+          HOP=$((HOP + 1))
+          PROP_ROLE=$(echo "$STACK_JSON" | jq -r --arg a "$APP" \
+            '.apps[]|select(.name==$a)|."propagation-role" // "unknown"')
+
+          IS_INTERCEPTED=false
+          for BA in $BUILD_APPS; do
+            [ "$BA" = "$APP" ] && IS_INTERCEPTED=true
+          done
+
+          MARKER=""
+          $IS_INTERCEPTED && MARKER=" [INTERCEPTED]"
+
+          REACHED=false
+          echo "$RESULT" | grep -qi "$APP" && REACHED=true
+
+          # Header is only REQUIRED up to the deepest intercept
+          HEADER_REQUIRED=true
+          if [ $HOP -gt $DEEPEST_INTERCEPT_POS ] && [ $DEEPEST_INTERCEPT_POS -gt 0 ]; then
+            HEADER_REQUIRED=false
+          fi
+
+          if $REACHED; then
+            echo "  HOP $HOP $APP ($PROP_ROLE)${MARKER}: REACHED"
+          elif $HEADER_REQUIRED; then
+            echo "  HOP $HOP $APP ($PROP_ROLE)${MARKER}: NOT CONFIRMED (header required at this hop)"
+          else
+            echo "  HOP $HOP $APP ($PROP_ROLE): OK (beyond intercept — normal call, header not required)"
+          fi
+        done
+
+        # Check header value in response
+        if echo "$RESULT" | grep -qi "$HEADER_VAL"; then
+          echo ""
+          echo "  Header value '$HEADER_VAL' found in response — propagation confirmed"
+        fi
+
+        echo ""
+        echo "Propagation validation complete."

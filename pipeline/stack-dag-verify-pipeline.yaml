@@ -1,0 +1,64 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: stack-dag-verify
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+spec:
+  description: >
+    Minimal pipeline for local DAG verification: clone + resolve only.
+    No build, no registry, no deploy. Use with verify-dag-phase2.sh to
+    compare resolve-stack task results to stack-graph.sh CLI output.
+  params:
+    - name: git-url
+      description: "SSH or HTTPS URL to clone"
+    - name: git-revision
+      description: "Branch, tag, or SHA to check out"
+    - name: stack-file
+      description: "Path to the stack YAML relative to repo root"
+      default: "stacks/stack-one.yaml"
+    - name: changed-app
+      description: "App whose PR triggered (empty = build all)"
+      default: ""
+    - name: pr-number
+      description: "PR number (optional, for intercept-header)"
+      default: ""
+    - name: version-overrides
+      description: "JSON map of app → version overrides"
+      default: "{}"
+  workspaces:
+    - name: shared-workspace
+      description: "Shared PVC for cloned source"
+  tasks:
+    - name: fetch-source
+      taskRef:
+        name: git-clone
+      params:
+        - name: url
+          value: $(params.git-url)
+        - name: revision
+          value: $(params.git-revision)
+        - name: deleteExisting
+          value: "true"
+      workspaces:
+        - name: output
+          workspace: shared-workspace
+
+    - name: resolve-stack
+      taskRef:
+        name: resolve-stack
+      params:
+        - name: stack-file
+          value: $(params.stack-file)
+        - name: changed-app
+          value: $(params.changed-app)
+        - name: pr-number
+          value: $(params.pr-number)
+        - name: version-overrides
+          value: $(params.version-overrides)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      runAfter:
+        - fetch-source

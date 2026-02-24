@@ -1,0 +1,247 @@
+# EventListener that handles both PR and merge events.
+# Delegates to the appropriate pipeline based on the GitHub event action.
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: stack-event-listener
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+spec:
+  serviceAccountName: tekton-pr-sa
+  triggers:
+    # --- PR opened / updated → stack-pr-test pipeline ---
+    - name: pr-opened
+      interceptors:
+        - ref:
+            name: github
+          params:
+            - name: eventTypes
+              value: ["pull_request"]
+            - name: secretRef
+              value:
+                secretName: github-webhook-secret
+                secretKey: secret
+        - ref:
+            name: cel
+          params:
+            - name: filter
+              value: "body.action in ['opened', 'synchronize', 'reopened']"
+            - name: overlays
+              value:
+                - key: app-name
+                  expression: >
+                    body.pull_request.head.repo.name
+                - key: stack-file
+                  expression: >
+                    body.pull_request.base.repo.name == 'demo-fe' ? 'stacks/stack-one.yaml' :
+                    body.pull_request.base.repo.name == 'release-lifecycle-demo' ? 'stacks/stack-one.yaml' :
+                    body.pull_request.base.repo.name == 'demo-api' ? 'stacks/stack-one.yaml' :
+                    body.pull_request.base.repo.name == 'vendor-fe' ? 'stacks/stack-two-vendor.yaml' :
+                    body.pull_request.base.repo.name == 'vendor-middleware' ? 'stacks/stack-two-vendor.yaml' :
+                    body.pull_request.base.repo.name == 'vendor-adapter' ? 'stacks/stack-two-vendor.yaml' :
+                    body.pull_request.base.repo.name == 'internal-api' ? 'stacks/stack-two-vendor.yaml' :
+                    body.pull_request.base.repo.name == 'notifications-svc' ? 'stacks/stack-two-vendor.yaml' :
+                    body.pull_request.base.repo.name == 'inventory-api' ? 'stacks/single-app.yaml' :
+                    body.pull_request.base.repo.name == 'analytics-api' ? 'stacks/single-flask-app.yaml' :
+                    'stacks/stack-one.yaml'
+      bindings:
+        - ref: stack-pr-binding
+      template:
+        ref: stack-pr-template
+
+    # --- PR merged → stack-merge-release pipeline ---
+    - name: pr-merged
+      interceptors:
+        - ref:
+            name: github
+          params:
+            - name: eventTypes
+              value: ["pull_request"]
+            - name: secretRef
+              value:
+                secretName: github-webhook-secret
+                secretKey: secret
+        - ref:
+            name: cel
+          params:
+            - name: filter
+              value: "body.action == 'closed' && body.pull_request.merged == true"
+            - name: overlays
+              value:
+                - key: app-name
+                  expression: >
+                    body.pull_request.head.repo.name
+                - key: stack-file
+                  expression: >
+                    body.pull_request.base.repo.name == 'demo-fe' ? 'stacks/stack-one.yaml' :
+                    body.pull_request.base.repo.name == 'release-lifecycle-demo' ? 'stacks/stack-one.yaml' :
+                    body.pull_request.base.repo.name == 'demo-api' ? 'stacks/stack-one.yaml' :
+                    body.pull_request.base.repo.name == 'vendor-fe' ? 'stacks/stack-two-vendor.yaml' :
+                    body.pull_request.base.repo.name == 'vendor-middleware' ? 'stacks/stack-two-vendor.yaml' :
+                    body.pull_request.base.repo.name == 'vendor-adapter' ? 'stacks/stack-two-vendor.yaml' :
+                    body.pull_request.base.repo.name == 'internal-api' ? 'stacks/stack-two-vendor.yaml' :
+                    body.pull_request.base.repo.name == 'notifications-svc' ? 'stacks/stack-two-vendor.yaml' :
+                    body.pull_request.base.repo.name == 'inventory-api' ? 'stacks/single-app.yaml' :
+                    body.pull_request.base.repo.name == 'analytics-api' ? 'stacks/single-flask-app.yaml' :
+                    'stacks/stack-one.yaml'
+      bindings:
+        - ref: stack-merge-binding
+      template:
+        ref: stack-merge-template
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: el-stack-event-listener
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+spec:
+  type: LoadBalancer
+  selector:
+    eventlistener: stack-event-listener
+  ports:
+    - port: 8080
+      targetPort: 8080
+
+---
+# TriggerBindings extract data from the GitHub webhook payload.
+
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerBinding
+metadata:
+  name: stack-pr-binding
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: git-url
+      value: $(body.pull_request.head.repo.ssh_url)
+    - name: git-revision
+      value: $(body.pull_request.head.sha)
+    - name: pr-number
+      value: $(body.pull_request.number)
+    - name: changed-app
+      value: $(extensions.app-name)
+    - name: stack-file
+      value: $(extensions.stack-file)
+
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerBinding
+metadata:
+  name: stack-merge-binding
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: git-url
+      value: $(body.pull_request.base.repo.ssh_url)
+    - name: git-revision
+      value: $(body.pull_request.merge_commit_sha)
+    - name: changed-app
+      value: $(extensions.app-name)
+    - name: stack-file
+      value: $(extensions.stack-file)
+
+---
+# TriggerTemplates create PipelineRuns from the extracted parameters.
+
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: stack-pr-template
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: git-url
+    - name: git-revision
+    - name: pr-number
+    - name: changed-app
+    - name: stack-file
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1
+      kind: PipelineRun
+      metadata:
+        generateName: stack-pr-$(tt.params.pr-number)-
+        namespace: tekton-pipelines
+      spec:
+        pipelineRef:
+          name: stack-pr-test
+        taskRunTemplate:
+          serviceAccountName: tekton-pr-sa
+          podTemplate:
+            securityContext:
+              fsGroup: 65532
+        params:
+          - name: git-url
+            value: $(tt.params.git-url)
+          - name: git-revision
+            value: $(tt.params.git-revision)
+          - name: pr-number
+            value: $(tt.params.pr-number)
+          - name: changed-app
+            value: $(tt.params.changed-app)
+          - name: stack-file
+            value: $(tt.params.stack-file)
+          - name: image-registry
+            value: IMAGE_REGISTRY_PLACEHOLDER
+          - name: version-overrides
+            value: "{}"
+        workspaces:
+          - name: shared-workspace
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ReadWriteOnce]
+                resources:
+                  requests:
+                    storage: 5Gi
+
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: stack-merge-template
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: git-url
+    - name: git-revision
+    - name: changed-app
+    - name: stack-file
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1
+      kind: PipelineRun
+      metadata:
+        generateName: stack-merge-
+        namespace: tekton-pipelines
+      spec:
+        pipelineRef:
+          name: stack-merge-release
+        taskRunTemplate:
+          serviceAccountName: tekton-pr-sa
+          podTemplate:
+            securityContext:
+              fsGroup: 65532
+        params:
+          - name: git-url
+            value: $(tt.params.git-url)
+          - name: git-revision
+            value: $(tt.params.git-revision)
+          - name: changed-app
+            value: $(tt.params.changed-app)
+          - name: stack-file
+            value: $(tt.params.stack-file)
+          - name: image-registry
+            value: IMAGE_REGISTRY_PLACEHOLDER
+          - name: version-overrides
+            value: "{}"
+        workspaces:
+          - name: shared-workspace
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ReadWriteOnce]
+                resources:
+                  requests:
+                    storage: 5Gi

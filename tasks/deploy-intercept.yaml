@@ -1,0 +1,241 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: deploy-stack-intercepts
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+spec:
+  description: >
+    Deploys PR pods with Telepresence intercepts ONLY for the app(s)
+    that changed. The rest of the stack runs as-is in the cluster.
+
+    For a stack A→B→C→D where C changed:
+      - A, B, D: normal deployed services (untouched)
+      - C: Telepresence intercepts the existing C service so that
+            requests carrying the PR's baggage header get routed
+            to the PR pod running the new C build
+      - The e2e test enters through A with the header; B forwards
+            it to C (intercepted → PR pod); C forwards to D normally.
+
+    The intercept-header-value (e.g. x-dev-session:pr-42) is what
+    Telepresence matches on. Only traffic with that header hits the
+    PR pod — all other traffic continues to the normal C deployment.
+  params:
+    - name: stack-json
+      type: string
+      description: "Full stack graph JSON (used to resolve ports, namespaces, topology)"
+    - name: build-apps
+      type: string
+      description: "Space-separated list of apps that were built (ONLY these get intercepts)"
+    - name: propagation-chain
+      type: string
+      default: ""
+      description: "Full ordered chain from entry to leaf (for logging context)"
+    - name: built-images
+      type: string
+      description: "JSON map of app → image URI"
+    - name: intercept-header-value
+      type: string
+      description: "Header match expression for Telepresence (e.g. x-dev-session:pr-42)"
+    - name: default-namespace
+      type: string
+      default: "staging"
+    - name: telepresence-image
+      type: string
+      default: "docker.io/datawire/tel2:2.20.0"
+  results:
+    - name: deployed-pods
+      description: "JSON map of app → pod name"
+  steps:
+    - name: deploy
+      image: bitnami/kubectl:latest
+      script: |
+        #!/bin/bash
+        set -e
+
+        STACK_JSON='$(params.stack-json)'
+        BUILD_APPS="$(params.build-apps)"
+        CHAIN="$(params.propagation-chain)"
+        BUILT='$(params.built-images)'
+        INTERCEPT="$(params.intercept-header-value)"
+        DEFAULT_NS="$(params.default-namespace)"
+
+        # Compute the full app list from the graph for context
+        ALL_APPS=$(echo "$STACK_JSON" | jq -r '.apps[].name' | tr '\n' ' ')
+
+        echo "============================================="
+        echo "  Intercept Deployment Plan"
+        echo "============================================="
+        echo "  Full stack apps:    $ALL_APPS"
+        echo "  Propagation chain:  ${CHAIN:-<not provided>}"
+        echo "  Intercepted apps:   $BUILD_APPS"
+        echo "  Intercept header:   $INTERCEPT"
+        echo ""
+        echo "  Apps NOT intercepted run their normal cluster deployments."
+        echo "  Only traffic matching the header routes to PR pods."
+        echo ""
+
+        # Show each intercepted app's propagation role and chain position
+        for APP in $BUILD_APPS; do
+          PROP_ROLE=$(echo "$STACK_JSON" | jq -r --arg a "$APP" \
+            '.apps[]|select(.name==$a)|."propagation-role" // "unknown"')
+
+          echo "  $APP:"
+          echo "    propagation-role: $PROP_ROLE"
+
+          # Check if there are other intercepted apps downstream of this one
+          HAS_DOWNSTREAM_INTERCEPT=false
+          FOUND_SELF=false
+          for C in $CHAIN; do
+            if [ "$C" = "$APP" ]; then
+              FOUND_SELF=true
+              continue
+            fi
+            if $FOUND_SELF; then
+              for BA in $BUILD_APPS; do
+                [ "$BA" = "$C" ] && HAS_DOWNSTREAM_INTERCEPT=true
+              done
+            fi
+          done
+
+          case "$PROP_ROLE" in
+            originator)
+              echo "    behavior: STARTS the baggage chain"
+              if $HAS_DOWNSTREAM_INTERCEPT; then
+                echo "    app code: must set headers on outgoing requests (intercepted app downstream)"
+              else
+                echo "    app code: must set headers on outgoing requests"
+                echo "    note: no other intercepted apps downstream — header only needed to reach THIS app"
+              fi
+              ;;
+            forwarder)
+              if $HAS_DOWNSTREAM_INTERCEPT; then
+                echo "    behavior: ACCEPTS incoming baggage and MUST FORWARD (intercepted app downstream)"
+                echo "    app code: must parse incoming header, store in context, propagate on all outgoing calls"
+              else
+                echo "    behavior: ACCEPTS incoming baggage, downstream calls are NORMAL"
+                echo "    app code: header got traffic here via Telepresence — downstream calls go to"
+                echo "              normal deployments, no forwarding needed for intercept routing"
+              fi
+              ;;
+            terminal)
+              echo "    behavior: ACCEPTS incoming baggage, never forwards"
+              echo "    app code: header got traffic here — end of the line"
+              ;;
+          esac
+
+          # Chain position context
+          if [ -n "$CHAIN" ]; then
+            POSITION=0
+            TOTAL=0
+            for C in $CHAIN; do
+              TOTAL=$((TOTAL + 1))
+              if [ "$C" = "$APP" ]; then
+                POSITION=$TOTAL
+              fi
+            done
+            if [ $POSITION -gt 0 ]; then
+              echo "    chain position: $POSITION of $TOTAL"
+              UPSTREAM=""
+              DOWNSTREAM=""
+              FOUND=false
+              for C in $CHAIN; do
+                if [ "$C" = "$APP" ]; then
+                  FOUND=true
+                  continue
+                fi
+                if $FOUND; then
+                  DOWNSTREAM="$DOWNSTREAM $C"
+                else
+                  UPSTREAM="$UPSTREAM $C"
+                fi
+              done
+              [ -n "$UPSTREAM" ] && echo "    upstream (normal):   $UPSTREAM"
+              [ -n "$DOWNSTREAM" ] && echo "    downstream (normal): $DOWNSTREAM"
+            else
+              echo "    chain position: leaf (fan-out target)"
+            fi
+          fi
+          echo ""
+        done
+
+        echo '{}' > /tmp/pods.json
+
+        for APP in $BUILD_APPS; do
+          echo "========================================="
+          echo "  Deploying intercept: $APP"
+          echo "========================================="
+
+          IMAGE=$(echo "$BUILT" | jq -r --arg a "$APP" '.[$a]')
+          NS=$(echo "$STACK_JSON" | jq -r --arg a "$APP" --arg d "$DEFAULT_NS" \
+            '(.defaults.namespace // $d) as $dn | .apps[]|select(.name==$a)|.namespace // $dn')
+          CPORT=$(echo "$STACK_JSON" | jq -r --arg a "$APP" \
+            '(.defaults."container-port" // "8080") as $dp | .apps[]|select(.name==$a)|."container-port" // $dp')
+          SPORT=$(echo "$STACK_JSON" | jq -r --arg a "$APP" \
+            '(.defaults."service-port" // "80") as $dp | .apps[]|select(.name==$a)|."service-port" // $dp')
+
+          POD_NAME="pr-${APP}-$(date +%s)"
+
+          echo "  Image:     $IMAGE"
+          echo "  Namespace: $NS"
+          echo "  Ports:     container=$CPORT  service=$SPORT"
+          echo "  Intercept: $INTERCEPT"
+          echo "  Pod:       $POD_NAME"
+
+          INTERCEPT_ARGS=""
+          if [ -n "$INTERCEPT" ]; then
+            INTERCEPT_ARGS="telepresence intercept ${APP} --namespace ${NS} --port ${CPORT}:${SPORT} --http-match ${INTERCEPT}"
+          else
+            INTERCEPT_ARGS="telepresence intercept ${APP} --namespace ${NS} --port ${CPORT}:${SPORT}"
+          fi
+
+          cat <<EOF | kubectl apply -f -
+        apiVersion: v1
+        kind: Pod
+        metadata:
+          name: ${POD_NAME}
+          namespace: ${NS}
+          labels:
+            app: pr-test
+            component: ${APP}
+            managed-by: tekton-job-standardization
+        spec:
+          containers:
+          - name: pr-component
+            image: ${IMAGE}
+            command: ["/bin/sh"]
+            args: ["-c", "while true; do echo 'PR build for ${APP}'; sleep 30; done"]
+            ports:
+            - containerPort: ${CPORT}
+          - name: telepresence
+            image: $(params.telepresence-image)
+            command: ["/bin/sh"]
+            args:
+            - -c
+            - |
+              set -e
+              sleep 10
+              telepresence helm install
+              telepresence connect
+              ${INTERCEPT_ARGS}
+              echo "Intercept active for ${APP}!"
+              tail -f /dev/null
+            securityContext:
+              capabilities:
+                add: [NET_ADMIN]
+        EOF
+
+          kubectl wait --for=condition=Ready "pod/${POD_NAME}" \
+            --namespace "$NS" --timeout=300s
+
+          echo "  Pod ready: $POD_NAME"
+          echo "  Traffic to $APP matching '$INTERCEPT' now routes to PR pod"
+          echo ""
+
+          jq --arg a "$APP" --arg p "$POD_NAME" '. + {($a): $p}' \
+            /tmp/pods.json > /tmp/pods-tmp.json
+          mv /tmp/pods-tmp.json /tmp/pods.json
+        done
+
+        cat /tmp/pods.json | tee $(results.deployed-pods.path)

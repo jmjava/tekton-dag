@@ -1,0 +1,197 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: stack-pr-test
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+spec:
+  description: >
+    Universal PR testing pipeline. Adapts to any stack definition.
+    1. Clones source
+    2. Resolves the stack graph (apps, order, propagation chain, versions)
+    3. Bumps the RC version so we know the image tag up front
+    4. Builds images tagged with the RC version (e.g. v0.1.0-rc.4)
+    5. Deploys PR pods with Telepresence intercepts
+    6. Validates header propagation across the full chain
+    7. Runs all configured test suites
+    8. On success: pushes the version bump commit
+    9. Cleans up PR pods (always, even on failure)
+    The RC-tagged image is pushed to the container repo on every
+    passing PR build. It stays as RC until promoted to production.
+
+  params:
+    - name: git-url
+      description: "SSH or HTTPS URL to clone"
+    - name: git-revision
+      description: "Branch, tag, or SHA to check out"
+    - name: stack-file
+      description: "Path to the stack YAML relative to repo root"
+      default: "stacks/stack-one.yaml"
+    - name: changed-app
+      description: "App whose PR triggered this (empty = all apps)"
+      default: ""
+    - name: pr-number
+      description: "PR number"
+    - name: image-registry
+      description: "Container registry base (e.g. 123456.dkr.ecr.us-east-1.amazonaws.com)"
+    - name: version-overrides
+      description: "JSON map of app → version overrides (empty = use versions.yaml)"
+      default: "{}"
+
+  workspaces:
+    - name: shared-workspace
+      description: "Shared PVC for source code and test data"
+
+  results:
+    - name: test-summary
+      value: $(tasks.run-tests.results.test-summary)
+    - name: bumped-versions
+      value: $(tasks.bump-rc-version.results.bumped-versions)
+
+  tasks:
+    - name: fetch-source
+      taskRef:
+        name: git-clone
+      params:
+        - name: url
+          value: $(params.git-url)
+        - name: revision
+          value: $(params.git-revision)
+        - name: deleteExisting
+          value: "true"
+      workspaces:
+        - name: output
+          workspace: shared-workspace
+
+    - name: resolve-stack
+      taskRef:
+        name: resolve-stack
+      params:
+        - name: stack-file
+          value: $(params.stack-file)
+        - name: changed-app
+          value: $(params.changed-app)
+        - name: pr-number
+          value: $(params.pr-number)
+        - name: version-overrides
+          value: $(params.version-overrides)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      runAfter:
+        - fetch-source
+
+    # RC bump happens BEFORE build so the image tag is the new RC version
+    - name: bump-rc-version
+      taskRef:
+        name: version-bump
+      params:
+        - name: bump-mode
+          value: "rc"
+        - name: apps
+          value: $(tasks.resolve-stack.results.build-apps)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      runAfter:
+        - resolve-stack
+
+    # Build images tagged with the RC version (e.g. v0.1.0-rc.4)
+    - name: build-apps
+      taskRef:
+        name: build-stack-apps
+      params:
+        - name: stack-json
+          value: $(tasks.resolve-stack.results.stack-json)
+        - name: build-apps
+          value: $(tasks.resolve-stack.results.build-apps)
+        - name: image-registry
+          value: $(params.image-registry)
+        - name: image-tag
+          value: $(tasks.bump-rc-version.results.bumped-versions)
+        - name: tag-prefix
+          value: "v"
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      runAfter:
+        - bump-rc-version
+
+    - name: deploy-intercepts
+      taskRef:
+        name: deploy-stack-intercepts
+      params:
+        - name: stack-json
+          value: $(tasks.resolve-stack.results.stack-json)
+        - name: build-apps
+          value: $(tasks.resolve-stack.results.build-apps)
+        - name: propagation-chain
+          value: $(tasks.resolve-stack.results.propagation-chain)
+        - name: built-images
+          value: $(tasks.build-apps.results.built-images)
+        - name: intercept-header-value
+          value: $(tasks.resolve-stack.results.intercept-header-value)
+      runAfter:
+        - build-apps
+
+    - name: validate-propagation
+      taskRef:
+        name: validate-stack-propagation
+      params:
+        - name: stack-json
+          value: $(tasks.resolve-stack.results.stack-json)
+        - name: propagation-chain
+          value: $(tasks.resolve-stack.results.propagation-chain)
+        - name: build-apps
+          value: $(tasks.resolve-stack.results.build-apps)
+        - name: intercept-header-value
+          value: $(tasks.resolve-stack.results.intercept-header-value)
+      runAfter:
+        - deploy-intercepts
+
+    - name: run-tests
+      taskRef:
+        name: run-stack-tests
+      params:
+        - name: stack-json
+          value: $(tasks.resolve-stack.results.stack-json)
+        - name: app-list
+          value: $(tasks.resolve-stack.results.app-list)
+        - name: entry-app
+          value: $(tasks.resolve-stack.results.entry-app)
+        - name: propagation-chain
+          value: $(tasks.resolve-stack.results.propagation-chain)
+        - name: build-apps
+          value: $(tasks.resolve-stack.results.build-apps)
+        - name: intercept-header-value
+          value: $(tasks.resolve-stack.results.intercept-header-value)
+      workspaces:
+        - name: test-source
+          workspace: shared-workspace
+      runAfter:
+        - validate-propagation
+
+    # Tests passed — push the version bump commit so the RC is recorded
+    - name: push-version-commit
+      taskRef:
+        name: git-cli
+      params:
+        - name: GIT_SCRIPT
+          value: |
+            git push origin HEAD
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      runAfter:
+        - run-tests
+
+  finally:
+    - name: cleanup
+      taskRef:
+        name: cleanup-stack-pods
+      params:
+        - name: deployed-pods
+          value: $(tasks.deploy-intercepts.results.deployed-pods)
+        - name: stack-json
+          value: $(tasks.resolve-stack.results.stack-json)

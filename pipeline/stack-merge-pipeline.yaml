@@ -1,0 +1,142 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: stack-merge-release
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+spec:
+  description: >
+    Universal merge/release pipeline. Runs when a PR is merged to develop.
+    1. Clones source
+    2. Resolves the stack graph and current versions
+    3. Promotes the RC version to a release version (strips -rc.N)
+    4. Does a full deployment build for the merged app (or all apps)
+    5. Tags images with the release semver (e.g. v0.1.0)
+    6. Pushes versioned images to the container registry
+    7. Bumps patch and resets RC for the next dev cycle
+    8. Pushes the version commit back to the repo
+    The release-tagged image is what gets promoted to production
+    via Argo Rollouts / release.sh.
+
+  params:
+    - name: git-url
+      description: "SSH or HTTPS URL to clone"
+    - name: git-revision
+      description: "Merge commit SHA on develop"
+    - name: stack-file
+      description: "Path to the stack YAML relative to repo root"
+      default: "stacks/stack-one.yaml"
+    - name: changed-app
+      description: "App that was merged (empty = all apps in stack)"
+      default: ""
+    - name: image-registry
+      description: "Container registry base URL"
+    - name: version-overrides
+      description: "JSON map of app → version overrides (empty = use versions.yaml)"
+      default: "{}"
+
+  workspaces:
+    - name: shared-workspace
+      description: "Shared PVC for source code"
+
+  results:
+    - name: released-images
+      value: $(tasks.tag-release.results.released-images)
+    - name: release-versions
+      value: $(tasks.release-version.results.release-versions)
+
+  tasks:
+    - name: fetch-source
+      taskRef:
+        name: git-clone
+      params:
+        - name: url
+          value: $(params.git-url)
+        - name: revision
+          value: $(params.git-revision)
+        - name: deleteExisting
+          value: "true"
+      workspaces:
+        - name: output
+          workspace: shared-workspace
+
+    - name: resolve-stack
+      taskRef:
+        name: resolve-stack
+      params:
+        - name: stack-file
+          value: $(params.stack-file)
+        - name: changed-app
+          value: $(params.changed-app)
+        - name: version-overrides
+          value: $(params.version-overrides)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      runAfter:
+        - fetch-source
+
+    # Promote RC → release (0.1.0-rc.4 → 0.1.0) and set next dev cycle
+    - name: release-version
+      taskRef:
+        name: version-bump
+      params:
+        - name: bump-mode
+          value: "release"
+        - name: apps
+          value: $(tasks.resolve-stack.results.build-apps)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      runAfter:
+        - resolve-stack
+
+    # Full deployment build, tagged with the release version
+    - name: build-apps
+      taskRef:
+        name: build-stack-apps
+      params:
+        - name: stack-json
+          value: $(tasks.resolve-stack.results.stack-json)
+        - name: build-apps
+          value: $(tasks.resolve-stack.results.build-apps)
+        - name: image-registry
+          value: $(params.image-registry)
+        - name: image-tag
+          value: $(params.git-revision)
+        - name: tag-prefix
+          value: "merge-"
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      runAfter:
+        - release-version
+
+    # Re-tag the merge image with the clean semver (e.g. v0.1.0)
+    - name: tag-release
+      taskRef:
+        name: tag-release-images
+      params:
+        - name: built-images
+          value: $(tasks.build-apps.results.built-images)
+        - name: release-versions
+          value: $(tasks.release-version.results.release-versions)
+        - name: image-registry
+          value: $(params.image-registry)
+      runAfter:
+        - build-apps
+
+    # Push the version bump commit (next dev cycle) back to the repo
+    - name: push-version-commit
+      taskRef:
+        name: git-cli
+      params:
+        - name: GIT_SCRIPT
+          value: |
+            git push origin HEAD
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      runAfter:
+        - tag-release

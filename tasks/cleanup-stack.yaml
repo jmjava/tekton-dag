@@ -1,0 +1,61 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: cleanup-stack-pods
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+spec:
+  description: >
+    Cleans up all PR pods deployed for a stack pipeline run.
+    Runs as a finally task so cleanup happens even on failure.
+  params:
+    - name: deployed-pods
+      type: string
+      description: "JSON map of app → pod name (from deploy-stack-intercepts)"
+      default: "{}"
+    - name: default-namespace
+      type: string
+      default: "staging"
+    - name: stack-json
+      type: string
+      default: "{}"
+  steps:
+    - name: cleanup
+      image: bitnami/kubectl:latest
+      script: |
+        #!/bin/bash
+        set -e
+
+        PODS='$(params.deployed-pods)'
+        DEFAULT_NS="$(params.default-namespace)"
+        STACK_JSON='$(params.stack-json)'
+
+        echo "========================================="
+        echo "  Cleanup: removing PR pods"
+        echo "========================================="
+
+        if [ "$PODS" = "{}" ] || [ -z "$PODS" ]; then
+          echo "  No pods to clean up."
+          exit 0
+        fi
+
+        for APP in $(echo "$PODS" | jq -r 'keys[]'); do
+          POD=$(echo "$PODS" | jq -r --arg a "$APP" '.[$a]')
+
+          NS="$DEFAULT_NS"
+          if [ "$STACK_JSON" != "{}" ] && [ -n "$STACK_JSON" ]; then
+            NS=$(echo "$STACK_JSON" | jq -r --arg a "$APP" --arg d "$DEFAULT_NS" \
+              '(.defaults.namespace // $d) as $dn | .apps[]|select(.name==$a)|.namespace // $dn' 2>/dev/null || echo "$DEFAULT_NS")
+          fi
+
+          echo "  Deleting pod/$POD in $NS"
+          kubectl delete pod "$POD" -n "$NS" --ignore-not-found=true
+        done
+
+        # Also clean up any leftover pods from this pipeline
+        echo "  Cleaning orphaned pr-test pods..."
+        kubectl delete pods -l managed-by=tekton-job-standardization \
+          -n "$DEFAULT_NS" --ignore-not-found=true 2>/dev/null || true
+
+        echo "  Cleanup complete."

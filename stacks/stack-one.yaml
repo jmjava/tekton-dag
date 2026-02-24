@@ -1,0 +1,74 @@
+# Stack One: Demo application graph
+# Frontend → BFF (release-lifecycle-demo) → API (demo-api)
+#
+# Propagation roles:
+#   originator  — starts the baggage chain (sets headers on all outgoing requests)
+#   forwarder   — accepts incoming baggage, stores in context, propagates to downstream
+#   terminal    — accepts incoming baggage for routing/logging, never forwards
+#
+# Any of these can be the intercepted app in a PR build.
+
+name: stack-one
+description: "Demo 3-tier stack: Frontend (Vue) → BFF middleware (Spring Boot) → REST API persistence (Spring Boot)"
+
+propagation:
+  header-name: x-dev-session
+  baggage-key: dev-session
+  strategy: w3c-baggage
+
+defaults:
+  namespace: staging
+  image-registry: "${IMAGE_REGISTRY}"
+  service-port: "80"
+  container-port: "8080"
+
+apps:
+  - name: demo-fe
+    repo: menkelabs/demo-fe
+    role: frontend
+    propagation-role: originator
+    container-port: "3000"
+    context-dir: "."
+    dockerfile: Dockerfile
+    build:
+      tool: npm
+      runtime: vue
+      node-version: "22"
+      build-command: "npm ci && npm run build"
+    downstream:
+      - release-lifecycle-demo
+    tests:
+      postman: tests/postman/fe-tests.json
+      playwright: tests/playwright
+      artillery: tests/artillery/load-test.yml
+
+  - name: release-lifecycle-demo
+    repo: menkelabs/release-lifecycle-demo
+    role: middleware
+    propagation-role: forwarder
+    context-dir: "."
+    dockerfile: Dockerfile
+    build:
+      tool: maven
+      runtime: spring-boot
+      java-version: "21"
+      build-command: "mvn -B clean package -DskipTests"
+    downstream:
+      - demo-api
+    tests:
+      postman: tests/postman/bff-tests.json
+
+  - name: demo-api
+    repo: menkelabs/demo-api
+    role: persistence
+    propagation-role: terminal
+    context-dir: "."
+    dockerfile: Dockerfile
+    build:
+      tool: maven
+      runtime: spring-boot
+      java-version: "21"
+      build-command: "mvn -B clean package -DskipTests"
+    downstream: []
+    tests:
+      postman: tests/postman/api-tests.json

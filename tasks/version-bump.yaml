@@ -1,0 +1,123 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: version-bump
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+spec:
+  description: >
+    Bumps the version for one or more apps in the central versions.yaml.
+    Two modes:
+      rc   — increment the RC suffix (0.1.0-rc.3 → 0.1.0-rc.4).
+             Used after a PR build passes.
+      release — strip RC, set last-released, bump patch for next dev cycle.
+                (0.1.0-rc.4 → 0.1.0 released, next dev = 0.1.1-rc.0)
+                Used on merge to develop.
+  params:
+    - name: bump-mode
+      type: string
+      description: "'rc' for PR pass, 'release' for merge"
+    - name: apps
+      type: string
+      description: "Space-separated list of app names to bump"
+    - name: versions-file
+      type: string
+      description: "Path to versions.yaml relative to workspace root"
+      default: "stacks/versions.yaml"
+    - name: git-user-email
+      type: string
+      default: "tekton-bot@ci.local"
+    - name: git-user-name
+      type: string
+      default: "Tekton CI"
+  workspaces:
+    - name: source
+  results:
+    - name: bumped-versions
+      description: "JSON map of app → new version"
+    - name: release-versions
+      description: "JSON map of app → release version (only in release mode)"
+  steps:
+    - name: bump
+      image: mikefarah/yq:4
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/bin/sh
+        set -e
+        apk add --no-cache jq git >/dev/null 2>&1 || true
+
+        MODE="$(params.bump-mode)"
+        APPS="$(params.apps)"
+        VFILE="$(params.versions-file)"
+
+        echo '{}' > /tmp/bumped.json
+        echo '{}' > /tmp/released.json
+
+        for APP in $APPS; do
+          CURRENT=$(yq ".apps.\"${APP}\".version" "$VFILE")
+          echo "  $APP: current=$CURRENT  mode=$MODE"
+
+          if [ "$MODE" = "rc" ]; then
+            # Parse: MAJOR.MINOR.PATCH-rc.N → increment N
+            BASE=$(echo "$CURRENT" | sed 's/-rc\.[0-9]*//')
+            RC_NUM=$(echo "$CURRENT" | grep -o 'rc\.[0-9]*' | grep -o '[0-9]*' || echo "0")
+            NEXT_RC=$((RC_NUM + 1))
+            NEW="${BASE}-rc.${NEXT_RC}"
+
+            yq -i ".apps.\"${APP}\".version = \"${NEW}\"" "$VFILE"
+            jq --arg a "$APP" --arg v "$NEW" '. + {($a): $v}' \
+              /tmp/bumped.json > /tmp/bumped-tmp.json
+            mv /tmp/bumped-tmp.json /tmp/bumped.json
+            echo "  $APP: $CURRENT → $NEW"
+
+          elif [ "$MODE" = "release" ]; then
+            # Strip -rc.N to get release version
+            RELEASE_VER=$(echo "$CURRENT" | sed 's/-rc\.[0-9]*//')
+
+            # Record as last-released
+            yq -i ".apps.\"${APP}\".\"last-released\" = \"${RELEASE_VER}\"" "$VFILE"
+
+            # Bump patch for next dev cycle
+            MAJOR=$(echo "$RELEASE_VER" | cut -d. -f1)
+            MINOR=$(echo "$RELEASE_VER" | cut -d. -f2)
+            PATCH=$(echo "$RELEASE_VER" | cut -d. -f3)
+            NEXT_PATCH=$((PATCH + 1))
+            NEXT_DEV="${MAJOR}.${MINOR}.${NEXT_PATCH}-rc.0"
+
+            yq -i ".apps.\"${APP}\".version = \"${NEXT_DEV}\"" "$VFILE"
+
+            jq --arg a "$APP" --arg v "$NEXT_DEV" '. + {($a): $v}' \
+              /tmp/bumped.json > /tmp/bumped-tmp.json
+            mv /tmp/bumped-tmp.json /tmp/bumped.json
+
+            jq --arg a "$APP" --arg v "$RELEASE_VER" '. + {($a): $v}' \
+              /tmp/released.json > /tmp/released-tmp.json
+            mv /tmp/released-tmp.json /tmp/released.json
+
+            echo "  $APP: released=$RELEASE_VER  next-dev=$NEXT_DEV"
+          else
+            echo "  ERROR: unknown mode '$MODE'" >&2
+            exit 1
+          fi
+        done
+
+        echo ""
+        echo "Updated $VFILE:"
+        cat "$VFILE"
+
+        # Commit the version bump
+        cd "$(workspaces.source.path)"
+        git config user.email "$(params.git-user-email)"
+        git config user.name "$(params.git-user-name)"
+        git add "$VFILE"
+        if git diff --cached --quiet; then
+          echo "No version changes to commit."
+        else
+          COMMIT_MSG="chore: bump versions ($MODE) for $APPS"
+          git commit -m "$COMMIT_MSG"
+          echo "Committed: $COMMIT_MSG"
+        fi
+
+        cat /tmp/bumped.json | tee $(results.bumped-versions.path)
+        cat /tmp/released.json | tee $(results.release-versions.path)

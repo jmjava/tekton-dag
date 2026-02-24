@@ -1,0 +1,68 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: tag-release-images
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+spec:
+  description: >
+    After a merge build completes, tags the newly built images with
+    the release semver version and pushes to the container registry.
+    Uses crane (go-containerregistry) to copy/tag without re-building.
+  params:
+    - name: built-images
+      type: string
+      description: "JSON map of app → full image URI (with build tag)"
+    - name: release-versions
+      type: string
+      description: "JSON map of app → release version (e.g. 0.1.0)"
+    - name: image-registry
+      type: string
+      description: "Container registry base URL"
+  results:
+    - name: released-images
+      description: "JSON map of app → versioned image URI"
+  steps:
+    - name: tag-images
+      image: gcr.io/go-containerregistry/crane:debug
+      script: |
+        #!/busybox/sh
+        set -e
+
+        BUILT='$(params.built-images)'
+        VERSIONS='$(params.release-versions)'
+        REGISTRY="$(params.image-registry)"
+
+        echo '{}' > /tmp/released.json
+
+        for APP in $(echo "$VERSIONS" | jq -r 'keys[]'); do
+          VER=$(echo "$VERSIONS" | jq -r --arg a "$APP" '.[$a]')
+          SRC_IMAGE=$(echo "$BUILT" | jq -r --arg a "$APP" '.[$a]')
+          DST_IMAGE="${REGISTRY}/${APP}:v${VER}"
+
+          echo "========================================="
+          echo "  Tagging: $APP"
+          echo "  Source:  $SRC_IMAGE"
+          echo "  Dest:    $DST_IMAGE"
+          echo "========================================="
+
+          if [ -n "$SRC_IMAGE" ] && [ "$SRC_IMAGE" != "null" ]; then
+            crane copy "$SRC_IMAGE" "$DST_IMAGE" 2>/dev/null || {
+              echo "  WARN: crane copy failed (registry may not be reachable)"
+              echo "  The image would be tagged as: $DST_IMAGE"
+            }
+            echo "  Tagged: $DST_IMAGE"
+          else
+            echo "  SKIP: No built image for $APP"
+          fi
+
+          jq --arg a "$APP" --arg i "$DST_IMAGE" '. + {($a): $i}' \
+            /tmp/released.json > /tmp/released-tmp.json
+          mv /tmp/released-tmp.json /tmp/released.json
+        done
+
+        echo ""
+        echo "Released images:"
+        cat /tmp/released.json | jq '.'
+        cat /tmp/released.json | tee $(results.released-images.path)

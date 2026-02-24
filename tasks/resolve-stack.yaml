@@ -1,0 +1,192 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: resolve-stack
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+spec:
+  description: >
+    Reads a stack definition and the version registry from the workspace,
+    merges in any version overrides, computes topological build order,
+    and emits structured JSON results that downstream tasks consume.
+  params:
+    - name: stack-file
+      type: string
+      description: "Path to the stack YAML relative to workspace root"
+    - name: versions-file
+      type: string
+      default: "stacks/versions.yaml"
+      description: "Path to versions.yaml relative to workspace root"
+    - name: version-overrides
+      type: string
+      default: "{}"
+      description: >
+        JSON map of app-name → version to override the registry defaults.
+        Example: {"demo-fe":"0.2.0","demo-api":"0.1.5"}
+        Pass {} to use whatever versions.yaml has.
+    - name: changed-app
+      type: string
+      default: ""
+      description: "App whose PR triggered this run (empty = build all)"
+    - name: pr-number
+      type: string
+      default: ""
+      description: "PR number for intercept-header generation"
+  workspaces:
+    - name: source
+  results:
+    - name: stack-json
+      description: "Full stack graph as JSON (includes build config per app)"
+    - name: app-list
+      description: "Space-separated list of apps in topological order"
+    - name: entry-app
+      description: "Entry-point app (typically the frontend)"
+    - name: propagation-chain
+      description: "Ordered chain of apps for header propagation validation"
+    - name: intercept-header-value
+      description: "Header value to use for Telepresence intercepts"
+    - name: build-apps
+      description: "Space-separated list of apps to build (changed-app or all)"
+    - name: resolved-versions
+      description: "JSON map of app → version (registry defaults merged with overrides)"
+  steps:
+    - name: resolve
+      image: mikefarah/yq:4
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/bin/sh
+        set -e
+        apk add --no-cache jq >/dev/null 2>&1 || true
+
+        STACK="$(params.stack-file)"
+        VFILE="$(params.versions-file)"
+        OVERRIDES='$(params.version-overrides)'
+        CHANGED="$(params.changed-app)"
+        PR="$(params.pr-number)"
+
+        STACK_JSON=$(yq -o=json "$STACK")
+
+        # ----------------------------------------------------------
+        # Build the full graph JSON (preserves build config per app)
+        # ----------------------------------------------------------
+        echo "$STACK_JSON" | jq -c '{
+          name:        .name,
+          description: .description,
+          propagation: .propagation,
+          defaults:    .defaults,
+          apps:        [.apps[] | {
+            name:               .name,
+            repo:               .repo,
+            role:               .role,
+            "propagation-role": (."propagation-role" // (if .downstream == [] or .downstream == null then "terminal" elif (.role == "frontend") then "originator" else "forwarder" end)),
+            namespace:          (.namespace // null),
+            "container-port":   (."container-port" // null),
+            "service-port":     (."service-port" // null),
+            "context-dir":      (."context-dir" // "."),
+            dockerfile:         (.dockerfile // "Dockerfile"),
+            build:              (.build // {tool:"none", runtime:"custom"}),
+            downstream:         (.downstream // []),
+            tests:              (.tests // {})
+          }]
+        }' > /tmp/stack.json
+
+        cat /tmp/stack.json | tee $(results.stack-json.path)
+
+        # ----------------------------------------------------------
+        # Resolve versions: registry defaults + overrides
+        # ----------------------------------------------------------
+        VERSIONS_JSON="{}"
+        if [ -f "$VFILE" ]; then
+          VERSIONS_JSON=$(yq -o=json '.apps' "$VFILE" | jq '
+            [to_entries[] | {key: .key, value: .value.version}] | from_entries
+          ')
+        fi
+
+        # Only keep versions for apps actually in this stack
+        APP_NAMES=$(cat /tmp/stack.json | jq -r '.apps[].name')
+        STACK_VERSIONS="{}"
+        for APP in $APP_NAMES; do
+          VER=$(echo "$VERSIONS_JSON" | jq -r --arg a "$APP" '.[$a] // "0.1.0-rc.0"')
+          STACK_VERSIONS=$(echo "$STACK_VERSIONS" | jq --arg a "$APP" --arg v "$VER" '. + {($a): $v}')
+        done
+
+        # Merge overrides on top
+        if [ "$OVERRIDES" != "{}" ] && [ -n "$OVERRIDES" ]; then
+          echo "Applying version overrides: $OVERRIDES"
+          STACK_VERSIONS=$(echo "$STACK_VERSIONS" | jq --argjson ov "$OVERRIDES" '. * $ov')
+        fi
+
+        echo "Resolved versions:"
+        echo "$STACK_VERSIONS" | jq '.'
+        echo -n "$STACK_VERSIONS" | jq -c '.' | tee $(results.resolved-versions.path)
+        echo ""
+
+        # ----------------------------------------------------------
+        # Topological order
+        # ----------------------------------------------------------
+        TOPO=$(cat /tmp/stack.json | jq -r '
+          def topo:
+            . as $g |
+            ($g.apps | map({key:.name, value:.downstream}) | from_entries) as $adj |
+            ($g.apps | map(.name)) as $all |
+            {v:[],t:[],o:[],err:false} |
+            reduce $all[] as $n (.;
+              if (.v|index($n)) then . else .|vis($n;$adj) end
+            ) |
+            if .err then error("cycle") else .o|reverse end;
+          def vis($n;$adj):
+            if (.t|index($n)) then .err=true
+            elif (.v|index($n)) then .
+            else .t+=[$n] |
+              reduce ($adj[$n]//[])[] as $d (.;vis($d;$adj)) |
+              .t-=[$n] | .v+=[$n] | .o+=[$n]
+            end;
+          topo | join(" ")
+        ')
+        echo -n "$TOPO" | tee $(results.app-list.path)
+        echo ""
+
+        # ----------------------------------------------------------
+        # Entry point (app that no other app lists as downstream)
+        # ----------------------------------------------------------
+        ENTRY=$(cat /tmp/stack.json | jq -r '
+          (.apps|map(.downstream)|flatten) as $deps |
+          .apps[] | select(.name as $n | ($deps|index($n))|not) | .name
+        ' | head -1)
+        echo -n "$ENTRY" | tee $(results.entry-app.path)
+        echo ""
+
+        # ----------------------------------------------------------
+        # Propagation chain from entry
+        # ----------------------------------------------------------
+        cat /tmp/stack.json | jq -r --arg s "$ENTRY" '
+          def walk($name):
+            . as $g |
+            ($g.apps[]|select(.name==$name)) as $app |
+            if $app then [$name] + reduce ($app.downstream//[])[] as $d
+              ([]; . + ($g|walk($d)))
+            else [] end;
+          walk($s) | join(" ")
+        ' | tee $(results.propagation-chain.path)
+
+        # ----------------------------------------------------------
+        # Intercept header
+        # ----------------------------------------------------------
+        if [ -n "$PR" ]; then
+          HEADER_NAME=$(echo "$STACK_JSON" | jq -r '.propagation."header-name" // "x-dev-session"')
+          echo -n "${HEADER_NAME}:pr-${PR}" | tee $(results.intercept-header-value.path)
+        else
+          echo -n "" | tee $(results.intercept-header-value.path)
+        fi
+        echo ""
+
+        # ----------------------------------------------------------
+        # Build list
+        # ----------------------------------------------------------
+        if [ -n "$CHANGED" ]; then
+          echo -n "$CHANGED" | tee $(results.build-apps.path)
+        else
+          echo -n "$TOPO" | tee $(results.build-apps.path)
+        fi
+        echo ""

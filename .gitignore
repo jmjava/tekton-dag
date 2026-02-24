@@ -1,0 +1,14 @@
+# Local overrides / env
+.env
+*.local
+standalone-repo-output/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

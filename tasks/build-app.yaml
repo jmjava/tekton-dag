@@ -1,0 +1,350 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: build-stack-apps
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+spec:
+  description: >
+    Two-phase build for every app in the stack:
+      1. compile — runs the app-specific build tool (npm, maven, gradle, composer, or none)
+      2. containerize — runs Kaniko to build and push the Docker image
+    The build tool, runtime, language version, and build command are all
+    read from the stack-json build config per app. If an app has no build
+    config or tool=none, only the Kaniko step runs (Dockerfile-only build).
+  params:
+    - name: stack-json
+      type: string
+      description: "Full stack graph JSON from resolve-stack"
+    - name: build-apps
+      type: string
+      description: "Space-separated list of app names to build"
+    - name: image-registry
+      type: string
+      description: "Container registry base URL"
+    - name: image-tag
+      type: string
+      description: "Tag to apply to built images"
+    - name: tag-prefix
+      type: string
+      default: "pr-"
+      description: "Prefix for image tag (pr- for PR builds, v for releases, empty for merge)"
+  workspaces:
+    - name: source
+  results:
+    - name: built-images
+      description: "JSON map of app-name → full image URI"
+
+  steps:
+    # ----------------------------------------------------------------
+    # Step 1: Compile / package every app with its declared build tool
+    # ----------------------------------------------------------------
+    - name: compile
+      image: ubuntu:22.04
+      workingDir: $(workspaces.source.path)
+      env:
+        - name: STACK_JSON
+          value: $(params.stack-json)
+        - name: BUILD_APPS
+          value: $(params.build-apps)
+      script: |
+        #!/usr/bin/env bash
+        set -e
+
+        apt-get update -qq && apt-get install -y -qq curl jq ca-certificates gnupg >/dev/null 2>&1
+
+        # ----- tool installers (called lazily, at most once each) -----
+        NODE_READY=false
+        install_node() {
+          $NODE_READY && return
+          local ver="${1:-22}"
+          echo "  [setup] Installing Node.js ${ver}..."
+          curl -fsSL "https://deb.nodesource.com/setup_${ver}.x" | bash - >/dev/null 2>&1
+          apt-get install -y -qq nodejs >/dev/null 2>&1
+          NODE_READY=true
+          echo "  [setup] node $(node -v), npm $(npm -v)"
+        }
+
+        JAVA_READY=false
+        install_java() {
+          $JAVA_READY && return
+          local ver="${1:-21}"
+          echo "  [setup] Installing JDK ${ver}..."
+          apt-get install -y -qq "openjdk-${ver}-jdk-headless" 2>/dev/null \
+            || apt-get install -y -qq default-jdk-headless >/dev/null 2>&1
+          JAVA_READY=true
+          echo "  [setup] java $(java -version 2>&1 | head -1)"
+        }
+
+        MAVEN_READY=false
+        install_maven() {
+          $MAVEN_READY && return
+          install_java "$1"
+          echo "  [setup] Installing Maven..."
+          apt-get install -y -qq maven >/dev/null 2>&1 || {
+            local mv=3.9.6
+            curl -fsSL "https://dlcdn.apache.org/maven/maven-3/${mv}/binaries/apache-maven-${mv}-bin.tar.gz" \
+              | tar xz -C /opt
+            ln -sf "/opt/apache-maven-${mv}/bin/mvn" /usr/local/bin/mvn
+          }
+          MAVEN_READY=true
+          echo "  [setup] mvn $(mvn -v 2>&1 | head -1)"
+        }
+
+        GRADLE_READY=false
+        install_gradle() {
+          $GRADLE_READY && return
+          install_java "$1"
+          echo "  [setup] Gradle wrapper expected in repo (./gradlew)"
+          GRADLE_READY=true
+        }
+
+        PYTHON_READY=false
+        install_python() {
+          $PYTHON_READY && return
+          local ver="${1:-3.12}"
+          echo "  [setup] Installing Python ${ver}..."
+          apt-get install -y -qq "python${ver}" "python${ver}-venv" python3-pip 2>/dev/null \
+            || apt-get install -y -qq python3 python3-venv python3-pip >/dev/null 2>&1
+          PYTHON_READY=true
+          echo "  [setup] python $(python3 --version 2>&1), pip $(pip3 --version 2>&1 | head -1)"
+        }
+
+        PHP_READY=false
+        install_php() {
+          $PHP_READY && return
+          local ver="${1:-8.3}"
+          echo "  [setup] Installing PHP ${ver} + Composer..."
+          apt-get install -y -qq software-properties-common >/dev/null 2>&1
+          add-apt-repository -y ppa:ondrej/php >/dev/null 2>&1 || true
+          apt-get update -qq >/dev/null 2>&1
+          apt-get install -y -qq "php${ver}-cli" "php${ver}-mbstring" "php${ver}-xml" \
+            "php${ver}-curl" "php${ver}-zip" unzip >/dev/null 2>&1 \
+            || apt-get install -y -qq php-cli php-mbstring php-xml php-curl php-zip unzip >/dev/null 2>&1
+          curl -fsSL https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer >/dev/null 2>&1
+          PHP_READY=true
+          echo "  [setup] php $(php -v | head -1), composer $(composer -V 2>&1 | head -1)"
+        }
+
+        # ----- iterate apps -----
+        for APP in $BUILD_APPS; do
+          echo ""
+          echo "========================================="
+          echo "  Compile: $APP"
+          echo "========================================="
+
+          TOOL=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build.tool // "none"')
+          RUNTIME=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build.runtime // "custom"')
+          CMD=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."build-command" // ""')
+          PRE_CMD=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."pre-command" // ""')
+          POST_CMD=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."post-command" // ""')
+          CONTEXT=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|."context-dir" // "."')
+          JAVA_VER=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."java-version" // "21"')
+          NODE_VER=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."node-version" // "22"')
+          PHP_VER=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."php-version" // "8.3"')
+          PYTHON_VER=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."python-version" // "3.12"')
+
+          echo "  Tool:    $TOOL"
+          echo "  Runtime: $RUNTIME"
+          echo "  Command: ${CMD:-<default for tool>}"
+
+          # Export build.env (custom env vars for this app)
+          for k in $(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build.env // {} | keys[]' 2>/dev/null); do
+            v=$(echo "$STACK_JSON" | jq -r --arg a "$APP" --arg k "$k" '.apps[]|select(.name==$a)|.build.env[$k] // ""')
+            [ -n "$k" ] && export "$k=$v"
+          done
+          # Export build.legacy (per-type legacy requirements: JAVA_OPTS, MAVEN_OPTS, COMPOSER_*, PIP_*, etc.)
+          for k in $(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build.legacy // {} | keys[]' 2>/dev/null); do
+            v=$(echo "$STACK_JSON" | jq -r --arg a "$APP" --arg k "$k" '.apps[]|select(.name==$a)|.build.legacy[$k] // ""')
+            [ -n "$k" ] && export "$k=$v"
+          done
+
+          # Locate source directory
+          APP_DIR="$(workspaces.source.path)"
+          if [ -d "$(workspaces.source.path)/${APP}" ]; then
+            APP_DIR="$(workspaces.source.path)/${APP}"
+          fi
+          if [ "$CONTEXT" != "." ] && [ -d "${APP_DIR}/${CONTEXT}" ]; then
+            APP_DIR="${APP_DIR}/${CONTEXT}"
+          fi
+          echo "  Source:  $APP_DIR"
+
+          cd "$APP_DIR"
+
+          # Optional pre-command (legacy setup, patches, env prep)
+          if [ -n "$PRE_CMD" ]; then
+            echo "  Running pre-command..."
+            eval "$PRE_CMD"
+          fi
+
+          case "$TOOL" in
+            npm)
+              install_node "$NODE_VER"
+              if [ -n "$CMD" ]; then
+                echo "  Running: $CMD"
+                eval "$CMD"
+              else
+                echo "  Running default npm build..."
+                [ -f package-lock.json ] && npm ci || npm install
+                npm run build --if-present
+              fi
+              ;;
+
+            maven)
+              install_maven "$JAVA_VER"
+              if [ -n "$CMD" ]; then
+                echo "  Running: $CMD"
+                eval "$CMD"
+              else
+                echo "  Running Maven build (runtime=$RUNTIME)..."
+                mvn -B clean package -DskipTests
+              fi
+              ;;
+
+            gradle)
+              install_gradle "$JAVA_VER"
+              if [ -n "$CMD" ]; then
+                echo "  Running: $CMD"
+                eval "$CMD"
+              else
+                echo "  Running Gradle build (runtime=$RUNTIME)..."
+                if [ -f gradlew ]; then
+                  chmod +x gradlew
+                  case "$RUNTIME" in
+                    spring-boot)   ./gradlew clean bootJar -x test ;;
+                    spring-legacy) ./gradlew clean war -x test ;;
+                    *)             ./gradlew clean build -x test ;;
+                  esac
+                else
+                  echo "  WARN: No gradlew found, skipping Gradle build"
+                fi
+              fi
+              ;;
+
+            composer)
+              install_php "$PHP_VER"
+              if [ -n "$CMD" ]; then
+                echo "  Running: $CMD"
+                eval "$CMD"
+              else
+                echo "  Running default Composer install..."
+                composer install --no-dev --optimize-autoloader --no-interaction
+              fi
+              ;;
+
+            pip)
+              install_python "$PYTHON_VER"
+              if [ -n "$CMD" ]; then
+                echo "  Running: $CMD"
+                eval "$CMD"
+              else
+                echo "  Running default pip install..."
+                if [ -f requirements.txt ]; then
+                  pip3 install --no-cache-dir -r requirements.txt
+                elif [ -f setup.py ] || [ -f pyproject.toml ]; then
+                  pip3 install --no-cache-dir .
+                else
+                  echo "  WARN: No requirements.txt, setup.py, or pyproject.toml found"
+                fi
+              fi
+              ;;
+
+            none|"")
+              echo "  No compile step (Dockerfile-only build)"
+              ;;
+
+            *)
+              echo "  WARN: Unknown tool '$TOOL', skipping compile"
+              ;;
+          esac
+
+          # Optional post-command (legacy repackage, sign, extra steps)
+          if [ -n "$POST_CMD" ]; then
+            echo "  Running post-command..."
+            eval "$POST_CMD"
+          fi
+
+          echo "  Compile complete for $APP"
+        done
+
+        echo ""
+        echo "All compile steps done."
+
+    # ----------------------------------------------------------------
+    # Step 2: Containerize every app with Kaniko
+    #
+    # image-tag can be either:
+    #   - A JSON map like {"demo-fe":"0.1.0-rc.4"} (PR flow — per-app RC tags)
+    #   - A plain string like "abc1234" (merge flow — same tag for all, re-tagged later)
+    #
+    # tag-prefix is prepended: "v" for RC versions, "merge-" for merge builds.
+    # ----------------------------------------------------------------
+    - name: containerize
+      image: gcr.io/kaniko-project/executor:debug
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/busybox/sh
+        set -e
+
+        STACK_JSON='$(params.stack-json)'
+        BUILD_APPS="$(params.build-apps)"
+        REGISTRY="$(params.image-registry)"
+        IMAGE_TAG='$(params.image-tag)'
+        TAG_PREFIX="$(params.tag-prefix)"
+
+        # Detect whether image-tag is JSON (per-app versions) or plain string
+        IS_JSON=false
+        echo "$IMAGE_TAG" | jq '.' >/dev/null 2>&1 && IS_JSON=true
+
+        echo '{}' > /tmp/built-images.json
+
+        for APP in $BUILD_APPS; do
+          echo ""
+          echo "========================================="
+          echo "  Containerize: $APP"
+          echo "========================================="
+
+          if $IS_JSON; then
+            APP_VER=$(echo "$IMAGE_TAG" | jq -r --arg a "$APP" '.[$a] // "latest"')
+            TAG="${TAG_PREFIX}${APP_VER}"
+          else
+            TAG="${TAG_PREFIX}${IMAGE_TAG}"
+          fi
+
+          CONTEXT=$(echo "$STACK_JSON" | jq -r --arg a "$APP" \
+            '.apps[]|select(.name==$a)|."context-dir" // "."')
+          DOCKERFILE=$(echo "$STACK_JSON" | jq -r --arg a "$APP" \
+            '.apps[]|select(.name==$a)|.dockerfile // "Dockerfile"')
+
+          IMAGE="${REGISTRY}/${APP}:${TAG}"
+          echo "  Image:      $IMAGE"
+          echo "  Context:    $CONTEXT"
+          echo "  Dockerfile: $DOCKERFILE"
+
+          CONTEXT_PATH="$(workspaces.source.path)"
+          if [ -d "$(workspaces.source.path)/${APP}" ]; then
+            CONTEXT_PATH="$(workspaces.source.path)/${APP}"
+          fi
+
+          FULL_CONTEXT="${CONTEXT_PATH}/${CONTEXT}"
+          FULL_DOCKERFILE="${FULL_CONTEXT}/${DOCKERFILE}"
+
+          if [ -f "${FULL_DOCKERFILE}" ]; then
+            /kaniko/executor \
+              --dockerfile="${FULL_DOCKERFILE}" \
+              --context="${FULL_CONTEXT}" \
+              --destination="${IMAGE}" \
+              --cache=false
+            echo "  Built and pushed: $IMAGE"
+          else
+            echo "  WARN: Dockerfile not found at ${FULL_DOCKERFILE}"
+            echo "  Skipping containerize (image may already exist in registry)"
+          fi
+
+          jq --arg a "$APP" --arg i "$IMAGE" '. + {($a): $i}' \
+            /tmp/built-images.json > /tmp/built-images-tmp.json
+          mv /tmp/built-images-tmp.json /tmp/built-images.json
+        done
+
+        cat /tmp/built-images.json | tee $(results.built-images.path)

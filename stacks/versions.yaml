@@ -1,0 +1,63 @@
+# ============================================================================
+# Version Registry — infrastructure-level, independent of application code.
+#
+# This file lives in the platform repo, NOT in any app repo.
+# It tracks the current and last-released version for every app
+# across all stacks. Think of it as the "known good version set".
+#
+# How it's used:
+#   - The pipeline reads this as the DEFAULT version set.
+#   - You can OVERRIDE any version at run time by passing a
+#     version-overrides parameter (JSON) to the pipeline.
+#   - On PR pass:  the RC suffix auto-increments here.
+#   - On merge:    the version promotes to release, the image gets
+#                  tagged with that semver, and patch bumps for next cycle.
+#
+# Manual edits are expected for major/minor bumps:
+#   change 1.2.1-rc.0 → 2.0.0-rc.0 to signal a breaking change.
+# ============================================================================
+
+apps:
+
+  # --- Stack One: Vue FE + Spring Boot middleware + Spring Boot API ---
+  demo-fe:
+    version: "0.1.0-rc.0"
+    last-released: "0.0.0"
+
+  release-lifecycle-demo:
+    version: "0.1.0-rc.0"
+    last-released: "0.0.0"
+
+  demo-api:
+    version: "0.1.0-rc.0"
+    last-released: "0.0.0"
+
+  # --- Stack Two: mixed toolchain ---
+  vendor-fe:
+    version: "0.1.0-rc.0"
+    last-released: "0.0.0"
+
+  vendor-middleware:
+    version: "0.1.0-rc.0"
+    last-released: "0.0.0"
+
+  vendor-adapter:
+    version: "0.1.0-rc.0"
+    last-released: "0.0.0"
+
+  internal-api:
+    version: "0.1.0-rc.0"
+    last-released: "0.0.0"
+
+  notifications-svc:
+    version: "0.1.0-rc.0"
+    last-released: "0.0.0"
+
+  # --- Standalone apps ---
+  inventory-api:
+    version: "0.1.0-rc.0"
+    last-released: "0.0.0"
+
+  analytics-api:
+    version: "0.1.0-rc.0"
+    last-released: "0.0.0"

@@ -1,0 +1,117 @@
+# Stack Two: Mixed-toolchain stack with vendor integration
+#
+# The graph is an arbitrary DAG — any set of edges is valid.
+# This stack shows five different build toolchains and all three
+# propagation roles in one graph:
+#
+#   vendor-fe (originator / Vue)
+#       └──→ vendor-middleware (forwarder / Spring Boot)
+#                ├──→ vendor-adapter (terminal / PHP)
+#                ├──→ internal-api (terminal / Legacy Spring WAR in container)
+#                └──→ notifications-svc (terminal / Flask)
+#
+# Any node can be the intercepted app in a PR build. The propagation
+# role determines what the app code must do with the baggage header.
+
+name: stack-two
+description: "Mixed-toolchain vendor stack: Vue + Spring Boot + PHP + Legacy Spring + Flask (all containerized)"
+
+propagation:
+  header-name: x-dev-session
+  baggage-key: dev-session
+  strategy: w3c-baggage
+
+defaults:
+  namespace: staging
+  image-registry: "${IMAGE_REGISTRY}"
+  service-port: "80"
+  container-port: "8080"
+
+apps:
+  - name: vendor-fe
+    repo: menkelabs/vendor-fe
+    role: frontend
+    propagation-role: originator
+    container-port: "3000"
+    context-dir: "."
+    dockerfile: Dockerfile
+    build:
+      tool: npm
+      runtime: vue
+      node-version: "22"
+      build-command: "npm ci && npm run build"
+    downstream:
+      - vendor-middleware
+    tests:
+      playwright: tests/e2e
+
+  - name: vendor-middleware
+    repo: menkelabs/vendor-middleware
+    role: middleware
+    propagation-role: forwarder
+    context-dir: "."
+    dockerfile: Dockerfile
+    build:
+      tool: gradle
+      runtime: spring-boot
+      java-version: "21"
+      build-command: "./gradlew clean bootJar -x test"
+    downstream:
+      - vendor-adapter
+      - internal-api
+      - notifications-svc
+    tests:
+      postman: tests/postman/middleware-tests.json
+
+  - name: vendor-adapter
+    repo: menkelabs/vendor-adapter
+    role: middleware-vendor
+    propagation-role: terminal
+    context-dir: "."
+    dockerfile: Dockerfile
+    build:
+      tool: composer
+      runtime: php
+      php-version: "8.3"
+      build-command: "composer install --no-dev --optimize-autoloader"
+      # Optional legacy/custom build for PHP (uncomment per enterprise needs)
+      # legacy:
+      #   COMPOSER_MEMORY_LIMIT: "1G"
+      #   COMPOSER_NO_INTERACTION: "1"
+      # pre-command: "phpenv config-add legacy.ini 2>/dev/null || true"
+    downstream: []
+    tests:
+      postman: tests/postman/adapter-tests.json
+
+  - name: internal-api
+    repo: menkelabs/internal-api
+    role: persistence
+    propagation-role: terminal
+    context-dir: "."
+    dockerfile: Dockerfile
+    build:
+      # Legacy Spring: Maven builds the WAR, Dockerfile packages it
+      # into a Tomcat/Jetty container image
+      tool: maven
+      runtime: spring-legacy
+      java-version: "17"
+      build-command: "mvn -B clean package -DskipTests"
+    downstream: []
+    tests:
+      postman: tests/postman/api-tests.json
+
+  - name: notifications-svc
+    repo: menkelabs/notifications-svc
+    role: middleware
+    propagation-role: terminal
+    container-port: "5000"
+    context-dir: "."
+    dockerfile: Dockerfile
+    build:
+      tool: pip
+      runtime: flask
+      python-version: "3.12"
+      build-command: "pip install --no-cache-dir -r requirements.txt"
+    downstream: []
+    tests:
+      postman: tests/postman/notifications-tests.json

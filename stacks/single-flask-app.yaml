@@ -1,0 +1,39 @@
+# Single Flask App Stack: standalone Python/Flask service.
+# Same universal pipeline, just one node in the graph.
+
+name: standalone-flask
+description: "Single standalone Flask API service"
+
+propagation:
+  header-name: x-dev-session
+  baggage-key: dev-session
+  strategy: w3c-baggage
+
+defaults:
+  namespace: staging
+  image-registry: "${IMAGE_REGISTRY}"
+  service-port: "80"
+  container-port: "5000"
+
+apps:
+  - name: analytics-api
+    repo: menkelabs/analytics-api
+    role: persistence
+    propagation-role: terminal
+    context-dir: "."
+    dockerfile: Dockerfile
+    build:
+      tool: pip
+      runtime: flask
+      python-version: "3.12"
+      # Optional legacy/custom build (uncomment and adjust per enterprise needs)
+      # env:
+      #   PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      # legacy:
+      #   PIP_EXTRA_INDEX_URL: "https://internal-pypi.example.com/simple"
+      #   PIP_CONSTRAINT: "constraints.txt"
+      # pre-command: "python3 -m venv .venv && . .venv/bin/activate"
+    downstream: []
+    tests:
+      postman: tests/postman/analytics-tests.json
+      artillery: tests/artillery/load-test.yml

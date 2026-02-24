@@ -1,0 +1,46 @@
+# Stack Registry — maps repository names to their stack definition files.
+# The EventListener CEL overlays and the generate-run.sh script both
+# reference this to determine which stack a given repo belongs to.
+#
+# When onboarding a new app or stack:
+#   1. Create a new stack YAML in stacks/
+#   2. Add a versions.yaml entry for each app
+#   3. Add the repo→stack mapping below
+#   4. Update the CEL overlay in pipeline/triggers.yaml
+
+repos:
+  # --- Stack One: 3-tier demo ---
+  demo-fe:
+    stack: stack-one.yaml
+    role: frontend
+  release-lifecycle-demo:
+    stack: stack-one.yaml
+    role: middleware
+  demo-api:
+    stack: stack-one.yaml
+    role: persistence
+
+  # --- Stack Two: Mixed-toolchain vendor integration ---
+  vendor-fe:
+    stack: stack-two-vendor.yaml
+    role: frontend
+  vendor-middleware:
+    stack: stack-two-vendor.yaml
+    role: middleware
+  vendor-adapter:
+    stack: stack-two-vendor.yaml
+    role: middleware-vendor
+  internal-api:
+    stack: stack-two-vendor.yaml
+    role: persistence
+  notifications-svc:
+    stack: stack-two-vendor.yaml
+    role: middleware
+
+  # --- Standalone apps ---
+  inventory-api:
+    stack: single-app.yaml
+    role: persistence
+  analytics-api:
+    stack: single-flask-app.yaml
+    role: persistence
