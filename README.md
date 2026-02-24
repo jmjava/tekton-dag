@@ -157,7 +157,23 @@ All of this runs on your machine: resolve, clone, build, deploy, validate, and t
 - **Optional: Tekton Results** — Install Postgres + Tekton Results to persist run history and query it (see Quick start steps 4 and 6).
 - **Step-debug apps with VS Code** — Use the launch configs in `.vscode/launch.json` to run or attach to any app (Vue, Spring Boot, Flask, PHP, etc.). With Telepresence intercepts, traffic for a given PR/session can hit your local process so you can set breakpoints and step through the full stack. See [.vscode/README.md](.vscode/README.md) for the exact flow (start app with debugger → create intercept → trigger traffic).
 
-So: run the entire workflow locally, inspect every step with `kubectl`/`tkn`, and step-debug any app in the DAG from your IDE.
+### Restart from failure
+
+If the **full PR pipeline** (`stack-pr-test`) fails **after** build succeeded (e.g. deploy-intercepts, validate-propagation, or run-tests failed), you can **continue from deploy** instead of re-running fetch, resolve, clone, and build. The **stack-pr-continue** pipeline reuses the failed run’s workspace PVC and task results (stack-json, build-apps, built-images, etc.) and runs only: deploy-intercepts → validate-propagation → run-tests → push-version-commit, with cleanup in `finally`.
+
+**Usage:**
+
+```bash
+./scripts/rerun-pr-from.sh <failed-pipelinerun-name>
+```
+
+Example: after `stack-pr-42-xxxxx` failed at `run-tests`, run `./scripts/rerun-pr-from.sh stack-pr-42-xxxxx`. The script reads results from the failed run’s TaskRuns, finds its workspace PVC, and starts a new PipelineRun for `stack-pr-continue`. **Requirements:** the failed PipelineRun must still exist, `resolve-stack` and `build-apps` (and `bump-rc-version`) must have succeeded, and the run must have used a volumeClaimTemplate so the PVC still exists.
+
+So: run the entire workflow locally, inspect every step with `kubectl`/`tkn`, step-debug any app in the DAG from your IDE, and re-run from deploy when a later step fails.
+
+## DAG, baggage, and intercepts
+
+The pipeline is driven by a **stack DAG** (directed acyclic graph): apps are nodes, `downstream` edges define who calls whom. There are **three propagation roles** for the session header/baggage: **originator** (entry app — sets the header), **forwarder** (middle — accepts and forwards), **terminal** (leaf — accepts only). That way “this PR’s” traffic can be routed to the right pods. On a PR run, only the **changed app** (the repo whose PR triggered the run) is built and gets a PR pod; Telepresence **intercepts** traffic that carries the run’s header to that pod. Full explanation: [docs/DAG-AND-PROPAGATION.md](docs/DAG-AND-PROPAGATION.md).
 
 ## App repos (no monorepo)
 
@@ -186,8 +202,8 @@ After that, the Run and Debug dropdown will list configs like **Vue (demo-fe): L
 
 - **stacks/** — Stack YAML (DAG), registry, versions
 - **tasks/** — Tekton tasks (resolve, clone-app-repos, build, deploy-intercept, validate, test, version, cleanup)
-- **pipeline/** — stack-pr-test, stack-merge-release, stack-dag-verify
-- **scripts/** — run-all-setup-and-test (run everything), kind-with-registry, install-tekton, install-postgres-kind, install-tekton-results, verify-dag-phase1/2, verify-results-in-db, run-full-test-and-verify-results, generate-run, stack-graph
+- **pipeline/** — stack-pr-test, stack-merge-release, stack-dag-verify, stack-pr-continue (restart from deploy after failure)
+- **scripts/** — run-all-setup-and-test (run everything), kind-with-registry, install-tekton, verify-dag-phase1/2, generate-run, rerun-pr-from (restart from failure), stack-graph
 - **docs/** — C4 diagrams, local DAG verification plan
 
 ## Sharing back to reference-architecture

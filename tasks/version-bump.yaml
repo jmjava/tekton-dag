@@ -110,6 +110,9 @@ spec:
 
         # Commit the version bump
         cd "$(workspaces.source.path)"
+        export HOME=/root
+        export GIT_DIR="$(workspaces.source.path)/.git"
+        export GIT_WORK_TREE="$(workspaces.source.path)"
         git config user.email "$(params.git-user-email)"
         git config user.name "$(params.git-user-name)"
         git add "$VFILE"

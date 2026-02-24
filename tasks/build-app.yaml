@@ -326,13 +326,25 @@ spec:
         BUILT_JSON="${WORKSPACE}/.built-images.json"
         echo '{}' > "$BUILT_JSON"
 
+        # Detect if IMAGE_TAG is JSON (contains '{')
+        IS_JSON=false
+        case "$IMAGE_TAG" in
+          *"{"*) IS_JSON=true ;;
+        esac
+
         for APP in $BUILD_APPS; do
           echo ""
           echo "========================================="
           echo "  Containerize: $APP"
           echo "========================================="
 
-          TAG="${TAG_PREFIX}${IMAGE_TAG}"
+          if $IS_JSON; then
+            APP_VER=$(echo "$IMAGE_TAG" | sed 's/[{}" ]//g' | tr ',' '\n' | grep "^${APP}:" | cut -d: -f2)
+            [ -z "$APP_VER" ] && APP_VER="latest"
+            TAG="${TAG_PREFIX}${APP_VER}"
+          else
+            TAG="${TAG_PREFIX}${IMAGE_TAG}"
+          fi
 
           CONTEXT="."
           DOCKERFILE="Dockerfile"
