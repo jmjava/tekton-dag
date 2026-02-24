@@ -1,6 +1,19 @@
 # tekton-dag
 
-Standalone Tekton pipeline system for **local development and proof-of-concept**. No AWS. Run on Kind (or any Kubernetes) with a local registry and optional Telepresence. Proves out the stack DAG and pipelines locally; [share back to reference-architecture-poc](SHARING-BACK.md) when ready.
+Standalone Tekton pipeline system for **local development and proof-of-concept**.
+
+## Tests passing
+
+| Pipeline | Status |
+|----------|--------|
+| **Bootstrap** (`stack-bootstrap`) — fetch → resolve → clone → build → deploy full stack | Passing |
+| **PR with live intercepts** (`stack-pr-test`) — fetch → resolve → clone → bump RC → build → deploy intercepts → validate propagation → run tests → **push version commit (SSH)** → cleanup | Passing |
+
+Full E2E (Kind + Tekton + Telepresence intercepts + version-bump push to GitHub) is passing. See [session-notes/](session-notes/) for details.
+
+---
+
+No AWS. Run on Kind (or any Kubernetes) with a local registry and optional Telepresence. Proves out the stack DAG and pipelines locally; [share back to reference-architecture-poc](SHARING-BACK.md) when ready.
 
 ## Overview
 

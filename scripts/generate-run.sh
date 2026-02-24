@@ -82,7 +82,7 @@ STACK_PATH="stacks/$STACK"
 # Defaults: git-url is the platform repo (tekton-dag) with stacks/ and versions; app repos are cloned separately from stack .apps[].repo (e.g. jmjava/tekton-dag-vue-fe)
 GIT_URL="${GIT_URL:-https://github.com/jmjava/tekton-dag.git}"
 GIT_REV="${GIT_REV:-$(git rev-parse --short HEAD 2>/dev/null || echo 'main')}"
-IMAGE_REGISTRY="${IMAGE_REGISTRY:-\${IMAGE_REGISTRY}}"
+IMAGE_REGISTRY="${IMAGE_REGISTRY:-localhost:5000}"
 
 if [[ "$MODE" == "pr" ]]; then
   [[ -n "$PR" ]] || die "--pr is required for pr mode"

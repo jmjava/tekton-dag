@@ -113,10 +113,19 @@ spec:
       params:
         - name: GIT_SCRIPT
           value: |
-            git push origin HEAD
+            git config --global --add safe.directory /workspace/source
+            URL=$(git remote get-url origin)
+            REPO=${URL##*github.com/}
+            REPO=${REPO##*github.com:}
+            REPO=${REPO%.git}
+            git remote set-url origin "git@github.com:${REPO}.git"
+            ssh-keyscan -H github.com >> ~/.ssh/known_hosts 2>/dev/null || true
+            git push origin HEAD:refs/heads/$(params.git-revision)
       workspaces:
         - name: source
           workspace: shared-workspace
+        - name: ssh-directory
+          workspace: ssh-key
       runAfter:
         - run-tests
 

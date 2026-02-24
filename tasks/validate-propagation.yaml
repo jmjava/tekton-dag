@@ -44,10 +44,11 @@ spec:
       default: "staging"
   steps:
     - name: validate
-      image: curlimages/curl:latest
+      image: alpine:3.19
       script: |
         #!/bin/sh
         set -e
+        apk add --no-cache curl jq >/dev/null 2>&1
 
         STACK_JSON='$(params.stack-json)'
         CHAIN="$(params.propagation-chain)"

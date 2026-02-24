@@ -43,7 +43,7 @@ spec:
       default: "staging"
     - name: telepresence-image
       type: string
-      default: "docker.io/datawire/tel2:2.20.0"
+      default: "ghcr.io/telepresenceio/tel2:2.20.0"
   results:
     - name: deployed-pods
       description: "JSON map of app → pod name"
