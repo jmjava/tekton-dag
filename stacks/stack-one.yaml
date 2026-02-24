@@ -27,7 +27,7 @@ apps:
     repo: jmjava/tekton-dag-vue-fe
     role: frontend
     propagation-role: originator
-    container-port: "3000"
+    container-port: "80"
     context-dir: "."
     dockerfile: Dockerfile
     build:
