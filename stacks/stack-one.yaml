@@ -65,10 +65,10 @@ apps:
     context-dir: "."
     dockerfile: Dockerfile
     build:
-      tool: maven
+      tool: gradle
       runtime: spring-boot
       java-version: "21"
-      build-command: "mvn -B clean package -DskipTests"
+      build-command: "./gradlew clean bootJar -x test"
     downstream: []
     tests:
       postman: tests/postman/api-tests.json

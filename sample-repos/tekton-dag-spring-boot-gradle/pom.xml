@@ -10,10 +10,10 @@
     <relativePath/>
   </parent>
   <groupId>com.example</groupId>
-  <artifactId>tekton-dag-spring-boot</artifactId>
+  <artifactId>tekton-dag-spring-boot-gradle</artifactId>
   <version>0.1.0</version>
-  <name>tekton-dag-spring-boot</name>
-  <description>Sample Spring Boot app for Tekton DAG</description>
+  <name>tekton-dag-spring-boot-gradle</name>
+  <description>Sample Spring Boot (Gradle or Maven) app for Tekton DAG</description>
   <properties>
     <java.version>21</java.version>
   </properties>
