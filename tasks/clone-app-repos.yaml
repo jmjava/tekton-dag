@@ -42,6 +42,12 @@ spec:
         REVISION="$(params.git-revision)"
         WORKSPACE="$(workspaces.source.path)"
 
+        # Clear existing app dirs so we get a fresh clone (no stale/cached content)
+        echo "  Clearing existing app dirs..."
+        for APP in $BUILD_APPS; do
+          rm -rf "$WORKSPACE/$APP"
+        done
+
         # SSH clone: use git@github.com:<repo>.git; ssh-key workspace is required
         mkdir -p /root/.ssh
         chmod 700 /root/.ssh
@@ -64,7 +70,6 @@ spec:
             echo "  WARN: No repo for app $APP in stack, skipping"
             continue
           fi
-          # SSH URL: git@github.com:org/repo.git
           URL="git@github.com:${REPO}.git"
           echo "  Cloning $APP from $URL (revision: $REVISION) -> $WORKSPACE/$APP"
           git clone --depth 1 "$URL" "$WORKSPACE/$APP"

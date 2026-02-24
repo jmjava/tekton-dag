@@ -1,35 +1,34 @@
 # Sample app repos for Tekton DAG
 
-Each subdirectory here is a **seed** for a separate GitHub repo. The Tekton pipeline clones app repos via **SSH** (one repo per app), so these must be published as their own repos under **jmjava** before the pipeline can use them.
+Sample apps are **separate GitHub repos** under **jmjava**. The Tekton pipeline clones them via SSH when running the bootstrap/PR pipelines.
+
+## Clone into `~/github/jmjava`
+
+From your home or any parent dir:
+
+```bash
+mkdir -p ~/github/jmjava
+cd ~/github/jmjava
+
+git clone git@github.com:jmjava/tekton-dag-flask.git
+git clone git@github.com:jmjava/tekton-dag-php.git
+git clone git@github.com:jmjava/tekton-dag-spring-boot.git
+git clone git@github.com:jmjava/tekton-dag-spring-boot-gradle.git
+git clone git@github.com:jmjava/tekton-dag-spring-legacy.git
+git clone git@github.com:jmjava/tekton-dag-vue-fe.git
+```
+
+Then edit and push from each repo (e.g. `cd ~/github/jmjava/tekton-dag-spring-boot && git add -A && git commit -m "..." && git push`).
 
 ## Repos (one per app type)
 
-Clone via SSH: `git@github.com:jmjava/<repo-name>.git`
+| Repo | Clone (SSH) | Build tool |
+|------|-------------|------------|
+| tekton-dag-vue-fe | `git@github.com:jmjava/tekton-dag-vue-fe.git` | npm |
+| tekton-dag-spring-boot | `git@github.com:jmjava/tekton-dag-spring-boot.git` | Maven |
+| tekton-dag-spring-boot-gradle | `git@github.com:jmjava/tekton-dag-spring-boot-gradle.git` | Maven / Gradle |
+| tekton-dag-php | `git@github.com:jmjava/tekton-dag-php.git` | Composer |
+| tekton-dag-spring-legacy | `git@github.com:jmjava/tekton-dag-spring-legacy.git` | Maven |
+| tekton-dag-flask | `git@github.com:jmjava/tekton-dag-flask.git` | pip |
 
-| Repo name | Clone (SSH) | Build tool | Purpose |
-|-----------|-------------|------------|--------|
-| [tekton-dag-vue-fe](https://github.com/jmjava/tekton-dag-vue-fe) | `git@github.com:jmjava/tekton-dag-vue-fe.git` | npm | Vue 3 frontend |
-| [tekton-dag-spring-boot](https://github.com/jmjava/tekton-dag-spring-boot) | `git@github.com:jmjava/tekton-dag-spring-boot.git` | Maven | Spring Boot app |
-| [tekton-dag-spring-boot-gradle](https://github.com/jmjava/tekton-dag-spring-boot-gradle) | `git@github.com:jmjava/tekton-dag-spring-boot-gradle.git` | Gradle | Spring Boot app |
-| [tekton-dag-php](https://github.com/jmjava/tekton-dag-php) | `git@github.com:jmjava/tekton-dag-php.git` | Composer | PHP app |
-| [tekton-dag-spring-legacy](https://github.com/jmjava/tekton-dag-spring-legacy) | `git@github.com:jmjava/tekton-dag-spring-legacy.git` | Maven | Spring WAR |
-| [tekton-dag-flask](https://github.com/jmjava/tekton-dag-flask) | `git@github.com:jmjava/tekton-dag-flask.git` | pip | Flask app |
-
-## Create and push as GitHub repos
-
-From the **tekton-dag** repo root:
-
-```bash
-# Prerequisites: gh CLI, authenticated (gh auth login), push access to jmjava
-./scripts/create-and-push-sample-repos.sh
-```
-
-This will:
-
-1. For each `sample-repos/tekton-dag-*` directory, create a new repo **github.com/jmjava/tekton-dag-xxx** (if it doesn’t exist).
-2. Push the directory contents to that repo’s `main` branch.
-
-So each sample app becomes its own cloneable repo and the Tekton pipeline clones them via SSH (stack YAML uses `repo: jmjava/tekton-dag-vue-fe`, which becomes `git@github.com:jmjava/tekton-dag-vue-fe.git`).
-
-- **Dry run:** `./scripts/create-and-push-sample-repos.sh --dry-run`
-- **Single repo:** `./scripts/create-and-push-sample-repos.sh tekton-dag-flask`
+Stacks reference them as `repo: jmjava/tekton-dag-<name>` in `stacks/*.yaml`.
