@@ -18,46 +18,36 @@
 # ============================================================================
 
 apps:
-
   # --- Stack One: Vue FE + Spring Boot middleware + Spring Boot API ---
   demo-fe:
-    version: "0.1.0-rc.0"
+    version: "0.1.0-rc.1"
     last-released: "0.0.0"
-
   release-lifecycle-demo:
     version: "0.1.0-rc.0"
     last-released: "0.0.0"
-
   demo-api:
     version: "0.1.0-rc.0"
     last-released: "0.0.0"
-
   # --- Stack Two: mixed toolchain ---
   vendor-fe:
     version: "0.1.0-rc.0"
     last-released: "0.0.0"
-
   vendor-middleware:
     version: "0.1.0-rc.0"
     last-released: "0.0.0"
-
   vendor-adapter:
     version: "0.1.0-rc.0"
     last-released: "0.0.0"
-
   internal-api:
     version: "0.1.0-rc.0"
     last-released: "0.0.0"
-
   notifications-svc:
     version: "0.1.0-rc.0"
     last-released: "0.0.0"
-
   # --- Standalone apps ---
   inventory-api:
     version: "0.1.0-rc.0"
     last-released: "0.0.0"
-
   analytics-api:
     version: "0.1.0-rc.0"
     last-released: "0.0.0"
