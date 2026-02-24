@@ -300,12 +300,16 @@ spec:
         REGISTRY="$(params.image-registry)"
         IMAGE_TAG='$(params.image-tag)'
         TAG_PREFIX="$(params.tag-prefix)"
+        WORKSPACE="$(workspaces.source.path)"
 
-        # Detect whether image-tag is JSON (per-app versions) or plain string
-        IS_JSON=false
-        echo "$IMAGE_TAG" | jq '.' >/dev/null 2>&1 && IS_JSON=true
+        # In Kind, localhost:PORT is not reachable from pods; the registry
+        # container is on the Docker network as kind-registry:5000.
+        # Kaniko pushes to the Docker-resolvable address; deployment pulls
+        # use the original REGISTRY value (mapped by containerd hosts.toml).
+        PUSH_REGISTRY=$(echo "$REGISTRY" | sed 's|localhost:|kind-registry:|')
 
-        echo '{}' > /tmp/built-images.json
+        BUILT_JSON="${WORKSPACE}/.built-images.json"
+        echo '{}' > "$BUILT_JSON"
 
         for APP in $BUILD_APPS; do
           echo ""
@@ -313,26 +317,19 @@ spec:
           echo "  Containerize: $APP"
           echo "========================================="
 
-          if $IS_JSON; then
-            APP_VER=$(echo "$IMAGE_TAG" | jq -r --arg a "$APP" '.[$a] // "latest"')
-            TAG="${TAG_PREFIX}${APP_VER}"
-          else
-            TAG="${TAG_PREFIX}${IMAGE_TAG}"
-          fi
+          TAG="${TAG_PREFIX}${IMAGE_TAG}"
 
-          CONTEXT=$(echo "$STACK_JSON" | jq -r --arg a "$APP" \
-            '.apps[]|select(.name==$a)|."context-dir" // "."')
-          DOCKERFILE=$(echo "$STACK_JSON" | jq -r --arg a "$APP" \
-            '.apps[]|select(.name==$a)|.dockerfile // "Dockerfile"')
+          CONTEXT="."
+          DOCKERFILE="Dockerfile"
 
-          IMAGE="${REGISTRY}/${APP}:${TAG}"
-          echo "  Image:      $IMAGE"
-          echo "  Context:    $CONTEXT"
-          echo "  Dockerfile: $DOCKERFILE"
+          PUSH_IMAGE="${PUSH_REGISTRY}/${APP}:${TAG}"
+          PULL_IMAGE="${REGISTRY}/${APP}:${TAG}"
+          echo "  Push to:    $PUSH_IMAGE"
+          echo "  Pull as:    $PULL_IMAGE"
 
-          CONTEXT_PATH="$(workspaces.source.path)"
-          if [ -d "$(workspaces.source.path)/${APP}" ]; then
-            CONTEXT_PATH="$(workspaces.source.path)/${APP}"
+          CONTEXT_PATH="${WORKSPACE}"
+          if [ -d "${WORKSPACE}/${APP}" ]; then
+            CONTEXT_PATH="${WORKSPACE}/${APP}"
           fi
 
           FULL_CONTEXT="${CONTEXT_PATH}/${CONTEXT}"
@@ -342,17 +339,33 @@ spec:
             /kaniko/executor \
               --dockerfile="${FULL_DOCKERFILE}" \
               --context="${FULL_CONTEXT}" \
-              --destination="${IMAGE}" \
-              --cache=false
-            echo "  Built and pushed: $IMAGE"
+              --destination="${PUSH_IMAGE}" \
+              --cache=false \
+              --insecure \
+              --insecure-pull
+            echo "  Built and pushed: $PUSH_IMAGE"
           else
             echo "  WARN: Dockerfile not found at ${FULL_DOCKERFILE}"
             echo "  Skipping containerize (image may already exist in registry)"
           fi
 
-          jq --arg a "$APP" --arg i "$IMAGE" '. + {($a): $i}' \
-            /tmp/built-images.json > /tmp/built-images-tmp.json
-          mv /tmp/built-images-tmp.json /tmp/built-images.json
+          echo "\"${APP}\": \"${PULL_IMAGE}\"" >> "${BUILT_JSON}.parts"
         done
 
-        cat /tmp/built-images.json | tee $(results.built-images.path)
+        # Build final JSON from parts (no jq in kaniko image)
+        echo '{' > "$BUILT_JSON"
+        if [ -f "${BUILT_JSON}.parts" ]; then
+          TOTAL=$(wc -l < "${BUILT_JSON}.parts")
+          COUNT=0
+          while IFS= read -r line; do
+            COUNT=$((COUNT + 1))
+            if [ "$COUNT" -lt "$TOTAL" ]; then
+              echo "  ${line}," >> "$BUILT_JSON"
+            else
+              echo "  ${line}" >> "$BUILT_JSON"
+            fi
+          done < "${BUILT_JSON}.parts"
+        fi
+        echo '}' >> "$BUILT_JSON"
+
+        cat "$BUILT_JSON" | tee $(results.built-images.path)
