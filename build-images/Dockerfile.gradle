@@ -1,0 +1,15 @@
+# Gradle build image for tekton-dag. JDK pre-installed; apps use ./gradlew.
+# OpenJDK 21; includes jq/curl for task scripts. Gradle wrapper in repo is used.
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update -qq && apt-get install -y -qq \
+    curl \
+    jq \
+    ca-certificates \
+    openjdk-21-jdk-headless \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN java -version 2>&1 | head -1

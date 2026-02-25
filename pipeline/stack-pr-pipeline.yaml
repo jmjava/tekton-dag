@@ -38,6 +38,21 @@ spec:
     - name: version-overrides
       description: "JSON map of app → version overrides (empty = use versions.yaml)"
       default: "{}"
+    - name: compile-image-npm
+      description: "Image for npm compile step (default ubuntu + runtime install)"
+      default: "ubuntu:22.04"
+    - name: compile-image-maven
+      description: "Image for Maven compile step"
+      default: "ubuntu:22.04"
+    - name: compile-image-gradle
+      description: "Image for Gradle compile step"
+      default: "ubuntu:22.04"
+    - name: compile-image-pip
+      description: "Image for pip compile step"
+      default: "ubuntu:22.04"
+    - name: compile-image-php
+      description: "Image for Composer/PHP compile step"
+      default: "ubuntu:22.04"
 
   workspaces:
     - name: shared-workspace
@@ -136,6 +151,16 @@ spec:
           value: $(tasks.bump-rc-version.results.bumped-versions)
         - name: tag-prefix
           value: "v"
+        - name: compile-image-npm
+          value: $(params.compile-image-npm)
+        - name: compile-image-maven
+          value: $(params.compile-image-maven)
+        - name: compile-image-gradle
+          value: $(params.compile-image-gradle)
+        - name: compile-image-pip
+          value: $(params.compile-image-pip)
+        - name: compile-image-php
+          value: $(params.compile-image-php)
       workspaces:
         - name: source
           workspace: shared-workspace

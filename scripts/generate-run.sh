@@ -20,6 +20,7 @@ set -euo pipefail
 #   --git-url            Override git URL
 #   --git-revision       Override git revision
 #   --registry           Override image registry (use any: Docker Hub, GCR, local)
+#   --build-images       Use dedicated build images (tekton-dag-build-* from registry); run build-images/build-and-push.sh first
 #   --storage-class      PVC storage class (default: gp3 for AWS; use standard or omit for kind/minikube)
 #   --apply              kubectl create the PipelineRun immediately
 #   --dry-run            Print the YAML without applying
@@ -44,6 +45,8 @@ STORAGE_CLASS="${STORAGE_CLASS:-gp3}"
 VERSION_OVERRIDES="{}"
 GIT_SSH_SECRET_NAME="${GIT_SSH_SECRET_NAME:-git-ssh-key}"
 APPLY=false
+BUILD_IMAGES=false
+BUILD_IMAGE_TAG="${BUILD_IMAGE_TAG:-latest}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -56,6 +59,7 @@ while [[ $# -gt 0 ]]; do
     --git-url)            GIT_URL="$2"; shift 2 ;;
     --git-revision)       GIT_REV="$2"; shift 2 ;;
     --registry)           IMAGE_REGISTRY="$2"; shift 2 ;;
+    --build-images)       BUILD_IMAGES=true; shift ;;
     --storage-class)      STORAGE_CLASS="$2"; shift 2 ;;
     --ssh-secret)         GIT_SSH_SECRET_NAME="$2"; shift 2 ;;
     --apply)              APPLY=true; shift ;;
@@ -116,6 +120,18 @@ spec:
       value: "${IMAGE_REGISTRY}"
     - name: version-overrides
       value: '${VERSION_OVERRIDES}'
+    $([ "$BUILD_IMAGES" = "true" ] && echo "
+    - name: compile-image-npm
+      value: \"${IMAGE_REGISTRY}/tekton-dag-build-node:${BUILD_IMAGE_TAG}\"
+    - name: compile-image-maven
+      value: \"${IMAGE_REGISTRY}/tekton-dag-build-maven:${BUILD_IMAGE_TAG}\"
+    - name: compile-image-gradle
+      value: \"${IMAGE_REGISTRY}/tekton-dag-build-gradle:${BUILD_IMAGE_TAG}\"
+    - name: compile-image-pip
+      value: \"${IMAGE_REGISTRY}/tekton-dag-build-python:${BUILD_IMAGE_TAG}\"
+    - name: compile-image-php
+      value: \"${IMAGE_REGISTRY}/tekton-dag-build-php:${BUILD_IMAGE_TAG}\"
+    ")
   workspaces:
     - name: shared-workspace
       volumeClaimTemplate:
@@ -162,6 +178,18 @@ spec:
       value: "${IMAGE_REGISTRY}"
     - name: version-overrides
       value: '${VERSION_OVERRIDES}'
+    $([ "$BUILD_IMAGES" = "true" ] && echo "
+    - name: compile-image-npm
+      value: \"${IMAGE_REGISTRY}/tekton-dag-build-node:${BUILD_IMAGE_TAG}\"
+    - name: compile-image-maven
+      value: \"${IMAGE_REGISTRY}/tekton-dag-build-maven:${BUILD_IMAGE_TAG}\"
+    - name: compile-image-gradle
+      value: \"${IMAGE_REGISTRY}/tekton-dag-build-gradle:${BUILD_IMAGE_TAG}\"
+    - name: compile-image-pip
+      value: \"${IMAGE_REGISTRY}/tekton-dag-build-python:${BUILD_IMAGE_TAG}\"
+    - name: compile-image-php
+      value: \"${IMAGE_REGISTRY}/tekton-dag-build-php:${BUILD_IMAGE_TAG}\"
+    ")
   workspaces:
     - name: shared-workspace
       volumeClaimTemplate:
@@ -192,5 +220,6 @@ if [[ "$APPLY" == "true" ]]; then
     --version-overrides "$VERSION_OVERRIDES" \
     --git-url "$GIT_URL" --git-revision "$GIT_REV" \
     --registry "$IMAGE_REGISTRY" \
+    $([ "$BUILD_IMAGES" = "true" ] && echo "--build-images ") \
     --storage-class "$STORAGE_CLASS" | kubectl create -f -
 fi

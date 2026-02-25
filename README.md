@@ -156,6 +156,14 @@ You can run and debug the **full** pipeline locally — no Jenkins, no shared CI
      --registry localhost:5000 --storage-class "" | kubectl create -f -
    ```
 
+4. **Optional: dedicated build images** (one image per tool — Node, Maven, Gradle, Python, PHP). Speeds up compile steps by using pre-baked images instead of installing tools at runtime:
+   ```bash
+   ./build-images/build-and-push.sh localhost:5000 latest
+   ./scripts/generate-run.sh --mode pr --stack stack-one.yaml --app demo-fe --pr 42 \
+     --registry localhost:5000 --build-images --apply
+   ```
+   See [build-images/README.md](build-images/README.md) for image contents and pipeline params.
+
 All of this runs on your machine: resolve, clone, build, deploy, validate, and test. No waiting on Jenkins or losing access to run details.
 
 ### Get direct debug and log access

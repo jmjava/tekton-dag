@@ -8,10 +8,11 @@ metadata:
 spec:
   description: >
     Two-phase build for every app in the stack:
-      1. compile — runs the app-specific build tool (npm, maven, gradle, composer, or none)
-      2. containerize — runs Kaniko to build and push the Docker image
-    The build tool, runtime, language version, and build command are all
-    read from the stack-json build config per app. If an app has no build
+      1. select-tool-apps — writes per-tool app lists to .tool-apps.json
+      2. compile — one step per tool (npm, maven, gradle, pip, composer), each with its own image when provided
+      3. containerize — runs Kaniko to build and push the Docker image
+    When compile-image-* params are set, those steps use pre-baked images (e.g. tekton-dag-build-*).
+    When unset (default ubuntu:22.04), the step installs that tool at runtime. If an app has no build
     config or tool=none, only the Kaniko step runs (Dockerfile-only build).
   params:
     - name: stack-json
@@ -30,6 +31,26 @@ spec:
       type: string
       default: "pr-"
       description: "Prefix for image tag (pr- for PR builds, v for releases, empty for merge)"
+    - name: compile-image-npm
+      type: string
+      default: "ubuntu:22.04"
+      description: "Image for npm compile step (default ubuntu + runtime install)"
+    - name: compile-image-maven
+      type: string
+      default: "ubuntu:22.04"
+      description: "Image for Maven compile step (JDK + Maven pre-installed when set)"
+    - name: compile-image-gradle
+      type: string
+      default: "ubuntu:22.04"
+      description: "Image for Gradle compile step (JDK pre-installed when set)"
+    - name: compile-image-pip
+      type: string
+      default: "ubuntu:22.04"
+      description: "Image for pip compile step (Python pre-installed when set)"
+    - name: compile-image-php
+      type: string
+      default: "ubuntu:22.04"
+      description: "Image for Composer/PHP compile step (PHP + Composer pre-installed when set)"
   workspaces:
     - name: source
     - name: build-cache
@@ -41,10 +62,10 @@ spec:
 
   steps:
     # ----------------------------------------------------------------
-    # Step 1: Compile / package every app with its declared build tool
+    # Step 1: Select which apps use which build tool (writes .tool-apps.json)
     # ----------------------------------------------------------------
-    - name: compile
-      image: ubuntu:22.04
+    - name: select-tool-apps
+      image: alpine:3.19
       workingDir: $(workspaces.source.path)
       env:
         - name: STACK_JSON
@@ -52,250 +73,215 @@ spec:
         - name: BUILD_APPS
           value: $(params.build-apps)
       script: |
+        #!/bin/sh
+        set -e
+        apk add --no-cache jq >/dev/null 2>&1
+        NPM_APPS=""; MAVEN_APPS=""; GRADLE_APPS=""; PIP_APPS=""; COMPOSER_APPS=""
+        for app in $BUILD_APPS; do
+          tool=$(echo "$STACK_JSON" | jq -r --arg a "$app" '.apps[]|select(.name==$a)|.build.tool // "none"')
+          case "$tool" in
+            npm) NPM_APPS="$NPM_APPS $app" ;;
+            maven) MAVEN_APPS="$MAVEN_APPS $app" ;;
+            gradle) GRADLE_APPS="$GRADLE_APPS $app" ;;
+            pip) PIP_APPS="$PIP_APPS $app" ;;
+            composer) COMPOSER_APPS="$COMPOSER_APPS $app" ;;
+          esac
+        done
+        jq -n \
+          --arg n "${NPM_APPS# }" --arg m "${MAVEN_APPS# }" --arg g "${GRADLE_APPS# }" --arg p "${PIP_APPS# }" --arg c "${COMPOSER_APPS# }" \
+          '{npm:(if $n=="" then [] else ($n|split(" ")|map(select(length>0))) end),maven:(if $m=="" then [] else ($m|split(" ")|map(select(length>0))) end),gradle:(if $g=="" then [] else ($g|split(" ")|map(select(length>0))) end),pip:(if $p=="" then [] else ($p|split(" ")|map(select(length>0))) end),composer:(if $c=="" then [] else ($c|split(" ")|map(select(length>0))) end)}' > .tool-apps.json
+        echo "Tool app lists written to .tool-apps.json"
+
+    # ----------------------------------------------------------------
+    # Compile steps (one per tool; each uses its own image when provided)
+    # ----------------------------------------------------------------
+    - name: compile-npm
+      image: $(params.compile-image-npm)
+      workingDir: $(workspaces.source.path)
+      env:
+        - name: STACK_JSON
+          value: $(params.stack-json)
+        - name: COMPILE_IMAGE
+          value: $(params.compile-image-npm)
+        - name: MY_TOOL
+          value: npm
+      script: |
         #!/usr/bin/env bash
         set -e
-
-        apt-get update -qq && apt-get install -y -qq curl jq ca-certificates gnupg >/dev/null 2>&1
-
-        # ----- persistent dependency cache (optional workspace) -----
-        if [ "$(workspaces.build-cache.bound)" = "true" ]; then
-          CACHE="$(workspaces.build-cache.path)"
-          echo "  Build cache enabled: $CACHE"
-          mkdir -p "$CACHE/.m2/repository" "$CACHE/.npm" "$CACHE/.gradle" "$CACHE/.pip" "$CACHE/.composer"
-          export MAVEN_OPTS="-Dmaven.repo.local=$CACHE/.m2/repository"
-          export npm_config_cache="$CACHE/.npm"
-          export GRADLE_USER_HOME="$CACHE/.gradle"
-          export PIP_CACHE_DIR="$CACHE/.pip"
-          export COMPOSER_CACHE_DIR="$CACHE/.composer"
+        if [ "$COMPILE_IMAGE" = "ubuntu:22.04" ]; then apt-get update -qq && apt-get install -y -qq curl jq ca-certificates gnupg >/dev/null 2>&1; fi
+        [ "$(workspaces.build-cache.bound)" = "true" ] && CACHE="$(workspaces.build-cache.path)" && mkdir -p "$CACHE/.npm" && export npm_config_cache="$CACHE/.npm"
+        APPS=$(jq -r '.npm[]' .tool-apps.json 2>/dev/null || true)
+        [ -z "$APPS" ] && echo "No npm apps" && exit 0
+        if [ "$COMPILE_IMAGE" = "ubuntu:22.04" ]; then
+          curl -fsSL https://deb.nodesource.com/setup_22.x | bash - >/dev/null 2>&1 && apt-get install -y -qq nodejs >/dev/null 2>&1
         fi
+        for APP in $APPS; do
+          echo "=== Compile (npm): $APP ==="
+          CMD=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."build-command" // ""')
+          PRE_CMD=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."pre-command" // ""')
+          POST_CMD=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."post-command" // ""')
+          CONTEXT=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|."context-dir" // "."')
+          APP_DIR="$(workspaces.source.path)"; [ -d "$(workspaces.source.path)/${APP}" ] && APP_DIR="$(workspaces.source.path)/${APP}"
+          [ "$CONTEXT" != "." ] && [ -d "${APP_DIR}/${CONTEXT}" ] && APP_DIR="${APP_DIR}/${CONTEXT}"
+          for k in $(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build.env // {} | keys[]' 2>/dev/null); do v=$(echo "$STACK_JSON" | jq -r --arg a "$APP" --arg k "$k" '.apps[]|select(.name==$a)|.build.env[$k] // ""'); [ -n "$k" ] && export "$k=$v"; done
+          for k in $(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build.legacy // {} | keys[]' 2>/dev/null); do v=$(echo "$STACK_JSON" | jq -r --arg a "$APP" --arg k "$k" '.apps[]|select(.name==$a)|.build.legacy[$k] // ""'); [ -n "$k" ] && export "$k=$v"; done
+          cd "$APP_DIR"
+          [ -n "$PRE_CMD" ] && eval "$PRE_CMD"
+          if [ -n "$CMD" ]; then
+            RUN_CMD="$CMD"; echo "$CMD" | grep -q "npm ci" && [ ! -f package-lock.json ] && RUN_CMD=$(echo "$CMD" | sed 's/npm ci/npm install/g')
+            eval "$RUN_CMD"
+          else
+            [ -f package-lock.json ] && npm ci || npm install; npm run build --if-present
+          fi
+          [ -n "$POST_CMD" ] && eval "$POST_CMD"
+        done
+        echo "Compile (npm) done."
 
-        # ----- tool installers (called lazily, at most once each) -----
-        NODE_READY=false
-        install_node() {
-          $NODE_READY && return
-          local ver="${1:-22}"
-          echo "  [setup] Installing Node.js ${ver}..."
-          curl -fsSL "https://deb.nodesource.com/setup_${ver}.x" | bash - >/dev/null 2>&1
-          apt-get install -y -qq nodejs >/dev/null 2>&1
-          NODE_READY=true
-          echo "  [setup] node $(node -v), npm $(npm -v)"
-        }
+    - name: compile-maven
+      image: $(params.compile-image-maven)
+      workingDir: $(workspaces.source.path)
+      env:
+        - name: STACK_JSON
+          value: $(params.stack-json)
+        - name: COMPILE_IMAGE
+          value: $(params.compile-image-maven)
+        - name: MY_TOOL
+          value: maven
+      script: |
+        #!/usr/bin/env bash
+        set -e
+        if [ "$COMPILE_IMAGE" = "ubuntu:22.04" ]; then apt-get update -qq && apt-get install -y -qq curl jq ca-certificates openjdk-21-jdk-headless >/dev/null 2>&1; fi
+        [ "$(workspaces.build-cache.bound)" = "true" ] && CACHE="$(workspaces.build-cache.path)" && mkdir -p "$CACHE/.m2/repository" && export MAVEN_OPTS="-Dmaven.repo.local=$CACHE/.m2/repository"
+        APPS=$(jq -r '.maven[]' .tool-apps.json 2>/dev/null || true)
+        [ -z "$APPS" ] && echo "No maven apps" && exit 0
+        if [ "$COMPILE_IMAGE" = "ubuntu:22.04" ]; then
+          apt-get install -y -qq maven >/dev/null 2>&1 || { curl -fsSL https://dlcdn.apache.org/maven/maven-3/3.9.6/binaries/apache-maven-3.9.6-bin.tar.gz | tar xz -C /opt && ln -sf /opt/apache-maven-3.9.6/bin/mvn /usr/local/bin/mvn; }
+        fi
+        for APP in $APPS; do
+          echo "=== Compile (maven): $APP ==="
+          CMD=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."build-command" // ""')
+          PRE_CMD=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."pre-command" // ""')
+          POST_CMD=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."post-command" // ""')
+          CONTEXT=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|."context-dir" // "."')
+          APP_DIR="$(workspaces.source.path)"; [ -d "$(workspaces.source.path)/${APP}" ] && APP_DIR="$(workspaces.source.path)/${APP}"
+          [ "$CONTEXT" != "." ] && [ -d "${APP_DIR}/${CONTEXT}" ] && APP_DIR="${APP_DIR}/${CONTEXT}"
+          for k in $(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build.env // {} | keys[]' 2>/dev/null); do v=$(echo "$STACK_JSON" | jq -r --arg a "$APP" --arg k "$k" '.apps[]|select(.name==$a)|.build.env[$k] // ""'); [ -n "$k" ] && export "$k=$v"; done
+          for k in $(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build.legacy // {} | keys[]' 2>/dev/null); do v=$(echo "$STACK_JSON" | jq -r --arg a "$APP" --arg k "$k" '.apps[]|select(.name==$a)|.build.legacy[$k] // ""'); [ -n "$k" ] && export "$k=$v"; done
+          cd "$APP_DIR"
+          [ -n "$PRE_CMD" ] && eval "$PRE_CMD"
+          [ -n "$CMD" ] && eval "$CMD" || mvn -B clean package -DskipTests
+          [ -n "$POST_CMD" ] && eval "$POST_CMD"
+        done
+        echo "Compile (maven) done."
 
-        JAVA_READY=false
-        install_java() {
-          $JAVA_READY && return
-          local ver="${1:-21}"
-          echo "  [setup] Installing JDK ${ver}..."
-          apt-get install -y -qq "openjdk-${ver}-jdk-headless" 2>/dev/null \
-            || apt-get install -y -qq default-jdk-headless >/dev/null 2>&1
-          JAVA_READY=true
-          echo "  [setup] java $(java -version 2>&1 | head -1)"
-        }
-
-        MAVEN_READY=false
-        install_maven() {
-          $MAVEN_READY && return
-          install_java "$1"
-          echo "  [setup] Installing Maven..."
-          apt-get install -y -qq maven >/dev/null 2>&1 || {
-            local mv=3.9.6
-            curl -fsSL "https://dlcdn.apache.org/maven/maven-3/${mv}/binaries/apache-maven-${mv}-bin.tar.gz" \
-              | tar xz -C /opt
-            ln -sf "/opt/apache-maven-${mv}/bin/mvn" /usr/local/bin/mvn
-          }
-          MAVEN_READY=true
-          echo "  [setup] mvn $(mvn -v 2>&1 | head -1)"
-        }
-
-        GRADLE_READY=false
-        install_gradle() {
-          $GRADLE_READY && return
-          install_java "$1"
-          echo "  [setup] Gradle wrapper expected in repo (./gradlew)"
-          GRADLE_READY=true
-        }
-
-        PYTHON_READY=false
-        install_python() {
-          $PYTHON_READY && return
-          local ver="${1:-3.12}"
-          echo "  [setup] Installing Python ${ver}..."
-          apt-get install -y -qq "python${ver}" "python${ver}-venv" python3-pip 2>/dev/null \
-            || apt-get install -y -qq python3 python3-venv python3-pip >/dev/null 2>&1
-          PYTHON_READY=true
-          echo "  [setup] python $(python3 --version 2>&1), pip $(pip3 --version 2>&1 | head -1)"
-        }
-
-        PHP_READY=false
-        install_php() {
-          $PHP_READY && return
-          local ver="${1:-8.3}"
-          echo "  [setup] Installing PHP ${ver} + Composer..."
-          apt-get install -y -qq software-properties-common >/dev/null 2>&1
-          add-apt-repository -y ppa:ondrej/php >/dev/null 2>&1 || true
-          apt-get update -qq >/dev/null 2>&1
-          apt-get install -y -qq "php${ver}-cli" "php${ver}-mbstring" "php${ver}-xml" \
-            "php${ver}-curl" "php${ver}-zip" unzip >/dev/null 2>&1 \
-            || apt-get install -y -qq php-cli php-mbstring php-xml php-curl php-zip unzip >/dev/null 2>&1
-          curl -fsSL https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer >/dev/null 2>&1
-          PHP_READY=true
-          echo "  [setup] php $(php -v | head -1), composer $(composer -V 2>&1 | head -1)"
-        }
-
-        # ----- iterate apps -----
-        for APP in $BUILD_APPS; do
-          echo ""
-          echo "========================================="
-          echo "  Compile: $APP"
-          echo "========================================="
-
-          TOOL=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build.tool // "none"')
+    - name: compile-gradle
+      image: $(params.compile-image-gradle)
+      workingDir: $(workspaces.source.path)
+      env:
+        - name: STACK_JSON
+          value: $(params.stack-json)
+        - name: COMPILE_IMAGE
+          value: $(params.compile-image-gradle)
+        - name: MY_TOOL
+          value: gradle
+      script: |
+        #!/usr/bin/env bash
+        set -e
+        if [ "$COMPILE_IMAGE" = "ubuntu:22.04" ]; then apt-get update -qq && apt-get install -y -qq curl jq ca-certificates openjdk-21-jdk-headless >/dev/null 2>&1; fi
+        [ "$(workspaces.build-cache.bound)" = "true" ] && CACHE="$(workspaces.build-cache.path)" && mkdir -p "$CACHE/.gradle" && export GRADLE_USER_HOME="$CACHE/.gradle"
+        APPS=$(jq -r '.gradle[]' .tool-apps.json 2>/dev/null || true)
+        [ -z "$APPS" ] && echo "No gradle apps" && exit 0
+        for APP in $APPS; do
+          echo "=== Compile (gradle): $APP ==="
           RUNTIME=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build.runtime // "custom"')
           CMD=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."build-command" // ""')
           PRE_CMD=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."pre-command" // ""')
           POST_CMD=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."post-command" // ""')
           CONTEXT=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|."context-dir" // "."')
-          JAVA_VER=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."java-version" // "21"')
-          NODE_VER=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."node-version" // "22"')
-          PHP_VER=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."php-version" // "8.3"')
-          PYTHON_VER=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."python-version" // "3.12"')
-
-          echo "  Tool:    $TOOL"
-          echo "  Runtime: $RUNTIME"
-          echo "  Command: ${CMD:-<default for tool>}"
-
-          # Export build.env (custom env vars for this app)
-          for k in $(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build.env // {} | keys[]' 2>/dev/null); do
-            v=$(echo "$STACK_JSON" | jq -r --arg a "$APP" --arg k "$k" '.apps[]|select(.name==$a)|.build.env[$k] // ""')
-            [ -n "$k" ] && export "$k=$v"
-          done
-          # Export build.legacy (per-type legacy requirements: JAVA_OPTS, MAVEN_OPTS, COMPOSER_*, PIP_*, etc.)
-          for k in $(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build.legacy // {} | keys[]' 2>/dev/null); do
-            v=$(echo "$STACK_JSON" | jq -r --arg a "$APP" --arg k "$k" '.apps[]|select(.name==$a)|.build.legacy[$k] // ""')
-            [ -n "$k" ] && export "$k=$v"
-          done
-
-          # Locate source directory
-          APP_DIR="$(workspaces.source.path)"
-          if [ -d "$(workspaces.source.path)/${APP}" ]; then
-            APP_DIR="$(workspaces.source.path)/${APP}"
-          fi
-          if [ "$CONTEXT" != "." ] && [ -d "${APP_DIR}/${CONTEXT}" ]; then
-            APP_DIR="${APP_DIR}/${CONTEXT}"
-          fi
-          echo "  Source:  $APP_DIR"
-
+          APP_DIR="$(workspaces.source.path)"; [ -d "$(workspaces.source.path)/${APP}" ] && APP_DIR="$(workspaces.source.path)/${APP}"
+          [ "$CONTEXT" != "." ] && [ -d "${APP_DIR}/${CONTEXT}" ] && APP_DIR="${APP_DIR}/${CONTEXT}"
+          for k in $(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build.env // {} | keys[]' 2>/dev/null); do v=$(echo "$STACK_JSON" | jq -r --arg a "$APP" --arg k "$k" '.apps[]|select(.name==$a)|.build.env[$k] // ""'); [ -n "$k" ] && export "$k=$v"; done
+          for k in $(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build.legacy // {} | keys[]' 2>/dev/null); do v=$(echo "$STACK_JSON" | jq -r --arg a "$APP" --arg k "$k" '.apps[]|select(.name==$a)|.build.legacy[$k] // ""'); [ -n "$k" ] && export "$k=$v"; done
           cd "$APP_DIR"
-
-          # Optional pre-command (legacy setup, patches, env prep)
-          if [ -n "$PRE_CMD" ]; then
-            echo "  Running pre-command..."
-            eval "$PRE_CMD"
+          [ -n "$PRE_CMD" ] && eval "$PRE_CMD"
+          if [ -n "$CMD" ]; then eval "$CMD"; else
+            if [ -f gradlew ]; then chmod +x gradlew; case "$RUNTIME" in spring-boot) ./gradlew clean bootJar -x test ;; spring-legacy) ./gradlew clean war -x test ;; *) ./gradlew clean build -x test ;; esac
+            else echo "WARN: No gradlew"; fi
           fi
-
-          case "$TOOL" in
-            npm)
-              install_node "$NODE_VER"
-              if [ -n "$CMD" ]; then
-                # npm ci requires package-lock.json; use npm install when it's missing
-                RUN_CMD="$CMD"
-                if echo "$CMD" | grep -q "npm ci"; then
-                  if [ ! -f "$APP_DIR/package-lock.json" ]; then
-                    echo "  No package-lock.json in $APP_DIR; using npm install instead of npm ci"
-                    RUN_CMD=$(echo "$CMD" | sed 's/npm ci/npm install/g')
-                  fi
-                fi
-                echo "  Running: $RUN_CMD"
-                eval "$RUN_CMD"
-              else
-                echo "  Running default npm build..."
-                [ -f package-lock.json ] && npm ci || npm install
-                npm run build --if-present
-              fi
-              ;;
-
-            maven)
-              install_maven "$JAVA_VER"
-              if [ -n "$CMD" ]; then
-                echo "  Running: $CMD"
-                eval "$CMD"
-              else
-                echo "  Running Maven build (runtime=$RUNTIME)..."
-                mvn -B clean package -DskipTests
-              fi
-              ;;
-
-            gradle)
-              install_gradle "$JAVA_VER"
-              if [ -n "$CMD" ]; then
-                echo "  Running: $CMD"
-                eval "$CMD"
-              else
-                echo "  Running Gradle build (runtime=$RUNTIME)..."
-                if [ -f gradlew ]; then
-                  chmod +x gradlew
-                  case "$RUNTIME" in
-                    spring-boot)   ./gradlew clean bootJar -x test ;;
-                    spring-legacy) ./gradlew clean war -x test ;;
-                    *)             ./gradlew clean build -x test ;;
-                  esac
-                else
-                  echo "  WARN: No gradlew found, skipping Gradle build"
-                fi
-              fi
-              ;;
-
-            composer)
-              install_php "$PHP_VER"
-              if [ -n "$CMD" ]; then
-                echo "  Running: $CMD"
-                eval "$CMD"
-              else
-                echo "  Running default Composer install..."
-                composer install --no-dev --optimize-autoloader --no-interaction
-              fi
-              ;;
-
-            pip)
-              install_python "$PYTHON_VER"
-              if [ -n "$CMD" ]; then
-                echo "  Running: $CMD"
-                eval "$CMD"
-              else
-                echo "  Running default pip install..."
-                if [ -f requirements.txt ]; then
-                  pip3 install -r requirements.txt
-                elif [ -f setup.py ] || [ -f pyproject.toml ]; then
-                  pip3 install .
-                else
-                  echo "  WARN: No requirements.txt, setup.py, or pyproject.toml found"
-                fi
-              fi
-              ;;
-
-            none|"")
-              echo "  No compile step (Dockerfile-only build)"
-              ;;
-
-            *)
-              echo "  WARN: Unknown tool '$TOOL', skipping compile"
-              ;;
-          esac
-
-          # Optional post-command (legacy repackage, sign, extra steps)
-          if [ -n "$POST_CMD" ]; then
-            echo "  Running post-command..."
-            eval "$POST_CMD"
-          fi
-
-          echo "  Compile complete for $APP"
+          [ -n "$POST_CMD" ] && eval "$POST_CMD"
         done
+        echo "Compile (gradle) done."
 
-        echo ""
-        echo "All compile steps done."
+    - name: compile-pip
+      image: $(params.compile-image-pip)
+      workingDir: $(workspaces.source.path)
+      env:
+        - name: STACK_JSON
+          value: $(params.stack-json)
+        - name: COMPILE_IMAGE
+          value: $(params.compile-image-pip)
+        - name: MY_TOOL
+          value: pip
+      script: |
+        #!/usr/bin/env bash
+        set -e
+        if [ "$COMPILE_IMAGE" = "ubuntu:22.04" ]; then apt-get update -qq && apt-get install -y -qq curl jq ca-certificates python3.12 python3.12-venv python3-pip 2>/dev/null || apt-get install -y -qq python3 python3-venv python3-pip >/dev/null 2>&1; fi
+        [ "$(workspaces.build-cache.bound)" = "true" ] && CACHE="$(workspaces.build-cache.path)" && mkdir -p "$CACHE/.pip" && export PIP_CACHE_DIR="$CACHE/.pip"
+        APPS=$(jq -r '.pip[]' .tool-apps.json 2>/dev/null || true)
+        [ -z "$APPS" ] && echo "No pip apps" && exit 0
+        for APP in $APPS; do
+          echo "=== Compile (pip): $APP ==="
+          CMD=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."build-command" // ""')
+          PRE_CMD=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."pre-command" // ""')
+          POST_CMD=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."post-command" // ""')
+          CONTEXT=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|."context-dir" // "."')
+          APP_DIR="$(workspaces.source.path)"; [ -d "$(workspaces.source.path)/${APP}" ] && APP_DIR="$(workspaces.source.path)/${APP}"
+          [ "$CONTEXT" != "." ] && [ -d "${APP_DIR}/${CONTEXT}" ] && APP_DIR="${APP_DIR}/${CONTEXT}"
+          for k in $(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build.env // {} | keys[]' 2>/dev/null); do v=$(echo "$STACK_JSON" | jq -r --arg a "$APP" --arg k "$k" '.apps[]|select(.name==$a)|.build.env[$k] // ""'); [ -n "$k" ] && export "$k=$v"; done
+          for k in $(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build.legacy // {} | keys[]' 2>/dev/null); do v=$(echo "$STACK_JSON" | jq -r --arg a "$APP" --arg k "$k" '.apps[]|select(.name==$a)|.build.legacy[$k] // ""'); [ -n "$k" ] && export "$k=$v"; done
+          cd "$APP_DIR"
+          [ -n "$PRE_CMD" ] && eval "$PRE_CMD"
+          if [ -n "$CMD" ]; then eval "$CMD"; elif [ -f requirements.txt ]; then pip3 install -r requirements.txt; elif [ -f setup.py ] || [ -f pyproject.toml ]; then pip3 install .; else echo "WARN: No requirements.txt/setup.py/pyproject.toml"; fi
+          [ -n "$POST_CMD" ] && eval "$POST_CMD"
+        done
+        echo "Compile (pip) done."
+
+    - name: compile-composer
+      image: $(params.compile-image-php)
+      workingDir: $(workspaces.source.path)
+      env:
+        - name: STACK_JSON
+          value: $(params.stack-json)
+        - name: COMPILE_IMAGE
+          value: $(params.compile-image-php)
+        - name: MY_TOOL
+          value: composer
+      script: |
+        #!/usr/bin/env bash
+        set -e
+        if [ "$COMPILE_IMAGE" = "ubuntu:22.04" ]; then apt-get update -qq && apt-get install -y -qq curl jq ca-certificates software-properties-common >/dev/null 2>&1 && add-apt-repository -y ppa:ondrej/php >/dev/null 2>&1 || true && apt-get update -qq && apt-get install -y -qq php8.3-cli php8.3-mbstring php8.3-xml php8.3-curl php8.3-zip unzip 2>/dev/null || apt-get install -y -qq php-cli php-mbstring php-xml php-curl php-zip unzip >/dev/null 2>&1 && curl -fsSL https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer >/dev/null 2>&1; fi
+        [ "$(workspaces.build-cache.bound)" = "true" ] && CACHE="$(workspaces.build-cache.path)" && mkdir -p "$CACHE/.composer" && export COMPOSER_CACHE_DIR="$CACHE/.composer"
+        APPS=$(jq -r '.composer[]' .tool-apps.json 2>/dev/null || true)
+        [ -z "$APPS" ] && echo "No composer apps" && exit 0
+        for APP in $APPS; do
+          echo "=== Compile (composer): $APP ==="
+          CMD=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."build-command" // ""')
+          PRE_CMD=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."pre-command" // ""')
+          POST_CMD=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."post-command" // ""')
+          CONTEXT=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|."context-dir" // "."')
+          APP_DIR="$(workspaces.source.path)"; [ -d "$(workspaces.source.path)/${APP}" ] && APP_DIR="$(workspaces.source.path)/${APP}"
+          [ "$CONTEXT" != "." ] && [ -d "${APP_DIR}/${CONTEXT}" ] && APP_DIR="${APP_DIR}/${CONTEXT}"
+          for k in $(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build.env // {} | keys[]' 2>/dev/null); do v=$(echo "$STACK_JSON" | jq -r --arg a "$APP" --arg k "$k" '.apps[]|select(.name==$a)|.build.env[$k] // ""'); [ -n "$k" ] && export "$k=$v"; done
+          for k in $(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build.legacy // {} | keys[]' 2>/dev/null); do v=$(echo "$STACK_JSON" | jq -r --arg a "$APP" --arg k "$k" '.apps[]|select(.name==$a)|.build.legacy[$k] // ""'); [ -n "$k" ] && export "$k=$v"; done
+          cd "$APP_DIR"
+          [ -n "$PRE_CMD" ] && eval "$PRE_CMD"
+          [ -n "$CMD" ] && eval "$CMD" || composer install --no-dev --optimize-autoloader --no-interaction
+          [ -n "$POST_CMD" ] && eval "$POST_CMD"
+        done
+        echo "Compile (composer) done."
 
     # ----------------------------------------------------------------
-    # Step 2: Containerize every app with Kaniko
+    # Containerize every app with Kaniko
     #
     # image-tag can be either:
     #   - A JSON map like {"demo-fe":"0.1.0-rc.4"} (PR flow — per-app RC tags)
