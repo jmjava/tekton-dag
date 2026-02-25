@@ -68,8 +68,8 @@ Verification is defined in [docs/local-dag-verification-plan.md](../docs/local-d
 | **Phase 1** (no cluster) | `./scripts/verify-dag-phase1.sh` | Repo layout, stack YAMLs, `stack-graph.sh --validate` for all stacks, topo order, entry, propagation chain, registry/versions | **PASSING** |
 | **Phase 2** (cluster) | `./scripts/verify-dag-phase2.sh [--stack STACK]` | `stack-dag-verify` pipeline: fetch + resolve; compare resolve output to CLI | Not run yet |
 | **Bootstrap pipeline** | `stack-bootstrap` via `run-e2e-with-intercepts.sh` | fetch → resolve → clone-app-repos → build-all → deploy-full-stack | **PASSING** (run `stack-bootstrap-6v8nf`) |
-| **PR pipeline** | `stack-pr-test` via `generate-run.sh --mode pr` | fetch → resolve → clone → bump-rc → build → deploy-intercepts → validate → test → push | **FAILING** at containerize step (see below) |
-| **Full E2E** | `./scripts/run-e2e-with-intercepts.sh` | Bootstrap + PR pipeline + Tekton Results DB verify | **FAILING** — bootstrap passes, PR pipeline fails |
+| **PR pipeline** | `stack-pr-test` via `generate-run.sh --mode pr` | fetch → resolve → clone → bump-rc → build → deploy-intercepts → validate → test → push | **PASSING** (e.g. stack-pr-999-ntzj2, stack-pr-999-nvx2s, stack-pr-1-sl7kg). Earlier failures at containerize were fixed (image-tag JSON parsing; registry trailing `}`). |
+| **Full E2E** | `./scripts/run-e2e-with-intercepts.sh` | Bootstrap + PR pipeline + Tekton Results DB verify | **PASSING** when PR pipeline succeeds (bootstrap + PR + optional DB verify). |
 
 ---
 
@@ -105,24 +105,28 @@ Run: `stack-bootstrap-6v8nf`
 
 ---
 
-## PR pipeline — FAILING at containerize
+## PR pipeline — status
 
-Latest run: `stack-pr-1-g95x8`
+**Latest successful runs:** `stack-pr-999-ntzj2`, `stack-pr-999-nvx2s`, `stack-pr-1-sl7kg` (all Succeeded).
 
 | Task | Status | Notes |
 |------|--------|-------|
 | fetch-source | **Succeeded** | |
 | resolve-stack | **Succeeded** | |
 | clone-app-repos | **Succeeded** | |
-| bump-rc-version | **Succeeded** | Bumps demo-fe `0.1.0-rc.0 → 0.1.0-rc.1`, git commit OK |
+| bump-rc-version | **Succeeded** | Bumps RC version, git commit OK |
 | build-apps (compile) | **Succeeded** | Build cache used (`/workspace/build-cache`) |
-| build-apps (containerize) | **FAILED** | Two bugs (see below) |
+| build-apps (containerize) | **Succeeded** | JSON image-tag parsing and registry handling fixed |
+| deploy-intercepts | **Succeeded** | |
+| validate-propagation | **Succeeded** | |
+| run-tests | **Succeeded** | E2E + per-app tests (postman collections optional) |
+| push-version-commit | **Succeeded** | SSH push of version bump |
+| cleanup | **Succeeded** | finally block |
 
-### Containerize bugs (to fix next)
+### Containerize fixes applied
 
-1. **Registry URL has trailing `}`**: The `image-registry` param value is `localhost:5000}` (with a stray `}`). Shows up in Kaniko destination as `kind-registry:5000}/demo-fe:v...`. Root cause: likely in how `generate-run.sh` or `run-e2e-with-intercepts.sh` passes the value.
-
-2. **JSON image-tag not parsed**: The `image-tag` param from `bump-rc-version` is a JSON map `{"demo-fe":"0.1.0-rc.1"}`, but the containerize step (BusyBox shell, no `jq`) was treating it as a plain string. This produces an invalid tag like `v{"demo-fe":"0.1.0-rc.1"}`. **Fix already staged** in `build-app.yaml` — uses `sed`/`grep` to extract per-app version from the JSON. Needs to be applied and tested.
+1. **Registry URL trailing `}`**: `generate-run.sh` now trims any stray trailing `}` from `IMAGE_REGISTRY` so Kaniko destination is valid.
+2. **JSON image-tag**: `build-app.yaml` containerize step parses per-app version from JSON (e.g. `{"demo-fe":"0.1.0-rc.1"}`) using `sed`/`grep` (no jq in BusyBox).
 
 ---
 

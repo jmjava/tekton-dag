@@ -87,6 +87,8 @@ STACK_PATH="stacks/$STACK"
 GIT_URL="${GIT_URL:-https://github.com/jmjava/tekton-dag.git}"
 GIT_REV="${GIT_REV:-$(git rev-parse --short HEAD 2>/dev/null || echo 'main')}"
 IMAGE_REGISTRY="${IMAGE_REGISTRY:-localhost:5000}"
+# Defensive: strip stray trailing '}' (e.g. from env or template copy-paste) so Kaniko destination is valid
+while [[ "${IMAGE_REGISTRY: -1}" == "}" ]]; do IMAGE_REGISTRY="${IMAGE_REGISTRY%?}"; done
 
 if [[ "$MODE" == "pr" ]]; then
   [[ -n "$PR" ]] || die "--pr is required for pr mode"
