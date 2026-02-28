@@ -59,6 +59,22 @@ cloudflared tunnel run menkelabs-sso-tunnel-config &
 kubectl port-forward svc/el-stack-event-listener 8080:8080 -n tekton-pipelines &
 ```
 
+### Planned: Milestone 4
+
+Two areas of work planned next. See [milestones/milestone-4.md](milestones/milestone-4.md) for full details.
+
+**1. Production-safe baggage middleware libraries** — one standalone library per framework (Spring Boot, Spring Legacy, Node, Flask, PHP) that handles `x-dev-session` / W3C Baggage propagation. Each library supports all three propagation roles (originator, forwarder, terminal) via configuration, so any app on any framework can sit at any position in any DAG. Two guard layers (build-time exclusion + runtime env-var gate) ensure zero chance of execution in production. Test stacks will exercise every framework in every role.
+
+| Library | Package | Framework |
+|---------|---------|-----------|
+| `baggage-spring-boot-starter` | Maven | Spring Boot |
+| `baggage-servlet-filter` | Maven | Spring Legacy / WAR |
+| `@tekton-dag/baggage` | npm | Node (Express, Nitro, Vue) |
+| `tekton-dag-baggage` | pip | Flask / WSGI |
+| `tekton-dag/baggage-middleware` | Composer | PHP (PSR-15 + Guzzle) |
+
+**2. Multi-namespace pipeline scaling** — move from a single hardcoded namespace (`tekton-pipelines`) to a three-tier model: local (Kind) → test namespace → production namespace. Pipeline upgrades are validated locally first, then applied to an isolated test namespace before promotion to production. Includes namespace-agnostic YAML (remove hardcoded namespaces), bootstrap and promotion scripts, per-namespace EventListeners, and optional pipeline versioning via Tekton Bundles.
+
 ---
 
 ## Valid test: real PR flow
@@ -97,14 +113,19 @@ C4Context
     title System Context — Tekton DAG
 
     Person(dev, "Developer", "Opens PRs; runs/debugs locally via generate-run.sh")
+
     Person(platform, "Platform Engineer", "Defines stacks, manages versions")
 
-    System(tekton_std, "Tekton DAG", "Clone platform + app repos, resolve DAG, build, deploy intercepts, validate, test, version. Kind or cloud.")
+    System(tekton_std, "Tekton DAG", "Clone repos, resolve DAG, build, deploy intercepts, validate, test, version")
 
     System_Ext(github, "GitHub", "Platform + app repos; webhooks or manual run")
+
     System_Ext(registry, "Container Registry", "Local or ECR. RC and release images")
+
     System_Ext(k8s, "Kubernetes", "Kind or cloud. App deployments, Telepresence")
+
     System_Ext(argocd, "ArgoCD", "Optional GitOps")
+
     System_Ext(argo_rollouts, "Argo Rollouts", "Optional blue/green")
 
     Rel(dev, github, "PR / merge")
@@ -126,26 +147,34 @@ C4Container
     title Container Diagram — Tekton DAG
 
     Person(dev, "Developer")
+
     Person(platform, "Platform Engineer")
 
     System_Boundary(tekton_std, "Tekton DAG") {
 
-        Container(event_listener, "EventListener", "Tekton Triggers", "Webhooks from GitHub via Cloudflare Tunnel")
+        Container(event_listener, "EventListener", "Tekton Triggers", "Webhooks via Cloudflare Tunnel")
 
-        Container(pr_pipeline, "stack-pr-test", "Tekton Pipeline", "PR: fetch → resolve → clone-app-repos → snapshot tag → build changed app → deploy intercepts → validate → test → post PR comment → cleanup")
+        Container(pr_pipeline, "stack-pr-test", "Tekton Pipeline", "PR: snapshot tag, build changed app, intercepts, validate, test, PR comment")
 
-        Container(merge_pipeline, "stack-merge-release", "Tekton Pipeline", "Merge: fetch → resolve → clone-app-repos → promote RC → build → containerize → tag release → push version commit")
+        Container(merge_pipeline, "stack-merge-release", "Tekton Pipeline", "Merge: promote RC, build, containerize, tag release, push version commit")
+
+        Container(bootstrap_pipeline, "stack-bootstrap", "Tekton Pipeline", "Bootstrap: deploy full stack once")
 
         Container(dag_verify, "stack-dag-verify", "Tekton Pipeline", "Verify: fetch + resolve only")
 
         Container(stack_defs, "Stack Definitions", "stacks/*.yaml", "DAG: apps, downstream, build tool")
+
         Container(version_reg, "Version Registry", "stacks/versions.yaml", "Per-app version, RC, release")
-        Container(stack_registry, "Stack Registry", "stacks/registry.yaml", "Repo → stack file")
-        Container(scripts, "CLI Scripts", "Bash", "stack-graph, generate-run, publish-build-images, run-valid-pr-flow")
+
+        Container(stack_registry, "Stack Registry", "stacks/registry.yaml", "Repo to stack file")
+
+        Container(scripts, "CLI Scripts", "Bash", "generate-run, publish-build-images, run-valid-pr-flow, stack-graph")
     }
 
     System_Ext(github, "GitHub")
+
     System_Ext(registry, "Container Registry")
+
     System_Ext(k8s, "Kubernetes")
 
     Rel(dev, github, "PR / merge")
@@ -317,12 +346,19 @@ After that, the Run and Debug dropdown will list configs like **Vue (demo-fe): L
 
 ## Layout
 
-- **stacks/** — Stack YAML (DAG), registry, versions
-- **tasks/** — Tekton tasks (resolve, clone-app-repos, build-compile-*, build-containerize, deploy-intercept, validate, test, version, tag-release, post-pr-comment, cleanup)
-- **pipeline/** — stack-pr-test, stack-merge-release, stack-bootstrap, stack-pr-continue, triggers (EventListener + TriggerTemplates)
+- **stacks/** — Stack YAML (DAG definitions), [registry.yaml](stacks/registry.yaml) (repo → stack mapping), [versions.yaml](stacks/versions.yaml) (per-app version, RC, release)
+- **tasks/** — Tekton tasks: resolve-stack, clone-app-repos, build-app, build-select-tool-apps, build-compile-\* (npm, maven, gradle, pip, composer), build-containerize, deploy-full-stack, deploy-intercept, validate-propagation, run-stack-tests, pr-snapshot-tag, version-bump, tag-release-images, post-pr-comment, cleanup-stack
+- **pipeline/** — stack-pr-test, stack-merge-release, stack-bootstrap, stack-pr-continue, stack-dag-verify, triggers (EventListener + TriggerTemplates)
 - **build-images/** — Dockerfiles and build script for pre-built compile images (node, maven, gradle, python, php)
-- **scripts/** — publish-build-images, run-valid-pr-flow, create-test-pr, merge-pr, generate-run, configure-github-webhooks, kind-with-registry, install-tekton, cloudflare-add-tunnel-cname
-- **docs/** — C4 diagrams, [PR-TEST-FLOW.md](docs/PR-TEST-FLOW.md), [CLOUDFLARE-TUNNEL-EVENTLISTENER.md](docs/CLOUDFLARE-TUNNEL-EVENTLISTENER.md), [PR-WEBHOOK-TEST-FLOW.md](docs/PR-WEBHOOK-TEST-FLOW.md)
+- **scripts/** — generate-run, publish-build-images, run-valid-pr-flow, create-test-pr, merge-pr, configure-github-webhooks, kind-with-registry, install-tekton, install-tekton-dashboard, port-forward-tekton-dashboard, install-telepresence-traffic-manager, install-postgres-kind, install-tekton-results, run-all-setup-and-test, verify-dag-phase1, verify-dag-phase2, rerun-pr-from, create-and-push-sample-repos, run-e2e-with-intercepts, stack-graph, cloudflare-add-tunnel-cname
+- **milestones/** — Milestone planning docs (milestone-2 through milestone-4)
+- **docs/** — [DAG-AND-PROPAGATION.md](docs/DAG-AND-PROPAGATION.md), [c4-diagrams.md](docs/c4-diagrams.md), [PR-TEST-FLOW.md](docs/PR-TEST-FLOW.md), [PR-WEBHOOK-TEST-FLOW.md](docs/PR-WEBHOOK-TEST-FLOW.md), [CLOUDFLARE-TUNNEL-EVENTLISTENER.md](docs/CLOUDFLARE-TUNNEL-EVENTLISTENER.md)
+- **reporting-gui/** — Vue + Node reporting GUI (trigger jobs, monitor runs, view test results, embed Tekton Dashboard). See [reporting-gui/README.md](reporting-gui/README.md)
+- **sample-repos/** — Scripts and docs for creating the sample app repos. See [sample-repos/README.md](sample-repos/README.md)
+- **config/** — Kubernetes manifests (Postgres for Tekton Results)
+- **tests/** — Artillery load-test configs and generated variants
+- **session-notes/** — Session notes and debugging logs
+- **.vscode/** — Launch configs and debug setup for all app frameworks. See [.vscode/README.md](.vscode/README.md)
 
 ## Sharing back to reference-architecture
 
