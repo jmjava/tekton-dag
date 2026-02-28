@@ -2,28 +2,91 @@
 
 Standalone Tekton pipeline system for **local development and proof-of-concept**.
 
+## What's new (2026-02-28)
+
+### Webhook-driven PR → Merge flow is working end-to-end
+
+The full automated cycle now works via **GitHub webhooks through a Cloudflare Tunnel**:
+
+1. **Open a PR** in any app repo → webhook fires → `stack-pr-test` pipeline runs automatically
+2. **PR pipeline tests only** — builds the changed app with a snapshot tag, deploys intercepts, validates propagation, runs tests, posts a PR comment. **No version bump** during PR — that's the merge pipeline's job.
+3. **Merge the PR** → webhook fires → `stack-merge-release` pipeline runs automatically
+4. **Merge pipeline** promotes RC → release semver, builds, containerizes, tags release images, pushes the next dev cycle version commit back to the repo.
+
+### Pre-built compile images
+
+Dedicated build images (one per tool) eliminate in-pod tool installation:
+
+| Image | Base | Contents |
+|-------|------|----------|
+| `tekton-dag-build-node` | `node:22-slim` | Node 22 + npm + jq |
+| `tekton-dag-build-maven` | `maven:3.9-eclipse-temurin-21` | JDK 21 + Maven + jq |
+| `tekton-dag-build-gradle` | `eclipse-temurin:21-jdk` | JDK 21 + jq (apps use `./gradlew`) |
+| `tekton-dag-build-python` | `python:3.12-slim` | Python 3.12 + pip + jq |
+| `tekton-dag-build-php` | `php:8.3-cli` | PHP 8.3 + Composer + zip ext + jq |
+
+Publish with one command (defaults to Kind registry on port 5001):
+
+```bash
+./scripts/publish-build-images.sh
+```
+
+### Registry setup for Kind
+
+Two registries in the test environment:
+
+| Container | Host port | In-cluster address | Purpose |
+|-----------|-----------|-------------------|---------|
+| `kind-registry` | `localhost:5001` | `localhost:5000` (via containerd certs.d) | Kind cluster registry — push images here, pods pull via `localhost:5000` |
+| `registry` | `localhost:5000` | N/A | Standalone registry (not used by Kind) |
+
+**Key detail:** Kind's containerd has `certs.d/localhost:5000/hosts.toml` that redirects pulls to `kind-registry:5000` on the Docker network. Pod image refs must use `localhost:5000` — using `kind-registry:5000` directly causes `ImagePullBackOff` because there's no containerd config for that hostname.
+
+### Cloudflare Tunnel for webhooks
+
+GitHub webhooks reach the in-cluster EventListener via:
+
+```
+GitHub → https://tekton-el.menkelabs.com → Cloudflare Tunnel → localhost:8080 → EventListener pod
+```
+
+Setup: see [docs/CLOUDFLARE-TUNNEL-EVENTLISTENER.md](docs/CLOUDFLARE-TUNNEL-EVENTLISTENER.md). The tunnel route is configured in the Cloudflare Zero Trust dashboard (Networks → Tunnels → Add route → Published application).
+
+To start the tunnel and port-forward:
+
+```bash
+cloudflared tunnel run menkelabs-sso-tunnel-config &
+kubectl port-forward svc/el-stack-event-listener 8080:8080 -n tekton-pipelines &
+```
+
+---
+
 ## Valid test: real PR flow
 
 The **only valid test** for the PR feature is using a **real GitHub PR**: create the PR, run the PR pipeline against that branch, then merge the PR and run the merge pipeline. See [docs/PR-TEST-FLOW.md](docs/PR-TEST-FLOW.md).
 
+**Automated (webhook-driven):**
+
+| Step | Trigger | Pipeline | What happens |
+|------|---------|----------|--------------|
+| Open PR | Webhook (`pr-opened`) | `stack-pr-test` | Build changed app, deploy intercept, validate, test, post PR comment |
+| Merge PR | Webhook (`pr-merged`) | `stack-merge-release` | Promote RC → release, build, tag images, push next dev cycle |
+
+**Manual (script-driven):**
+
 | Step | Script | What it does |
 |------|--------|--------------|
-| 1. Create PR | `./scripts/create-test-pr.sh` | Create branch, push, open PR on GitHub → outputs `PR_NUMBER`, `BRANCH_NAME` |
-| 2. Run PR pipeline | `./scripts/generate-run.sh --mode pr --pr <N> --git-revision <BRANCH> --apply` | Run `stack-pr-test` for that PR/branch; on success pushes version commit to the PR branch |
-| 3. Merge PR | `./scripts/merge-pr.sh <N>` | Merge the PR into main |
-| 4. Run merge build | `./scripts/generate-run.sh --mode merge --git-revision main --apply` | Run `stack-merge-release` from main |
-
-Other runs (e.g. `run-e2e-with-intercepts.sh` with `--pr 999` and `main`) only verify pipeline mechanics; they do **not** test the PR feature because no real PR exists and the version commit is pushed to main.
+| Full PR flow | `./scripts/run-valid-pr-flow.sh --app demo-fe` | Creates PR → runs PR pipeline → polls → merges PR |
+| PR pipeline only | `./scripts/generate-run.sh --mode pr --stack stack-one.yaml --app demo-fe --pr <N> --app-revision demo-fe:<branch> --apply` | Run `stack-pr-test` for a specific PR |
+| Merge pipeline only | `./scripts/generate-run.sh --mode merge --stack stack-one.yaml --app demo-fe --apply` | Run `stack-merge-release` |
 
 | Pipeline | Purpose |
 |----------|---------|
 | **Bootstrap** (`stack-bootstrap`) | Deploy full stack once; prerequisite for PR runs. |
-| **PR** (`stack-pr-test`) | Valid test: run with a **real** PR number and that PR’s branch (from `create-test-pr.sh`). |
-| **Merge** (`stack-merge-release`) | Run after merging the PR; builds from main. |
+| **PR** (`stack-pr-test`) | Test only — build changed app with snapshot tag, deploy intercepts, validate, test, post PR comment. No version bump. |
+| **Merge** (`stack-merge-release`) | Promote RC → release, build all apps, tag release images, push version commit. Triggered by merge webhook. |
 
 ---
-
-No AWS. Run on Kind (or any Kubernetes) with a local registry and optional Telepresence. Proves out the stack DAG and pipelines locally; [share back to reference-architecture-poc](SHARING-BACK.md) when ready.
 
 ## Overview
 
@@ -54,7 +117,7 @@ C4Context
     Rel(argocd, argo_rollouts, "Rollout")
 ```
 
-> **Where is ArgoCD?** ArgoCD and Argo Rollouts are **not in this repo**. They are optional **downstream** systems (production): this repo’s pipelines push RC and release images to a container registry; in a full production setup, ArgoCD would sync from that registry and Argo Rollouts would perform blue/green promotion. For local/dev you only need Kind, Tekton, and the registry.
+> **Where is ArgoCD?** ArgoCD and Argo Rollouts are **not in this repo**. They are optional **downstream** systems (production): this repo's pipelines push RC and release images to a container registry; in a full production setup, ArgoCD would sync from that registry and Argo Rollouts would perform blue/green promotion. For local/dev you only need Kind, Tekton, and the registry.
 
 **Main pieces** — pipelines and config inside the system:
 
@@ -67,18 +130,18 @@ C4Container
 
     System_Boundary(tekton_std, "Tekton DAG") {
 
-        Container(event_listener, "EventListener", "Tekton Triggers", "Webhooks or manual generate-run.sh")
+        Container(event_listener, "EventListener", "Tekton Triggers", "Webhooks from GitHub via Cloudflare Tunnel")
 
-        Container(pr_pipeline, "stack-pr-test", "Tekton Pipeline", "PR: fetch → resolve → clone-app-repos → bump RC → build → deploy → validate → test → push → cleanup")
+        Container(pr_pipeline, "stack-pr-test", "Tekton Pipeline", "PR: fetch → resolve → clone-app-repos → snapshot tag → build changed app → deploy intercepts → validate → test → post PR comment → cleanup")
 
-        Container(merge_pipeline, "stack-merge-release", "Tekton Pipeline", "Merge: fetch → resolve → clone-app-repos → release → build → tag → push")
+        Container(merge_pipeline, "stack-merge-release", "Tekton Pipeline", "Merge: fetch → resolve → clone-app-repos → promote RC → build → containerize → tag release → push version commit")
 
         Container(dag_verify, "stack-dag-verify", "Tekton Pipeline", "Verify: fetch + resolve only")
 
         Container(stack_defs, "Stack Definitions", "stacks/*.yaml", "DAG: apps, downstream, build tool")
         Container(version_reg, "Version Registry", "stacks/versions.yaml", "Per-app version, RC, release")
         Container(stack_registry, "Stack Registry", "stacks/registry.yaml", "Repo → stack file")
-        Container(scripts, "CLI Scripts", "Bash", "stack-graph, generate-run, verify-dag-phase1/2")
+        Container(scripts, "CLI Scripts", "Bash", "stack-graph, generate-run, publish-build-images, run-valid-pr-flow")
     }
 
     System_Ext(github, "GitHub")
@@ -87,14 +150,14 @@ C4Container
 
     Rel(dev, github, "PR / merge")
     Rel(github, event_listener, "Webhook")
-    Rel(event_listener, pr_pipeline, "PR")
-    Rel(event_listener, merge_pipeline, "Merge")
+    Rel(event_listener, pr_pipeline, "PR opened")
+    Rel(event_listener, merge_pipeline, "PR merged")
     Rel(pr_pipeline, stack_defs, "Read")
-    Rel(pr_pipeline, version_reg, "Read/bump")
+    Rel(pr_pipeline, version_reg, "Read")
     Rel(merge_pipeline, stack_defs, "Read")
-    Rel(merge_pipeline, version_reg, "Promote")
-    Rel(pr_pipeline, registry, "Push RC")
-    Rel(pr_pipeline, k8s, "Deploy")
+    Rel(merge_pipeline, version_reg, "Promote + bump")
+    Rel(pr_pipeline, registry, "Push snapshot")
+    Rel(pr_pipeline, k8s, "Deploy intercepts")
     Rel(merge_pipeline, registry, "Push release")
     Rel(platform, stack_defs, "Define")
     Rel(platform, version_reg, "Bump")
@@ -112,28 +175,32 @@ Full diagram set (PR/merge task-level, intercept scenarios, version lifecycle, s
 # 2. Tekton + stack tasks/pipelines (labels namespace for Pod Security)
 ./scripts/install-tekton.sh
 
-# 3. Optional: Telepresence Traffic Manager (for full PR pipeline with intercepts)
+# 3. Publish build images to Kind registry (one-time; speeds up compile steps)
+./scripts/publish-build-images.sh
+
+# 4. Apply tasks and pipelines
+kubectl apply -f tasks/
+kubectl apply -f pipeline/
+
+# 5. Optional: Telepresence Traffic Manager (for full PR pipeline with intercepts)
 ./scripts/install-telepresence-traffic-manager.sh
 
-# 4. Optional: Postgres + Tekton Results (persist run history)
+# 6. Optional: Postgres + Tekton Results (persist run history)
 ./scripts/install-postgres-kind.sh
 ./scripts/install-tekton-results.sh
 
-# 5. Prove the DAG
-./scripts/verify-dag-phase1.sh
-# Phase 2 clones this repo; after push set GIT_URL to the repo URL:
-export GIT_URL="https://github.com/jmjava/tekton-dag.git"
-./scripts/verify-dag-phase2.sh
+# 7. Bootstrap the stack (deploy all apps once — prerequisite for PR runs)
+./scripts/generate-run.sh --mode bootstrap --stack stack-one.yaml --apply
 
-# 6. Full test + verify results in DB (after Results is installed)
-./scripts/run-full-test-and-verify-results.sh
+# 8. Run the full PR flow (create PR → test → merge)
+./scripts/run-valid-pr-flow.sh --app demo-fe
 
-# Or run everything in one go (setup + test; idempotent). Run in your terminal:
-#   cd /path/to/tekton-dag && ./scripts/run-all-setup-and-test.sh
-./scripts/run-all-setup-and-test.sh
+# 9. Optional: set up webhooks for automated triggering
+# Start tunnel and port-forward, then configure webhooks:
+cloudflared tunnel run menkelabs-sso-tunnel-config &
+kubectl port-forward svc/el-stack-event-listener 8080:8080 -n tekton-pipelines &
+./scripts/configure-github-webhooks.sh --stack stack-one.yaml
 ```
-
-For manual pipeline runs, use `--registry localhost:5000 --storage-class ""`. See the full [README in docs](docs/README-FULL.md) (copied from the main design) for concepts, stack YAML, and pipeline flows.
 
 ## Run and debug the entire workflow on your machine
 
@@ -141,7 +208,7 @@ You can run and debug the **full** pipeline locally — no Jenkins, no shared CI
 
 ### Run the whole workflow locally
 
-1. **One-time setup** (Kind, Tekton, tasks/pipelines, optional Telepresence + Results):
+1. **One-time setup** (Kind, Tekton, tasks/pipelines, build images, optional Telepresence + Results):
    ```bash
    ./scripts/run-all-setup-and-test.sh
    ```
@@ -156,21 +223,18 @@ You can run and debug the **full** pipeline locally — no Jenkins, no shared CI
 
 3. **Trigger a full PR or merge pipeline** (same as CI would run):
    ```bash
-   kubectl apply -f tasks/
-   kubectl apply -f pipeline/
-   # PR pipeline (builds, deploys intercepts, validates, tests):
+   # PR pipeline (builds changed app, deploys intercepts, validates, tests):
    ./scripts/generate-run.sh --mode pr --stack stack-one.yaml --app demo-fe --pr 42 \
-     --registry localhost:5000 --storage-class "" | kubectl create -f -
-   # Or merge pipeline (build, tag, push release):
+     --app-revision demo-fe:my-branch --storage-class "" --apply
+   # Or merge pipeline (promote, build, tag release, push version commit):
    ./scripts/generate-run.sh --mode merge --stack stack-one.yaml --app demo-fe \
-     --registry localhost:5000 --storage-class "" | kubectl create -f -
+     --storage-class "" --apply
    ```
 
-4. **Optional: dedicated build images** (one image per tool — Node, Maven, Gradle, Python, PHP). Speeds up compile steps by using pre-baked images instead of installing tools at runtime:
+4. **Pre-built compile images** speed up compile steps by using dedicated images instead of installing tools at runtime:
    ```bash
-   ./build-images/build-and-push.sh localhost:5000 latest
-   ./scripts/generate-run.sh --mode pr --stack stack-one.yaml --app demo-fe --pr 42 \
-     --registry localhost:5000 --build-images --apply
+   ./scripts/publish-build-images.sh           # defaults to Kind registry (localhost:5001)
+   ./scripts/publish-build-images.sh ghcr.io/your-org   # or any other registry
    ```
    See [build-images/README.md](build-images/README.md) for image contents and pipeline params.
 
@@ -185,12 +249,17 @@ All of this runs on your machine: resolve, clone, build, deploy, validate, and t
   kubectl get pods -n tekton-pipelines
   kubectl logs <task-pod-name> -n tekton-pipelines -f
   ```
-- **Optional: Tekton Results** — Install Postgres + Tekton Results to persist run history and query it (see Quick start steps 4 and 6).
+- **Tekton Dashboard** — Install and access:
+  ```bash
+  ./scripts/install-tekton-dashboard.sh
+  ./scripts/port-forward-tekton-dashboard.sh    # http://localhost:9097
+  ```
+- **Optional: Tekton Results** — Install Postgres + Tekton Results to persist run history and query it (see Quick start steps).
 - **Step-debug apps with VS Code** — Use the launch configs in `.vscode/launch.json` to run or attach to any app (Vue, Spring Boot, Flask, PHP, etc.). With Telepresence intercepts, traffic for a given PR/session can hit your local process so you can set breakpoints and step through the full stack. See [.vscode/README.md](.vscode/README.md) for the exact flow (start app with debugger → create intercept → trigger traffic).
 
 ### Restart from failure
 
-If the **full PR pipeline** (`stack-pr-test`) fails **after** build succeeded (e.g. deploy-intercepts, validate-propagation, or run-tests failed), you can **continue from deploy** instead of re-running fetch, resolve, clone, and build. The **stack-pr-continue** pipeline reuses the failed run’s workspace PVC and task results (stack-json, build-apps, built-images, etc.) and runs only: deploy-intercepts → validate-propagation → run-tests → push-version-commit, with cleanup in `finally`.
+If the **full PR pipeline** (`stack-pr-test`) fails **after** build succeeded (e.g. deploy-intercepts, validate-propagation, or run-tests failed), you can **continue from deploy** instead of re-running fetch, resolve, clone, and build. The **stack-pr-continue** pipeline reuses the failed run's workspace PVC and task results (stack-json, build-apps, built-images, etc.) and runs only: deploy-intercepts → validate-propagation → run-tests, with cleanup in `finally`.
 
 **Usage:**
 
@@ -198,27 +267,23 @@ If the **full PR pipeline** (`stack-pr-test`) fails **after** build succeeded (e
 ./scripts/rerun-pr-from.sh <failed-pipelinerun-name>
 ```
 
-Example: after `stack-pr-42-xxxxx` failed at `run-tests`, run `./scripts/rerun-pr-from.sh stack-pr-42-xxxxx`. The script reads results from the failed run’s TaskRuns, finds its workspace PVC, and starts a new PipelineRun for `stack-pr-continue`. **Requirements:** the failed PipelineRun must still exist, `resolve-stack` and `build-apps` (and `bump-rc-version`) must have succeeded, and the run must have used a volumeClaimTemplate so the PVC still exists.
-
-So: run the entire workflow locally, inspect every step with `kubectl`/`tkn`, step-debug any app in the DAG from your IDE, and re-run from deploy when a later step fails.
-
 ### Optional: Post PR comment to GitHub
 
-When the PR pipeline completes, a **finally** task can post a comment on the GitHub PR with run status and a link to the Tekton Dashboard. Create a Kubernetes secret with your GitHub token (scope: `repo` or `public_repo` for issue comments):
+When the PR pipeline completes, a **finally** task posts a comment on the GitHub PR with run status and a link to the Tekton Dashboard. Create a Kubernetes secret with your GitHub token (scope: `repo` or `public_repo` for issue comments):
 
 ```bash
 kubectl create secret generic github-token --from-literal=token=YOUR_GITHUB_TOKEN -n tekton-pipelines
 ```
 
-Pass `dashboard-url` when creating the PipelineRun (e.g. `http://localhost:9097` after port-forwarding the Dashboard) so the comment includes a direct link to the run. The task is **post-pr-comment** (`tasks/post-pr-comment.yaml`); it is optional — if the secret is missing, the task skips posting.
+Pass `dashboard-url` when creating the PipelineRun (e.g. `http://localhost:9097` after port-forwarding the Dashboard) so the comment includes a direct link to the run.
 
 ### Optional: Reporting GUI
 
-See [reporting-gui/README.md](reporting-gui/README.md) for the Vue-based reporting GUI: trigger jobs, monitor runs, view test results, explore Git repos, and embed the Tekton Dashboard. **Tekton Dashboard scripts:** `./scripts/install-tekton-dashboard.sh` (install), `./scripts/port-forward-tekton-dashboard.sh` (access at http://localhost:9097), `./scripts/uninstall-tekton-dashboard.sh` (uninstall).
+See [reporting-gui/README.md](reporting-gui/README.md) for the Vue-based reporting GUI: trigger jobs, monitor runs, view test results, explore Git repos, and embed the Tekton Dashboard.
 
 ## DAG, baggage, and intercepts
 
-The pipeline is driven by a **stack DAG** (directed acyclic graph): apps are nodes, `downstream` edges define who calls whom. There are **three propagation roles** for the session header/baggage: **originator** (entry app — sets the header), **forwarder** (middle — accepts and forwards), **terminal** (leaf — accepts only). That way “this PR’s” traffic can be routed to the right pods. On a PR run, only the **changed app** (the repo whose PR triggered the run) is built and gets a PR pod; Telepresence **intercepts** traffic that carries the run’s header to that pod. Full explanation: [docs/DAG-AND-PROPAGATION.md](docs/DAG-AND-PROPAGATION.md).
+The pipeline is driven by a **stack DAG** (directed acyclic graph): apps are nodes, `downstream` edges define who calls whom. There are **three propagation roles** for the session header/baggage: **originator** (entry app — sets the header), **forwarder** (middle — accepts and forwards), **terminal** (leaf — accepts only). That way "this PR's" traffic can be routed to the right pods. On a PR run, only the **changed app** (the repo whose PR triggered the run) is built and gets a PR pod; Telepresence **intercepts** traffic that carries the run's header to that pod. Full explanation: [docs/DAG-AND-PROPAGATION.md](docs/DAG-AND-PROPAGATION.md).
 
 ## App repos (no monorepo)
 
@@ -253,10 +318,11 @@ After that, the Run and Debug dropdown will list configs like **Vue (demo-fe): L
 ## Layout
 
 - **stacks/** — Stack YAML (DAG), registry, versions
-- **tasks/** — Tekton tasks (resolve, clone-app-repos, build, deploy-intercept, validate, test, version, cleanup)
-- **pipeline/** — stack-pr-test, stack-merge-release, stack-dag-verify, stack-pr-continue (restart from deploy after failure)
-- **scripts/** — create-test-pr (create real GitHub PR), merge-pr (merge PR), generate-run, run-e2e-with-intercepts (sanity check; not the valid PR test), run-all-setup-and-test, kind-with-registry, install-tekton, verify-dag-phase1/2, rerun-pr-from, stack-graph
-- **docs/** — C4 diagrams, local DAG verification plan, [PR-TEST-FLOW.md](docs/PR-TEST-FLOW.md) (valid PR test)
+- **tasks/** — Tekton tasks (resolve, clone-app-repos, build-compile-*, build-containerize, deploy-intercept, validate, test, version, tag-release, post-pr-comment, cleanup)
+- **pipeline/** — stack-pr-test, stack-merge-release, stack-bootstrap, stack-pr-continue, triggers (EventListener + TriggerTemplates)
+- **build-images/** — Dockerfiles and build script for pre-built compile images (node, maven, gradle, python, php)
+- **scripts/** — publish-build-images, run-valid-pr-flow, create-test-pr, merge-pr, generate-run, configure-github-webhooks, kind-with-registry, install-tekton, cloudflare-add-tunnel-cname
+- **docs/** — C4 diagrams, [PR-TEST-FLOW.md](docs/PR-TEST-FLOW.md), [CLOUDFLARE-TUNNEL-EVENTLISTENER.md](docs/CLOUDFLARE-TUNNEL-EVENTLISTENER.md), [PR-WEBHOOK-TEST-FLOW.md](docs/PR-WEBHOOK-TEST-FLOW.md)
 
 ## Sharing back to reference-architecture
 
