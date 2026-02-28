@@ -1,0 +1,54 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: build-compile-maven
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+spec:
+  description: "Runs Maven compile for apps in .tool-apps.json (invoked only when build-apps include maven)."
+  params:
+    - name: stack-json
+      type: string
+    - name: compile-image-maven
+      type: string
+      default: "ubuntu:22.04"
+  workspaces:
+    - name: source
+    - name: build-cache
+      optional: true
+  steps:
+    - name: compile-maven
+      image: $(params.compile-image-maven)
+      workingDir: $(workspaces.source.path)
+      env:
+        - name: STACK_JSON
+          value: $(params.stack-json)
+        - name: COMPILE_IMAGE
+          value: $(params.compile-image-maven)
+      script: |
+        #!/usr/bin/env bash
+        set -e
+        if [ "$COMPILE_IMAGE" = "ubuntu:22.04" ]; then apt-get update -qq && apt-get install -y -qq curl jq ca-certificates openjdk-21-jdk-headless >/dev/null 2>&1; fi
+        [ "$(workspaces.build-cache.bound)" = "true" ] && CACHE="$(workspaces.build-cache.path)" && mkdir -p "$CACHE/.m2/repository" && export MAVEN_OPTS="-Dmaven.repo.local=$CACHE/.m2/repository"
+        APPS=$(jq -r '.maven[]' .tool-apps.json 2>/dev/null || true)
+        [ -z "$APPS" ] && echo "No maven apps" && exit 0
+        if [ "$COMPILE_IMAGE" = "ubuntu:22.04" ]; then
+          apt-get install -y -qq maven >/dev/null 2>&1 || { curl -fsSL https://dlcdn.apache.org/maven/maven-3/3.9.6/binaries/apache-maven-3.9.6-bin.tar.gz | tar xz -C /opt && ln -sf /opt/apache-maven-3.9.6/bin/mvn /usr/local/bin/mvn; }
+        fi
+        for APP in $APPS; do
+          echo "=== Compile (maven): $APP ==="
+          CMD=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."build-command" // ""')
+          PRE_CMD=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."pre-command" // ""')
+          POST_CMD=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."post-command" // ""')
+          CONTEXT=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|."context-dir" // "."')
+          APP_DIR="$(workspaces.source.path)"; [ -d "$(workspaces.source.path)/${APP}" ] && APP_DIR="$(workspaces.source.path)/${APP}"
+          [ "$CONTEXT" != "." ] && [ -d "${APP_DIR}/${CONTEXT}" ] && APP_DIR="${APP_DIR}/${CONTEXT}"
+          for k in $(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build.env // {} | keys[]' 2>/dev/null); do v=$(echo "$STACK_JSON" | jq -r --arg a "$APP" --arg k "$k" '.apps[]|select(.name==$a)|.build.env[$k] // ""'); [ -n "$k" ] && export "$k=$v"; done
+          for k in $(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build.legacy // {} | keys[]' 2>/dev/null); do v=$(echo "$STACK_JSON" | jq -r --arg a "$APP" --arg k "$k" '.apps[]|select(.name==$a)|.build.legacy[$k] // ""'); [ -n "$k" ] && export "$k=$v"; done
+          cd "$APP_DIR"
+          [ -n "$PRE_CMD" ] && eval "$PRE_CMD"
+          [ -n "$CMD" ] && eval "$CMD" || mvn -B clean package -DskipTests
+          [ -n "$POST_CMD" ] && eval "$POST_CMD"
+        done
+        echo "Compile (maven) done."

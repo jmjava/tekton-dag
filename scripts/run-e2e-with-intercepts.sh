@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Run full E2E with live Telepresence intercepts: bootstrap (build + deploy full stack),
 # then PR pipeline (build changed-app, deploy intercepts, run E2E through entry).
+# NOTE: This script uses a PR number (e.g. --pr 1) with default git-revision (main).
+# That is a pipeline sanity check only — it does NOT test the PR feature (no real PR).
+# For the valid PR test, use create-test-pr.sh → generate-run pr → merge-pr.sh → generate-run merge.
+# See docs/PR-TEST-FLOW.md.
 # Prerequisites: Kind, Tekton, Postgres, Results, Telepresence Traffic Manager.
 # Required: Kubernetes secret with SSH key for cloning app repos, e.g.:
 #   kubectl create secret generic git-ssh-key --from-file=id_ed25519=$HOME/.ssh/id_ed25519 -n tekton-pipelines

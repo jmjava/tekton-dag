@@ -1,7 +1,11 @@
-# Local overrides / env
+# Local overrides / env (never commit secrets)
 .env
+.env.*.local
 *.local
 standalone-repo-output/
+# Credentials / keys
+*.pem
+credentials.json
 
 # IDE
 .idea/
@@ -12,6 +16,27 @@ standalone-repo-output/
 # OS
 .DS_Store
 Thumbs.db
+
+# -----------------------------------------------------------------------------
+# Dependencies / build artifacts (do not publish or commit)
+# -----------------------------------------------------------------------------
+node_modules/
+vendor/
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env/
+dist/
+target/
+build/
+.gradle/
+.npm/
+.pnp.*
+output/
+*.egg-info/
+*.egg
+.mvn/wrapper/maven-wrapper.jar
 
 # -----------------------------------------------------------------------------
 # sample-repos/ — nested standalone app repos (each can have its own .git)

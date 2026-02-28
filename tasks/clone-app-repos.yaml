@@ -22,7 +22,11 @@ spec:
     - name: git-revision
       type: string
       default: "main"
-      description: "Branch or SHA to check out for all app repos"
+      description: "Branch or SHA to check out for app repos (default; overridden by app-revisions per app)"
+    - name: app-revisions
+      type: string
+      default: "{}"
+      description: 'Optional JSON map of app name to revision (e.g. {"demo-fe":"pr-branch"}). Used for PR builds where the changed app is checked out at its PR branch.'
   workspaces:
     - name: source
       description: "Workspace with platform repo at root; app repos will be cloned into source/<app-name>"
@@ -39,7 +43,8 @@ spec:
 
         STACK_JSON='$(params.stack-json)'
         BUILD_APPS="$(params.build-apps)"
-        REVISION="$(params.git-revision)"
+        DEFAULT_REVISION="$(params.git-revision)"
+        APP_REVISIONS='$(params.app-revisions)'
         WORKSPACE="$(workspaces.source.path)"
 
         # Clear existing app dirs so we get a fresh clone (no stale/cached content)
@@ -70,6 +75,8 @@ spec:
             echo "  WARN: No repo for app $APP in stack, skipping"
             continue
           fi
+          REVISION=$(echo "$APP_REVISIONS" | jq -r --arg a "$APP" '.[$a] // empty')
+          [ -z "$REVISION" ] && REVISION="$DEFAULT_REVISION"
           URL="git@github.com:${REPO}.git"
           echo "  Cloning $APP from $URL (revision: $REVISION) -> $WORKSPACE/$APP"
           git clone --depth 1 "$URL" "$WORKSPACE/$APP"

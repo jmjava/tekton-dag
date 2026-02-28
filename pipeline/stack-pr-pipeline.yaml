@@ -7,18 +7,17 @@ metadata:
     app.kubernetes.io/part-of: tekton-job-standardization
 spec:
   description: >
-    Universal PR testing pipeline. Adapts to any stack definition.
-    1. Clones source
-    2. Resolves the stack graph (apps, order, propagation chain, versions)
-    3. Bumps the RC version so we know the image tag up front
-    4. Builds images tagged with the RC version (e.g. v0.1.0-rc.4)
-    5. Deploys PR pods with Telepresence intercepts
-    6. Validates header propagation across the full chain
-    7. Runs all configured test suites
-    8. On success: pushes the version bump commit
-    9. Cleans up PR pods (always, even on failure)
-    The RC-tagged image is pushed to the container repo on every
-    passing PR build. It stays as RC until promoted to production.
+    PR testing pipeline. Uses the currently running apps in the cluster and only
+    builds/replaces the one app being tested (changed-app). Other apps are left
+    as-is; Telepresence intercepts route PR traffic only to the new build.
+    Tests one app at a time (changed-app is required when invoking this pipeline).
+    1. Clones platform repo and resolves the stack graph
+    2. Clones and builds ONLY the changed app (snapshot tag) — no build of other apps
+    3. Deploys intercepts only for that app; rest of stack keeps running as-is
+    4. Validates header propagation, runs test suites
+    5. After tests pass: bumps RC version, pushes version commit
+    6. Cleans up PR pods (always)
+    PR builds use snapshot tagging so they are never confused with real releases.
 
   params:
     - name: git-url
@@ -29,30 +28,42 @@ spec:
       description: "Path to the stack YAML relative to repo root"
       default: "stacks/stack-one.yaml"
     - name: changed-app
-      description: "App whose PR triggered this (empty = all apps)"
+      description: "App being tested (required). Only this app is built and given an intercept; other apps use existing cluster deployments."
       default: ""
     - name: pr-number
       description: "PR number"
+    - name: app-revisions
+      description: 'Optional JSON map app → revision for cloning app repos (e.g. {"demo-fe":"pr-branch"}). Used when the PR is in the app repo so the changed app is checked out at its PR branch.'
+      default: "{}"
     - name: image-registry
       description: "Container registry base (e.g. 123456.dkr.ecr.us-east-1.amazonaws.com)"
     - name: version-overrides
       description: "JSON map of app → version overrides (empty = use versions.yaml)"
       default: "{}"
     - name: compile-image-npm
-      description: "Image for npm compile step (default ubuntu + runtime install)"
-      default: "ubuntu:22.04"
+      description: "Pre-built image for npm compile"
+      default: "localhost:5000/tekton-dag-build-node:latest"
     - name: compile-image-maven
-      description: "Image for Maven compile step"
-      default: "ubuntu:22.04"
+      description: "Pre-built image for Maven compile"
+      default: "localhost:5000/tekton-dag-build-maven:latest"
     - name: compile-image-gradle
-      description: "Image for Gradle compile step"
-      default: "ubuntu:22.04"
+      description: "Pre-built image for Gradle compile"
+      default: "localhost:5000/tekton-dag-build-gradle:latest"
     - name: compile-image-pip
-      description: "Image for pip compile step"
-      default: "ubuntu:22.04"
+      description: "Pre-built image for pip compile"
+      default: "localhost:5000/tekton-dag-build-python:latest"
     - name: compile-image-php
-      description: "Image for Composer/PHP compile step"
-      default: "ubuntu:22.04"
+      description: "Pre-built image for Composer/PHP compile"
+      default: "localhost:5000/tekton-dag-build-php:latest"
+    - name: dashboard-url
+      description: "Base URL of Tekton Dashboard; PR comment will include link to this run (optional)"
+      default: ""
+    - name: github-secret-name
+      description: "Kubernetes secret name for GitHub token (key: token) when posting PR comments"
+      default: "github-token"
+    - name: pr-repo-url
+      description: "When PR is in the app repo, pass the app repo URL here so the PR comment is posted to the correct repo; empty = use git-url (platform repo)"
+      default: ""
 
   workspaces:
     - name: shared-workspace
@@ -66,8 +77,6 @@ spec:
   results:
     - name: test-summary
       value: $(tasks.run-tests.results.test-summary)
-    - name: bumped-versions
-      value: $(tasks.bump-rc-version.results.bumped-versions)
 
   tasks:
     - name: fetch-source
@@ -113,6 +122,8 @@ spec:
           value: $(tasks.resolve-stack.results.build-apps)
         - name: git-revision
           value: $(params.git-revision)
+        - name: app-revisions
+          value: $(params.app-revisions)
       workspaces:
         - name: source
           workspace: shared-workspace
@@ -121,44 +132,125 @@ spec:
       runAfter:
         - resolve-stack
 
-    # RC bump happens BEFORE build so the image tag is the new RC version
-    - name: bump-rc-version
+    # Snapshot tag for PR builds (run name) — not a release version
+    - name: pr-snapshot-tag
       taskRef:
-        name: version-bump
+        name: pr-snapshot-tag
       params:
-        - name: bump-mode
-          value: "rc"
-        - name: apps
+        - name: snapshot-tag
+          value: $(context.pipelineRun.name)
+        - name: build-apps
+          value: $(tasks.resolve-stack.results.build-apps)
+      runAfter:
+        - resolve-stack
+
+    # Select which tools are needed for build-apps (writes .tool-apps.json)
+    - name: build-select-tool-apps
+      taskRef:
+        name: build-select-tool-apps
+      params:
+        - name: stack-json
+          value: $(tasks.resolve-stack.results.stack-json)
+        - name: build-apps
           value: $(tasks.resolve-stack.results.build-apps)
       workspaces:
         - name: source
           workspace: shared-workspace
       runAfter:
         - clone-app-repos
+        - pr-snapshot-tag
 
-    # Build images tagged with the RC version (e.g. v0.1.0-rc.4)
-    - name: build-apps
+    # Only the compile step for the app's tool runs (e.g. npm for demo-fe)
+    - name: build-compile-npm
+      when:
+        - input: $(tasks.resolve-stack.results.run-compile-npm)
+          operator: in
+          values: ["true"]
       taskRef:
-        name: build-stack-apps
+        name: build-compile-npm
       params:
         - name: stack-json
           value: $(tasks.resolve-stack.results.stack-json)
-        - name: build-apps
-          value: $(tasks.resolve-stack.results.build-apps)
-        - name: image-registry
-          value: $(params.image-registry)
-        - name: image-tag
-          value: $(tasks.bump-rc-version.results.bumped-versions)
-        - name: tag-prefix
-          value: "v"
         - name: compile-image-npm
           value: $(params.compile-image-npm)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+        - name: build-cache
+          workspace: build-cache
+      runAfter:
+        - build-select-tool-apps
+
+    - name: build-compile-maven
+      when:
+        - input: $(tasks.resolve-stack.results.run-compile-maven)
+          operator: in
+          values: ["true"]
+      taskRef:
+        name: build-compile-maven
+      params:
+        - name: stack-json
+          value: $(tasks.resolve-stack.results.stack-json)
         - name: compile-image-maven
           value: $(params.compile-image-maven)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+        - name: build-cache
+          workspace: build-cache
+      runAfter:
+        - build-select-tool-apps
+
+    - name: build-compile-gradle
+      when:
+        - input: $(tasks.resolve-stack.results.run-compile-gradle)
+          operator: in
+          values: ["true"]
+      taskRef:
+        name: build-compile-gradle
+      params:
+        - name: stack-json
+          value: $(tasks.resolve-stack.results.stack-json)
         - name: compile-image-gradle
           value: $(params.compile-image-gradle)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+        - name: build-cache
+          workspace: build-cache
+      runAfter:
+        - build-select-tool-apps
+
+    - name: build-compile-pip
+      when:
+        - input: $(tasks.resolve-stack.results.run-compile-pip)
+          operator: in
+          values: ["true"]
+      taskRef:
+        name: build-compile-pip
+      params:
+        - name: stack-json
+          value: $(tasks.resolve-stack.results.stack-json)
         - name: compile-image-pip
           value: $(params.compile-image-pip)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+        - name: build-cache
+          workspace: build-cache
+      runAfter:
+        - build-select-tool-apps
+
+    - name: build-compile-composer
+      when:
+        - input: $(tasks.resolve-stack.results.run-compile-composer)
+          operator: in
+          values: ["true"]
+      taskRef:
+        name: build-compile-composer
+      params:
+        - name: stack-json
+          value: $(tasks.resolve-stack.results.stack-json)
         - name: compile-image-php
           value: $(params.compile-image-php)
       workspaces:
@@ -167,7 +259,32 @@ spec:
         - name: build-cache
           workspace: build-cache
       runAfter:
-        - bump-rc-version
+        - build-select-tool-apps
+
+    # Containerize runs after select + whichever compile task(s) ran
+    - name: build-containerize
+      taskRef:
+        name: build-containerize
+      params:
+        - name: stack-json
+          value: $(tasks.resolve-stack.results.stack-json)
+        - name: build-apps
+          value: $(tasks.resolve-stack.results.build-apps)
+        - name: image-registry
+          value: $(params.image-registry)
+        - name: image-tag
+          value: $(tasks.pr-snapshot-tag.results.snapshot-versions)
+        - name: tag-prefix
+          value: ""
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      runAfter:
+        - build-compile-npm
+        - build-compile-maven
+        - build-compile-gradle
+        - build-compile-pip
+        - build-compile-composer
 
     - name: deploy-intercepts
       taskRef:
@@ -180,11 +297,11 @@ spec:
         - name: propagation-chain
           value: $(tasks.resolve-stack.results.propagation-chain)
         - name: built-images
-          value: $(tasks.build-apps.results.built-images)
+          value: $(tasks.build-containerize.results.built-images)
         - name: intercept-header-value
           value: $(tasks.resolve-stack.results.intercept-header-value)
       runAfter:
-        - build-apps
+        - build-containerize
 
     - name: validate-propagation
       taskRef:
@@ -223,29 +340,6 @@ spec:
       runAfter:
         - validate-propagation
 
-    # Tests passed — push the version bump commit so the RC is recorded (SSH)
-    - name: push-version-commit
-      taskRef:
-        name: git-cli
-      params:
-        - name: GIT_SCRIPT
-          value: |
-            git config --global --add safe.directory /workspace/source
-            URL=$(git remote get-url origin)
-            REPO=${URL##*github.com/}
-            REPO=${REPO##*github.com:}
-            REPO=${REPO%.git}
-            git remote set-url origin "git@github.com:${REPO}.git"
-            ssh-keyscan -H github.com >> ~/.ssh/known_hosts 2>/dev/null || true
-            git push origin HEAD:refs/heads/$(params.git-revision)
-      workspaces:
-        - name: source
-          workspace: shared-workspace
-        - name: ssh-directory
-          workspace: ssh-key
-      runAfter:
-        - run-tests
-
   finally:
     - name: cleanup
       taskRef:
@@ -255,3 +349,26 @@ spec:
           value: $(tasks.deploy-intercepts.results.deployed-pods)
         - name: stack-json
           value: $(tasks.resolve-stack.results.stack-json)
+
+    - name: post-pr-comment
+      taskRef:
+        name: post-pr-comment
+      params:
+        - name: git-url
+          value: $(params.git-url)
+        - name: pr-repo-url
+          value: $(params.pr-repo-url)
+        - name: pr-number
+          value: $(params.pr-number)
+        - name: pipeline-run-name
+          value: $(context.pipelineRun.name)
+        - name: namespace
+          value: $(context.pipelineRun.namespace)
+        - name: status
+          value: "Completed"
+        - name: test-summary
+          value: $(tasks.run-tests.results.test-summary)
+        - name: dashboard-url
+          value: $(params.dashboard-url)
+        - name: github-secret-name
+          value: $(params.github-secret-name)

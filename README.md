@@ -2,14 +2,24 @@
 
 Standalone Tekton pipeline system for **local development and proof-of-concept**.
 
-## Tests passing
+## Valid test: real PR flow
 
-| Pipeline | Status |
-|----------|--------|
-| **Bootstrap** (`stack-bootstrap`) — fetch → resolve → clone → build → deploy full stack | Passing |
-| **PR with live intercepts** (`stack-pr-test`) — fetch → resolve → clone → bump RC → build → deploy intercepts → validate propagation → run tests → **push version commit (SSH)** → cleanup | Passing |
+The **only valid test** for the PR feature is using a **real GitHub PR**: create the PR, run the PR pipeline against that branch, then merge the PR and run the merge pipeline. See [docs/PR-TEST-FLOW.md](docs/PR-TEST-FLOW.md).
 
-Full E2E (Kind + Tekton + Telepresence intercepts + version-bump push to GitHub) is passing. See [session-notes/](session-notes/) for details.
+| Step | Script | What it does |
+|------|--------|--------------|
+| 1. Create PR | `./scripts/create-test-pr.sh` | Create branch, push, open PR on GitHub → outputs `PR_NUMBER`, `BRANCH_NAME` |
+| 2. Run PR pipeline | `./scripts/generate-run.sh --mode pr --pr <N> --git-revision <BRANCH> --apply` | Run `stack-pr-test` for that PR/branch; on success pushes version commit to the PR branch |
+| 3. Merge PR | `./scripts/merge-pr.sh <N>` | Merge the PR into main |
+| 4. Run merge build | `./scripts/generate-run.sh --mode merge --git-revision main --apply` | Run `stack-merge-release` from main |
+
+Other runs (e.g. `run-e2e-with-intercepts.sh` with `--pr 999` and `main`) only verify pipeline mechanics; they do **not** test the PR feature because no real PR exists and the version commit is pushed to main.
+
+| Pipeline | Purpose |
+|----------|---------|
+| **Bootstrap** (`stack-bootstrap`) | Deploy full stack once; prerequisite for PR runs. |
+| **PR** (`stack-pr-test`) | Valid test: run with a **real** PR number and that PR’s branch (from `create-test-pr.sh`). |
+| **Merge** (`stack-merge-release`) | Run after merging the PR; builds from main. |
 
 ---
 
@@ -192,6 +202,20 @@ Example: after `stack-pr-42-xxxxx` failed at `run-tests`, run `./scripts/rerun-p
 
 So: run the entire workflow locally, inspect every step with `kubectl`/`tkn`, step-debug any app in the DAG from your IDE, and re-run from deploy when a later step fails.
 
+### Optional: Post PR comment to GitHub
+
+When the PR pipeline completes, a **finally** task can post a comment on the GitHub PR with run status and a link to the Tekton Dashboard. Create a Kubernetes secret with your GitHub token (scope: `repo` or `public_repo` for issue comments):
+
+```bash
+kubectl create secret generic github-token --from-literal=token=YOUR_GITHUB_TOKEN -n tekton-pipelines
+```
+
+Pass `dashboard-url` when creating the PipelineRun (e.g. `http://localhost:9097` after port-forwarding the Dashboard) so the comment includes a direct link to the run. The task is **post-pr-comment** (`tasks/post-pr-comment.yaml`); it is optional — if the secret is missing, the task skips posting.
+
+### Optional: Reporting GUI
+
+See [reporting-gui/README.md](reporting-gui/README.md) for the Vue-based reporting GUI: trigger jobs, monitor runs, view test results, explore Git repos, and embed the Tekton Dashboard. **Tekton Dashboard scripts:** `./scripts/install-tekton-dashboard.sh` (install), `./scripts/port-forward-tekton-dashboard.sh` (access at http://localhost:9097), `./scripts/uninstall-tekton-dashboard.sh` (uninstall).
+
 ## DAG, baggage, and intercepts
 
 The pipeline is driven by a **stack DAG** (directed acyclic graph): apps are nodes, `downstream` edges define who calls whom. There are **three propagation roles** for the session header/baggage: **originator** (entry app — sets the header), **forwarder** (middle — accepts and forwards), **terminal** (leaf — accepts only). That way “this PR’s” traffic can be routed to the right pods. On a PR run, only the **changed app** (the repo whose PR triggered the run) is built and gets a PR pod; Telepresence **intercepts** traffic that carries the run’s header to that pod. Full explanation: [docs/DAG-AND-PROPAGATION.md](docs/DAG-AND-PROPAGATION.md).
@@ -219,13 +243,20 @@ The launch configs in `.vscode/launch.json` use **multi-root workspace folder** 
 
 After that, the Run and Debug dropdown will list configs like **Vue (demo-fe): Launch & debug** and **Spring Boot (release-lifecycle-demo): Attach**; they resolve `cwd` and sources from the matching workspace folder. See [.vscode/README.md](.vscode/README.md) for the step-debug flow with Telepresence intercepts.
 
+## Secrets and GitGuardian
+
+**Do not commit keys or tokens.** All secrets belong in `.env` (or environment); `.env` is in [.gitignore](.gitignore) and must stay that way. Use [.env.example](.env.example) as a template (copy to `.env` and fill in values).
+
+- **Pre-commit:** Optional [.pre-commit-config.yaml](.pre-commit-config.yaml) runs a secret scan (GitGuardian ggshield) and blocks private keys. Install: `pip install pre-commit && pre-commit install`.
+- **GitGuardian webhooks:** On the GitHub repo, you can enable [GitGuardian](https://www.gitguardian.com/) (or similar) so pushes are scanned for secrets; alerts or blocks can be configured there. That way nothing with keys gets merged even if pre-commit is skipped.
+
 ## Layout
 
 - **stacks/** — Stack YAML (DAG), registry, versions
 - **tasks/** — Tekton tasks (resolve, clone-app-repos, build, deploy-intercept, validate, test, version, cleanup)
 - **pipeline/** — stack-pr-test, stack-merge-release, stack-dag-verify, stack-pr-continue (restart from deploy after failure)
-- **scripts/** — run-all-setup-and-test (run everything), kind-with-registry, install-tekton, verify-dag-phase1/2, generate-run, rerun-pr-from (restart from failure), stack-graph
-- **docs/** — C4 diagrams, local DAG verification plan
+- **scripts/** — create-test-pr (create real GitHub PR), merge-pr (merge PR), generate-run, run-e2e-with-intercepts (sanity check; not the valid PR test), run-all-setup-and-test, kind-with-registry, install-tekton, verify-dag-phase1/2, rerun-pr-from, stack-graph
+- **docs/** — C4 diagrams, local DAG verification plan, [PR-TEST-FLOW.md](docs/PR-TEST-FLOW.md) (valid PR test)
 
 ## Sharing back to reference-architecture
 

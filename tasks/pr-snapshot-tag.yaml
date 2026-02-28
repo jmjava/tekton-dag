@@ -1,0 +1,41 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: pr-snapshot-tag
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+spec:
+  description: >
+    Builds a JSON map of app -> snapshot tag for PR pipeline image tagging.
+    PR builds are not releases; they use a run-specific snapshot tag
+    (e.g. the pipeline run name) so images are clearly non-release.
+  params:
+    - name: snapshot-tag
+      type: string
+      description: "Tag to use for all apps (e.g. pipeline run name: stack-pr-2-6xnbj)"
+    - name: build-apps
+      type: string
+      description: "Space-separated list of app names to tag"
+  results:
+    - name: snapshot-versions
+      description: "JSON map of app -> snapshot-tag for use as image-tag in build-apps"
+  steps:
+    - name: build-map
+      image: alpine:3.19
+      securityContext:
+        runAsUser: 0
+      script: |
+        #!/bin/sh
+        set -e
+        apk add --no-cache jq
+        TAG="$(params.snapshot-tag)"
+        APPS="$(params.build-apps)"
+        OUT="{}"
+        for APP in $APPS; do
+          [ -z "$APP" ] && continue
+          OUT=$(echo "$OUT" | jq -c --arg app "$APP" --arg tag "$TAG" '. + {($app): $tag}')
+        done
+        echo -n "$OUT" | tee $(results.snapshot-versions.path)
+        echo ""
+        echo "Snapshot tag map: $OUT"

@@ -61,15 +61,18 @@ Each repo is a minimal but valid app (Dockerfile, tests where applicable) so the
 
 ## Test results so far
 
-Verification is defined in [docs/local-dag-verification-plan.md](../docs/local-dag-verification-plan.md). Status as of this session:
+**Valid PR test:** The only valid test for the PR feature is the **real PR flow**: create a real GitHub PR (`./scripts/create-test-pr.sh`), run the PR pipeline with that PR number and branch, then merge the PR (`./scripts/merge-pr.sh`) and run the merge pipeline. See [docs/PR-TEST-FLOW.md](../docs/PR-TEST-FLOW.md).
+
+Runs with a fake PR number (e.g. `--pr 999` or `--pr 1`) and `--git-revision main` are **not** the PR feature test; they only verify that the pipeline runs (sanity check).
 
 | Phase / Test | Script / trigger | What it checks | Status |
 |--------------|------------------|----------------|--------|
-| **Phase 1** (no cluster) | `./scripts/verify-dag-phase1.sh` | Repo layout, stack YAMLs, `stack-graph.sh --validate` for all stacks, topo order, entry, propagation chain, registry/versions | **PASSING** |
-| **Phase 2** (cluster) | `./scripts/verify-dag-phase2.sh [--stack STACK]` | `stack-dag-verify` pipeline: fetch + resolve; compare resolve output to CLI | Not run yet |
-| **Bootstrap pipeline** | `stack-bootstrap` via `run-e2e-with-intercepts.sh` | fetch → resolve → clone-app-repos → build-all → deploy-full-stack | **PASSING** (run `stack-bootstrap-6v8nf`) |
-| **PR pipeline** | `stack-pr-test` via `generate-run.sh --mode pr` | fetch → resolve → clone → bump-rc → build → deploy-intercepts → validate → test → push | **PASSING** (e.g. stack-pr-999-ntzj2, stack-pr-999-nvx2s, stack-pr-1-sl7kg). Earlier failures at containerize were fixed (image-tag JSON parsing; registry trailing `}`). |
-| **Full E2E** | `./scripts/run-e2e-with-intercepts.sh` | Bootstrap + PR pipeline + Tekton Results DB verify | **PASSING** when PR pipeline succeeds (bootstrap + PR + optional DB verify). |
+| **Phase 1** (no cluster) | `./scripts/verify-dag-phase1.sh` | Repo layout, stack YAMLs, `stack-graph.sh --validate`, topo order, registry/versions | **PASSING** |
+| **Phase 2** (cluster) | `./scripts/verify-dag-phase2.sh [--stack STACK]` | `stack-dag-verify` pipeline: fetch + resolve | Not run yet |
+| **Bootstrap pipeline** | `stack-bootstrap` | fetch → resolve → clone → build → deploy-full-stack | **PASSING** (sanity check) |
+| **PR pipeline (valid test)** | `create-test-pr.sh` → `generate-run.sh --mode pr --pr <N> --git-revision <BRANCH>` | Real PR created; pipeline runs on PR branch; version commit pushed to PR branch | **Use this to validate PR feature** |
+| **Merge pipeline (valid test)** | `merge-pr.sh <N>` → `generate-run.sh --mode merge --git-revision main` | PR merged; merge build runs from main | **Use after valid PR test** |
+| **run-e2e-with-intercepts.sh** | Bootstrap + PR run with e.g. `--pr 999` and main | Pipeline sanity only; no real PR | Not the PR feature test. |
 
 ---
 
@@ -107,7 +110,7 @@ Run: `stack-bootstrap-6v8nf`
 
 ## PR pipeline — status
 
-**Latest successful runs:** `stack-pr-999-ntzj2`, `stack-pr-999-nvx2s`, `stack-pr-1-sl7kg` (all Succeeded).
+**Valid test:** Use `create-test-pr.sh` to create a real PR, then run the PR pipeline with that PR number and branch. Previous runs like `stack-pr-999-*` or `stack-pr-1-*` with `main` were pipeline sanity runs only (no real PR).
 
 | Task | Status | Notes |
 |------|--------|-------|

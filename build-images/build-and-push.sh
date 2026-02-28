@@ -15,10 +15,14 @@ TOOLS=(node maven gradle python php)
 for tool in "${TOOLS[@]}"; do
   dockerfile="Dockerfile.$tool"
   image="${REGISTRY}/${IMAGE_BASE}-${tool}:${TAG}"
-  echo "Building $image from $dockerfile..."
-  docker build -t "$image" -f "$SCRIPT_DIR/$dockerfile" "$SCRIPT_DIR"
-  echo "Pushing $image..."
-  docker push "$image"
+  if docker pull "$image" 2>/dev/null; then
+    echo "Already exists: $image (skipping build/push)"
+  else
+    echo "Building $image from $dockerfile..."
+    docker build -t "$image" -f "$SCRIPT_DIR/$dockerfile" "$SCRIPT_DIR"
+    echo "Pushing $image..."
+    docker push "$image"
+  fi
   echo "  -> $image"
 done
 

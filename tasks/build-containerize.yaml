@@ -1,0 +1,116 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: build-containerize
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+spec:
+  description: "Runs Kaniko to build and push images for build-apps; runs after compile task(s)."
+  params:
+    - name: stack-json
+      type: string
+    - name: build-apps
+      type: string
+    - name: image-registry
+      type: string
+    - name: image-tag
+      type: string
+    - name: tag-prefix
+      type: string
+      default: "pr-"
+  workspaces:
+    - name: source
+  results:
+    - name: built-images
+      description: "JSON map of app-name → full image URI"
+  steps:
+    - name: containerize
+      image: gcr.io/kaniko-project/executor:debug
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/busybox/sh
+        set -e
+
+        STACK_JSON='$(params.stack-json)'
+        BUILD_APPS="$(params.build-apps)"
+        REGISTRY="$(params.image-registry)"
+        IMAGE_TAG='$(params.image-tag)'
+        TAG_PREFIX="$(params.tag-prefix)"
+        WORKSPACE="$(workspaces.source.path)"
+
+        PUSH_REGISTRY=$(echo "$REGISTRY" | sed 's|localhost:|kind-registry:|')
+
+        BUILT_JSON="${WORKSPACE}/.built-images.json"
+        echo '{}' > "$BUILT_JSON"
+
+        IS_JSON=false
+        case "$IMAGE_TAG" in
+          *"{"*) IS_JSON=true ;;
+        esac
+
+        for APP in $BUILD_APPS; do
+          echo ""
+          echo "========================================="
+          echo "  Containerize: $APP"
+          echo "========================================="
+
+          if $IS_JSON; then
+            APP_VER=$(echo "$IMAGE_TAG" | sed 's/[{}" ]//g' | tr ',' '\n' | grep "^${APP}:" | cut -d: -f2)
+            [ -z "$APP_VER" ] && APP_VER="latest"
+            TAG="${TAG_PREFIX}${APP_VER}"
+          else
+            TAG="${TAG_PREFIX}${IMAGE_TAG}"
+          fi
+
+          CONTEXT="."
+          DOCKERFILE="Dockerfile"
+
+          PUSH_IMAGE="${PUSH_REGISTRY}/${APP}:${TAG}"
+          PULL_IMAGE="${REGISTRY}/${APP}:${TAG}"
+          echo "  Push to:    $PUSH_IMAGE"
+          echo "  Pull as:    $PULL_IMAGE"
+
+          CONTEXT_PATH="${WORKSPACE}"
+          if [ -d "${WORKSPACE}/${APP}" ]; then
+            CONTEXT_PATH="${WORKSPACE}/${APP}"
+          fi
+
+          FULL_CONTEXT="${CONTEXT_PATH}/${CONTEXT}"
+          FULL_DOCKERFILE="${FULL_CONTEXT}/${DOCKERFILE}"
+
+          if [ -f "${FULL_DOCKERFILE}" ]; then
+            /kaniko/executor \
+              --dockerfile="${FULL_DOCKERFILE}" \
+              --context="${FULL_CONTEXT}" \
+              --destination="${PUSH_IMAGE}" \
+              --cache=false \
+              --insecure \
+              --insecure-pull \
+              --ignore-path /product_uuid \
+              --ignore-path /sys
+            echo "  Built and pushed: $PUSH_IMAGE"
+          else
+            echo "  WARN: Dockerfile not found at ${FULL_DOCKERFILE}"
+            echo "  Skipping containerize (image may already exist in registry)"
+          fi
+
+          echo "\"${APP}\": \"${PULL_IMAGE}\"" >> "${BUILT_JSON}.parts"
+        done
+
+        echo '{' > "$BUILT_JSON"
+        if [ -f "${BUILT_JSON}.parts" ]; then
+          TOTAL=$(wc -l < "${BUILT_JSON}.parts")
+          COUNT=0
+          while IFS= read -r line; do
+            COUNT=$((COUNT + 1))
+            if [ "$COUNT" -lt "$TOTAL" ]; then
+              echo "  ${line}," >> "$BUILT_JSON"
+            else
+              echo "  ${line}" >> "$BUILT_JSON"
+            fi
+          done < "${BUILT_JSON}.parts"
+        fi
+        echo '}' >> "$BUILT_JSON"
+
+        cat "$BUILT_JSON" | tee $(results.built-images.path)

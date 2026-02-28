@@ -51,7 +51,7 @@ spec:
       template:
         ref: stack-pr-template
 
-    # --- PR merged → stack-merge-release pipeline ---
+    # --- PR merged (in app repo) → stack-merge-release pipeline (clone platform at main, build release) ---
     - name: pr-merged
       interceptors:
         - ref:
@@ -70,14 +70,25 @@ spec:
               value: "body.action == 'closed' && body.pull_request.merged == true"
             - name: overlays
               value:
+                # Map app repo name to stack app name (changed-app)
                 - key: app-name
                   expression: >
-                    body.pull_request.head.repo.name
+                    body.pull_request.base.repo.name == 'tekton-dag-vue-fe' ? 'demo-fe' :
+                    body.pull_request.base.repo.name == 'tekton-dag-spring-boot' ? 'release-lifecycle-demo' :
+                    body.pull_request.base.repo.name == 'tekton-dag-spring-boot-gradle' ? 'demo-api' :
+                    body.pull_request.base.repo.name == 'vendor-fe' ? 'vendor-fe' :
+                    body.pull_request.base.repo.name == 'vendor-middleware' ? 'vendor-middleware' :
+                    body.pull_request.base.repo.name == 'vendor-adapter' ? 'vendor-adapter' :
+                    body.pull_request.base.repo.name == 'internal-api' ? 'internal-api' :
+                    body.pull_request.base.repo.name == 'notifications-svc' ? 'notifications-svc' :
+                    body.pull_request.base.repo.name == 'inventory-api' ? 'inventory-api' :
+                    body.pull_request.base.repo.name == 'analytics-api' ? 'analytics-api' :
+                    body.pull_request.base.repo.name
                 - key: stack-file
                   expression: >
-                    body.pull_request.base.repo.name == 'demo-fe' ? 'stacks/stack-one.yaml' :
-                    body.pull_request.base.repo.name == 'release-lifecycle-demo' ? 'stacks/stack-one.yaml' :
-                    body.pull_request.base.repo.name == 'demo-api' ? 'stacks/stack-one.yaml' :
+                    body.pull_request.base.repo.name == 'tekton-dag-vue-fe' ? 'stacks/stack-one.yaml' :
+                    body.pull_request.base.repo.name == 'tekton-dag-spring-boot' ? 'stacks/stack-one.yaml' :
+                    body.pull_request.base.repo.name == 'tekton-dag-spring-boot-gradle' ? 'stacks/stack-one.yaml' :
                     body.pull_request.base.repo.name == 'vendor-fe' ? 'stacks/stack-two-vendor.yaml' :
                     body.pull_request.base.repo.name == 'vendor-middleware' ? 'stacks/stack-two-vendor.yaml' :
                     body.pull_request.base.repo.name == 'vendor-adapter' ? 'stacks/stack-two-vendor.yaml' :
@@ -87,6 +98,7 @@ spec:
                     body.pull_request.base.repo.name == 'analytics-api' ? 'stacks/single-flask-app.yaml' :
                     'stacks/stack-one.yaml'
       bindings:
+        - ref: stack-merge-platform-binding
         - ref: stack-merge-binding
       template:
         ref: stack-merge-template
@@ -129,6 +141,20 @@ spec:
       value: $(extensions.stack-file)
 
 ---
+# Platform repo (tekton-dag) at main — merge pipeline clones this, then app repos from stack at main
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerBinding
+metadata:
+  name: stack-merge-platform-binding
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: git-url
+      value: "https://github.com/jmjava/tekton-dag.git"
+    - name: git-revision
+      value: "main"
+
+---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerBinding
 metadata:
@@ -136,10 +162,6 @@ metadata:
   namespace: tekton-pipelines
 spec:
   params:
-    - name: git-url
-      value: $(body.pull_request.base.repo.ssh_url)
-    - name: git-revision
-      value: $(body.pull_request.merge_commit_sha)
     - name: changed-app
       value: $(extensions.app-name)
     - name: stack-file
@@ -186,7 +208,17 @@ spec:
           - name: stack-file
             value: $(tt.params.stack-file)
           - name: image-registry
-            value: IMAGE_REGISTRY_PLACEHOLDER
+            value: localhost:5000
+          - name: compile-image-npm
+            value: localhost:5000/tekton-dag-build-node:latest
+          - name: compile-image-maven
+            value: localhost:5000/tekton-dag-build-maven:latest
+          - name: compile-image-gradle
+            value: localhost:5000/tekton-dag-build-gradle:latest
+          - name: compile-image-pip
+            value: localhost:5000/tekton-dag-build-python:latest
+          - name: compile-image-php
+            value: localhost:5000/tekton-dag-build-php:latest
           - name: version-overrides
             value: "{}"
         workspaces:
@@ -197,6 +229,12 @@ spec:
                 resources:
                   requests:
                     storage: 5Gi
+          - name: ssh-key
+            secret:
+              secretName: git-ssh-key
+          - name: build-cache
+            persistentVolumeClaim:
+              claimName: build-cache
 
 ---
 apiVersion: triggers.tekton.dev/v1beta1
@@ -234,7 +272,17 @@ spec:
           - name: stack-file
             value: $(tt.params.stack-file)
           - name: image-registry
-            value: IMAGE_REGISTRY_PLACEHOLDER
+            value: localhost:5000
+          - name: compile-image-npm
+            value: localhost:5000/tekton-dag-build-node:latest
+          - name: compile-image-maven
+            value: localhost:5000/tekton-dag-build-maven:latest
+          - name: compile-image-gradle
+            value: localhost:5000/tekton-dag-build-gradle:latest
+          - name: compile-image-pip
+            value: localhost:5000/tekton-dag-build-python:latest
+          - name: compile-image-php
+            value: localhost:5000/tekton-dag-build-php:latest
           - name: version-overrides
             value: "{}"
         workspaces:
@@ -245,3 +293,9 @@ spec:
                 resources:
                   requests:
                     storage: 5Gi
+          - name: ssh-key
+            secret:
+              secretName: git-ssh-key
+          - name: build-cache
+            persistentVolumeClaim:
+              claimName: build-cache

@@ -48,6 +48,16 @@ spec:
       description: "Header value to use for Telepresence intercepts"
     - name: build-apps
       description: "Space-separated list of apps to build (changed-app or all)"
+    - name: run-compile-npm
+      description: "true if any build-app uses npm (so only that compile step runs)"
+    - name: run-compile-maven
+      description: "true if any build-app uses maven"
+    - name: run-compile-gradle
+      description: "true if any build-app uses gradle"
+    - name: run-compile-pip
+      description: "true if any build-app uses pip"
+    - name: run-compile-composer
+      description: "true if any build-app uses composer"
     - name: resolved-versions
       description: "JSON map of app → version (registry defaults merged with overrides)"
   steps:
@@ -192,4 +202,26 @@ spec:
         else
           echo -n "$TOPO" | tee $(results.build-apps.path)
         fi
+        echo ""
+
+        # ----------------------------------------------------------
+        # Which compile steps to run (only tools used by build-apps)
+        # ----------------------------------------------------------
+        BUILD_APPS=$(cat $(results.build-apps.path))
+        RUN_NPM="false"; RUN_MAVEN="false"; RUN_GRADLE="false"; RUN_PIP="false"; RUN_COMPOSER="false"
+        for app in $BUILD_APPS; do
+          tool=$(cat /tmp/stack.json | jq -r --arg a "$app" '.apps[]|select(.name==$a)|.build.tool // "none"')
+          case "$tool" in
+            npm)     RUN_NPM="true" ;;
+            maven)   RUN_MAVEN="true" ;;
+            gradle)  RUN_GRADLE="true" ;;
+            pip)     RUN_PIP="true" ;;
+            composer) RUN_COMPOSER="true" ;;
+          esac
+        done
+        echo -n "$RUN_NPM" | tee $(results.run-compile-npm.path)
+        echo -n "$RUN_MAVEN" | tee $(results.run-compile-maven.path)
+        echo -n "$RUN_GRADLE" | tee $(results.run-compile-gradle.path)
+        echo -n "$RUN_PIP" | tee $(results.run-compile-pip.path)
+        echo -n "$RUN_COMPOSER" | tee $(results.run-compile-composer.path)
         echo ""

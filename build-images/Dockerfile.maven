@@ -1,23 +1,5 @@
-# Maven build image for tekton-dag. JDK and Maven pre-installed.
-# OpenJDK 21 + Maven 3.9.x; includes jq/curl for task scripts.
-FROM ubuntu:22.04
-
-ENV DEBIAN_FRONTEND=noninteractive
-
-RUN apt-get update -qq && apt-get install -y -qq \
-    curl \
-    jq \
-    ca-certificates \
-    openjdk-21-jdk-headless \
+# Maven build image. Task script only needs jq to parse JSON; Java/Maven already in image.
+FROM maven:3.9-eclipse-temurin-21
+RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends jq \
     && rm -rf /var/lib/apt/lists/*
-
-# Maven (apt or fallback to Apache archive)
-RUN apt-get update -qq && (apt-get install -y -qq maven 2>/dev/null || true) \
-    || ( \
-        MV=3.9.6 \
-        && curl -fsSL "https://dlcdn.apache.org/maven/maven-3/${MV}/binaries/apache-maven-${MV}-bin.tar.gz" | tar xz -C /opt \
-        && ln -sf "/opt/apache-maven-${MV}/bin/mvn" /usr/local/bin/mvn \
-    ) \
-    && rm -rf /var/lib/apt/lists/*
-
 RUN java -version 2>&1 | head -1 && mvn -v 2>&1 | head -1

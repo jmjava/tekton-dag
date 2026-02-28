@@ -6,11 +6,11 @@ Pre-baked container images used by the `build-stack-apps` task for compiling app
 
 | Image | Dockerfile | Contents |
 |-------|------------|----------|
-| `tekton-dag-build-node` | `Dockerfile.node` | Node 22 (NodeSource), npm, jq, curl |
-| `tekton-dag-build-maven` | `Dockerfile.maven` | **JDK pre-installed** (OpenJDK 21), Maven, jq, curl |
-| `tekton-dag-build-gradle` | `Dockerfile.gradle` | **JDK pre-installed** (OpenJDK 21), jq, curl. Apps use `./gradlew` from the repo. |
-| `tekton-dag-build-python` | `Dockerfile.python` | Python 3.12, venv, pip, jq, curl |
-| `tekton-dag-build-php` | `Dockerfile.php` | PHP 8.3 (ondrej PPA), Composer, jq, curl |
+| `tekton-dag-build-node` | `Dockerfile.node` | Official `node:22-slim` + jq, curl |
+| `tekton-dag-build-maven` | `Dockerfile.maven` | Official `maven:3.9-eclipse-temurin-21` + jq, curl |
+| `tekton-dag-build-gradle` | `Dockerfile.gradle` | Official `eclipse-temurin:21-jdk` + jq, curl. Apps use `./gradlew` from the repo. |
+| `tekton-dag-build-python` | `Dockerfile.python` | Official `python:3.12-slim` + jq, curl |
+| `tekton-dag-build-php` | `Dockerfile.php` | Official `php:8.3-cli` + zip ext, Composer, jq, curl |
 
 Java images (maven, gradle) ship with JDK already in the image; the task does not install JDK at runtime when using these images.
 
@@ -22,13 +22,13 @@ From this directory:
 ./build-and-push.sh [REGISTRY] [TAG]
 ```
 
-- **REGISTRY** (default: `localhost:5000`) — e.g. Kind’s local registry or `ghcr.io/your-org`.
+- **REGISTRY** (default: `localhost:5001` for Kind test env) — override for other registries.
 - **TAG** (default: `latest`).
 
-Example for Kind:
+From repo root (defaults to Kind registry on port 5001):
 
 ```bash
-./build-and-push.sh localhost:5000 latest
+./scripts/publish-build-images.sh
 ```
 
 Example for GHCR:
@@ -53,6 +53,6 @@ When a param is set, the corresponding compile step uses that image and does not
 
 Pipelines can pass these refs explicitly or derive them from a single registry + tag (e.g. `$REGISTRY/tekton-dag-build-maven:$TAG`). See the main repo README and pipeline docs for wiring.
 
-## Kind
+## Kind (test env default)
 
-If you use Kind with a local registry (e.g. `scripts/kind-with-registry.sh`), push these images to `localhost:5000` so cluster nodes can pull them. Run `./build-and-push.sh` once after bringing up the cluster.
+The default publish target is **localhost:5001** — the Kind registry on the host. The cluster pulls via `kind-registry:5000`. Run `./scripts/publish-build-images.sh` with no args to push there. Override with the first argument (e.g. `./scripts/publish-build-images.sh ghcr.io/your-org`) for other registries.

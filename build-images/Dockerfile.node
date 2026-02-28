@@ -1,19 +1,5 @@
-# Node.js build image for tekton-dag (npm builds).
-# Node 22 from NodeSource; includes jq/curl for task scripts.
-FROM ubuntu:22.04
-
-ENV DEBIAN_FRONTEND=noninteractive
-
-RUN apt-get update -qq && apt-get install -y -qq \
-    curl \
-    jq \
-    ca-certificates \
-    gnupg \
+# Node build image. Task script only needs jq to parse JSON; Node/npm already in image.
+FROM node:22-slim
+RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends jq \
     && rm -rf /var/lib/apt/lists/*
-
-# NodeSource Node 22
-RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
-    && apt-get install -y -qq nodejs \
-    && rm -rf /var/lib/apt/lists/*
-
 RUN node -v && npm -v

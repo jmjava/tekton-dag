@@ -37,25 +37,28 @@ spec:
       default: "{}"
     - name: compile-image-npm
       description: "Image for npm compile step"
-      default: "ubuntu:22.04"
+      default: "localhost:5000/tekton-dag-build-node:latest"
     - name: compile-image-maven
       description: "Image for Maven compile step"
-      default: "ubuntu:22.04"
+      default: "localhost:5000/tekton-dag-build-maven:latest"
     - name: compile-image-gradle
       description: "Image for Gradle compile step"
-      default: "ubuntu:22.04"
+      default: "localhost:5000/tekton-dag-build-gradle:latest"
     - name: compile-image-pip
       description: "Image for pip compile step"
-      default: "ubuntu:22.04"
+      default: "localhost:5000/tekton-dag-build-python:latest"
     - name: compile-image-php
       description: "Image for Composer/PHP compile step"
-      default: "ubuntu:22.04"
+      default: "localhost:5000/tekton-dag-build-php:latest"
 
   workspaces:
     - name: shared-workspace
       description: "Shared PVC for source code"
     - name: ssh-key
       description: "Volume with SSH key (id_ed25519 or id_rsa) for cloning app repos; required for SSH pull"
+    - name: build-cache
+      optional: true
+      description: "Persistent dependency cache for compile steps"
 
   results:
     - name: released-images
@@ -128,10 +131,123 @@ spec:
       runAfter:
         - clone-app-repos
 
-    # Full deployment build, tagged with the release version
-    - name: build-apps
+    - name: build-select-tool-apps
       taskRef:
-        name: build-stack-apps
+        name: build-select-tool-apps
+      params:
+        - name: stack-json
+          value: $(tasks.resolve-stack.results.stack-json)
+        - name: build-apps
+          value: $(tasks.resolve-stack.results.build-apps)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      runAfter:
+        - release-version
+
+    - name: build-compile-npm
+      when:
+        - input: $(tasks.resolve-stack.results.run-compile-npm)
+          operator: in
+          values: ["true"]
+      taskRef:
+        name: build-compile-npm
+      params:
+        - name: stack-json
+          value: $(tasks.resolve-stack.results.stack-json)
+        - name: compile-image-npm
+          value: $(params.compile-image-npm)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+        - name: build-cache
+          workspace: build-cache
+      runAfter:
+        - build-select-tool-apps
+
+    - name: build-compile-maven
+      when:
+        - input: $(tasks.resolve-stack.results.run-compile-maven)
+          operator: in
+          values: ["true"]
+      taskRef:
+        name: build-compile-maven
+      params:
+        - name: stack-json
+          value: $(tasks.resolve-stack.results.stack-json)
+        - name: compile-image-maven
+          value: $(params.compile-image-maven)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+        - name: build-cache
+          workspace: build-cache
+      runAfter:
+        - build-select-tool-apps
+
+    - name: build-compile-gradle
+      when:
+        - input: $(tasks.resolve-stack.results.run-compile-gradle)
+          operator: in
+          values: ["true"]
+      taskRef:
+        name: build-compile-gradle
+      params:
+        - name: stack-json
+          value: $(tasks.resolve-stack.results.stack-json)
+        - name: compile-image-gradle
+          value: $(params.compile-image-gradle)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+        - name: build-cache
+          workspace: build-cache
+      runAfter:
+        - build-select-tool-apps
+
+    - name: build-compile-pip
+      when:
+        - input: $(tasks.resolve-stack.results.run-compile-pip)
+          operator: in
+          values: ["true"]
+      taskRef:
+        name: build-compile-pip
+      params:
+        - name: stack-json
+          value: $(tasks.resolve-stack.results.stack-json)
+        - name: compile-image-pip
+          value: $(params.compile-image-pip)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+        - name: build-cache
+          workspace: build-cache
+      runAfter:
+        - build-select-tool-apps
+
+    - name: build-compile-composer
+      when:
+        - input: $(tasks.resolve-stack.results.run-compile-composer)
+          operator: in
+          values: ["true"]
+      taskRef:
+        name: build-compile-composer
+      params:
+        - name: stack-json
+          value: $(tasks.resolve-stack.results.stack-json)
+        - name: compile-image-php
+          value: $(params.compile-image-php)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+        - name: build-cache
+          workspace: build-cache
+      runAfter:
+        - build-select-tool-apps
+
+    - name: build-containerize
+      taskRef:
+        name: build-containerize
       params:
         - name: stack-json
           value: $(tasks.resolve-stack.results.stack-json)
@@ -143,21 +259,15 @@ spec:
           value: $(params.git-revision)
         - name: tag-prefix
           value: "merge-"
-        - name: compile-image-npm
-          value: $(params.compile-image-npm)
-        - name: compile-image-maven
-          value: $(params.compile-image-maven)
-        - name: compile-image-gradle
-          value: $(params.compile-image-gradle)
-        - name: compile-image-pip
-          value: $(params.compile-image-pip)
-        - name: compile-image-php
-          value: $(params.compile-image-php)
       workspaces:
         - name: source
           workspace: shared-workspace
       runAfter:
-        - release-version
+        - build-compile-npm
+        - build-compile-maven
+        - build-compile-gradle
+        - build-compile-pip
+        - build-compile-composer
 
     # Re-tag the merge image with the clean semver (e.g. v0.1.0)
     - name: tag-release
@@ -165,13 +275,13 @@ spec:
         name: tag-release-images
       params:
         - name: built-images
-          value: $(tasks.build-apps.results.built-images)
+          value: $(tasks.build-containerize.results.built-images)
         - name: release-versions
           value: $(tasks.release-version.results.release-versions)
         - name: image-registry
           value: $(params.image-registry)
       runAfter:
-        - build-apps
+        - build-containerize
 
     # Push the version bump commit (next dev cycle) back to the repo (SSH)
     - name: push-version-commit

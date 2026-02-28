@@ -1,0 +1,59 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: build-compile-npm
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+spec:
+  description: "Runs npm compile for apps in .tool-apps.json (invoked only when build-apps include npm)."
+  params:
+    - name: stack-json
+      type: string
+    - name: compile-image-npm
+      type: string
+      default: "ubuntu:22.04"
+  workspaces:
+    - name: source
+    - name: build-cache
+      optional: true
+  steps:
+    - name: compile-npm
+      image: $(params.compile-image-npm)
+      workingDir: $(workspaces.source.path)
+      env:
+        - name: STACK_JSON
+          value: $(params.stack-json)
+        - name: COMPILE_IMAGE
+          value: $(params.compile-image-npm)
+      script: |
+        #!/usr/bin/env bash
+        set -e
+        if [ "$COMPILE_IMAGE" = "ubuntu:22.04" ]; then apt-get update -qq && apt-get install -y -qq curl jq ca-certificates gnupg >/dev/null 2>&1; fi
+        [ "$(workspaces.build-cache.bound)" = "true" ] && CACHE="$(workspaces.build-cache.path)" && mkdir -p "$CACHE/.npm" && export npm_config_cache="$CACHE/.npm"
+        APPS=$(jq -r '.npm[]' .tool-apps.json 2>/dev/null || true)
+        [ -z "$APPS" ] && echo "No npm apps" && exit 0
+        if [ "$COMPILE_IMAGE" = "ubuntu:22.04" ]; then
+          curl -fsSL https://deb.nodesource.com/setup_22.x | bash - >/dev/null 2>&1 && apt-get install -y -qq nodejs >/dev/null 2>&1
+        fi
+        for APP in $APPS; do
+          echo "=== Compile (npm): $APP ==="
+          CMD=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."build-command" // ""')
+          PRE_CMD=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."pre-command" // ""')
+          POST_CMD=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."post-command" // ""')
+          CONTEXT=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|."context-dir" // "."')
+          APP_DIR="$(workspaces.source.path)"; [ -d "$(workspaces.source.path)/${APP}" ] && APP_DIR="$(workspaces.source.path)/${APP}"
+          [ "$CONTEXT" != "." ] && [ -d "${APP_DIR}/${CONTEXT}" ] && APP_DIR="${APP_DIR}/${CONTEXT}"
+          for k in $(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build.env // {} | keys[]' 2>/dev/null); do v=$(echo "$STACK_JSON" | jq -r --arg a "$APP" --arg k "$k" '.apps[]|select(.name==$a)|.build.env[$k] // ""'); [ -n "$k" ] && export "$k=$v"; done
+          for k in $(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build.legacy // {} | keys[]' 2>/dev/null); do v=$(echo "$STACK_JSON" | jq -r --arg a "$APP" --arg k "$k" '.apps[]|select(.name==$a)|.build.legacy[$k] // ""'); [ -n "$k" ] && export "$k=$v"; done
+          cd "$APP_DIR"
+          [ -n "$PRE_CMD" ] && eval "$PRE_CMD"
+          if [ -n "$CMD" ]; then
+            RUN_CMD="$CMD"; echo "$CMD" | grep -q "npm ci" && [ ! -f package-lock.json ] && RUN_CMD=$(echo "$CMD" | sed 's/npm ci/npm install/g')
+            eval "$RUN_CMD"
+          else
+            [ -f package-lock.json ] && npm ci || npm install; npm run build --if-present
+          fi
+          [ -n "$POST_CMD" ] && eval "$POST_CMD"
+        done
+        echo "Compile (npm) done."

@@ -1,0 +1,45 @@
+# Writes .tool-apps.json so only the compile task(s) for build-apps get run (see pipeline when expressions).
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: build-select-tool-apps
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+spec:
+  description: "Writes .tool-apps.json from stack-json and build-apps; used by conditional compile tasks."
+  params:
+    - name: stack-json
+      type: string
+    - name: build-apps
+      type: string
+  workspaces:
+    - name: source
+  steps:
+    - name: select-tool-apps
+      image: alpine:3.19
+      workingDir: $(workspaces.source.path)
+      env:
+        - name: STACK_JSON
+          value: $(params.stack-json)
+        - name: BUILD_APPS
+          value: $(params.build-apps)
+      script: |
+        #!/bin/sh
+        set -e
+        apk add --no-cache jq >/dev/null 2>&1
+        NPM_APPS=""; MAVEN_APPS=""; GRADLE_APPS=""; PIP_APPS=""; COMPOSER_APPS=""
+        for app in $BUILD_APPS; do
+          tool=$(echo "$STACK_JSON" | jq -r --arg a "$app" '.apps[]|select(.name==$a)|.build.tool // "none"')
+          case "$tool" in
+            npm) NPM_APPS="$NPM_APPS $app" ;;
+            maven) MAVEN_APPS="$MAVEN_APPS $app" ;;
+            gradle) GRADLE_APPS="$GRADLE_APPS $app" ;;
+            pip) PIP_APPS="$PIP_APPS $app" ;;
+            composer) COMPOSER_APPS="$COMPOSER_APPS $app" ;;
+          esac
+        done
+        jq -n \
+          --arg n "${NPM_APPS# }" --arg m "${MAVEN_APPS# }" --arg g "${GRADLE_APPS# }" --arg p "${PIP_APPS# }" --arg c "${COMPOSER_APPS# }" \
+          '{npm:(if $n=="" then [] else ($n|split(" ")|map(select(length>0))) end),maven:(if $m=="" then [] else ($m|split(" ")|map(select(length>0))) end),gradle:(if $g=="" then [] else ($g|split(" ")|map(select(length>0))) end),pip:(if $p=="" then [] else ($p|split(" ")|map(select(length>0))) end),composer:(if $c=="" then [] else ($c|split(" ")|map(select(length>0))) end)}' > .tool-apps.json
+        echo "Tool app lists written to .tool-apps.json"

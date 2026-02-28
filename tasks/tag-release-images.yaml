@@ -34,11 +34,15 @@ spec:
         VERSIONS='$(params.release-versions)'
         REGISTRY="$(params.image-registry)"
 
+        # Parse JSON keys/values with busybox-compatible sed/grep (no jq in crane:debug)
+        parse_json_keys() { echo "$1" | sed 's/[{}"]//g' | tr ',' '\n' | sed 's/:.*//' | tr -d ' ' | grep -v '^$'; }
+        parse_json_val()  { echo "$1" | sed 's/.*"'"$2"'":"//' | sed 's/".*//' ; }
+
         echo '{}' > /tmp/released.json
 
-        for APP in $(echo "$VERSIONS" | jq -r 'keys[]'); do
-          VER=$(echo "$VERSIONS" | jq -r --arg a "$APP" '.[$a]')
-          SRC_IMAGE=$(echo "$BUILT" | jq -r --arg a "$APP" '.[$a]')
+        for APP in $(parse_json_keys "$VERSIONS"); do
+          VER=$(parse_json_val "$VERSIONS" "$APP")
+          SRC_IMAGE=$(parse_json_val "$BUILT" "$APP")
           DST_IMAGE="${REGISTRY}/${APP}:v${VER}"
 
           echo "========================================="
@@ -57,12 +61,17 @@ spec:
             echo "  SKIP: No built image for $APP"
           fi
 
-          jq --arg a "$APP" --arg i "$DST_IMAGE" '. + {($a): $i}' \
-            /tmp/released.json > /tmp/released-tmp.json
-          mv /tmp/released-tmp.json /tmp/released.json
+          # Build released JSON incrementally with sed
+          CURRENT=$(cat /tmp/released.json)
+          if [ "$CURRENT" = "{}" ]; then
+            echo "{\"${APP}\":\"${DST_IMAGE}\"}" > /tmp/released.json
+          else
+            echo "$CURRENT" | sed "s/}$/,\"${APP}\":\"${DST_IMAGE}\"}/" > /tmp/released.json
+          fi
         done
 
         echo ""
         echo "Released images:"
-        cat /tmp/released.json | jq '.'
-        cat /tmp/released.json | tee $(results.released-images.path)
+        cat /tmp/released.json
+        echo ""
+        cat /tmp/released.json > $(results.released-images.path)

@@ -1,0 +1,51 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: build-compile-composer
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+spec:
+  description: "Runs Composer/PHP compile for apps in .tool-apps.json (invoked only when build-apps include composer)."
+  params:
+    - name: stack-json
+      type: string
+    - name: compile-image-php
+      type: string
+      default: "ubuntu:22.04"
+  workspaces:
+    - name: source
+    - name: build-cache
+      optional: true
+  steps:
+    - name: compile-composer
+      image: $(params.compile-image-php)
+      workingDir: $(workspaces.source.path)
+      env:
+        - name: STACK_JSON
+          value: $(params.stack-json)
+        - name: COMPILE_IMAGE
+          value: $(params.compile-image-php)
+      script: |
+        #!/usr/bin/env bash
+        set -e
+        if [ "$COMPILE_IMAGE" = "ubuntu:22.04" ]; then apt-get update -qq && apt-get install -y -qq curl jq ca-certificates software-properties-common >/dev/null 2>&1 && add-apt-repository -y ppa:ondrej/php >/dev/null 2>&1 || true && apt-get update -qq && apt-get install -y -qq php8.3-cli php8.3-mbstring php8.3-xml php8.3-curl php8.3-zip unzip 2>/dev/null || apt-get install -y -qq php-cli php-mbstring php-xml php-curl php-zip unzip >/dev/null 2>&1 && curl -fsSL https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer >/dev/null 2>&1; fi
+        [ "$(workspaces.build-cache.bound)" = "true" ] && CACHE="$(workspaces.build-cache.path)" && mkdir -p "$CACHE/.composer" && export COMPOSER_CACHE_DIR="$CACHE/.composer"
+        APPS=$(jq -r '.composer[]' .tool-apps.json 2>/dev/null || true)
+        [ -z "$APPS" ] && echo "No composer apps" && exit 0
+        for APP in $APPS; do
+          echo "=== Compile (composer): $APP ==="
+          CMD=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."build-command" // ""')
+          PRE_CMD=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."pre-command" // ""')
+          POST_CMD=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build."post-command" // ""')
+          CONTEXT=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|."context-dir" // "."')
+          APP_DIR="$(workspaces.source.path)"; [ -d "$(workspaces.source.path)/${APP}" ] && APP_DIR="$(workspaces.source.path)/${APP}"
+          [ "$CONTEXT" != "." ] && [ -d "${APP_DIR}/${CONTEXT}" ] && APP_DIR="${APP_DIR}/${CONTEXT}"
+          for k in $(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build.env // {} | keys[]' 2>/dev/null); do v=$(echo "$STACK_JSON" | jq -r --arg a "$APP" --arg k "$k" '.apps[]|select(.name==$a)|.build.env[$k] // ""'); [ -n "$k" ] && export "$k=$v"; done
+          for k in $(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.build.legacy // {} | keys[]' 2>/dev/null); do v=$(echo "$STACK_JSON" | jq -r --arg a "$APP" --arg k "$k" '.apps[]|select(.name==$a)|.build.legacy[$k] // ""'); [ -n "$k" ] && export "$k=$v"; done
+          cd "$APP_DIR"
+          [ -n "$PRE_CMD" ] && eval "$PRE_CMD"
+          [ -n "$CMD" ] && eval "$CMD" || composer install --no-dev --optimize-autoloader --no-interaction
+          [ -n "$POST_CMD" ] && eval "$POST_CMD"
+        done
+        echo "Compile (composer) done."

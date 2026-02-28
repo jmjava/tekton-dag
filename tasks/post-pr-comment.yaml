@@ -1,0 +1,102 @@
+# Task that posts a comment on the GitHub PR with pipeline run status and optional link to Tekton Dashboard.
+# Requires a Kubernetes secret with key 'token' (GitHub token with repo scope for creating issue comments).
+# Pipeline should pass: git-url, pr-number, dashboard-url (optional), and optionally test-summary.
+# Status and pipeline run name/namespace can come from pipeline context.
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: post-pr-comment
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+spec:
+  description: "Post a comment on the GitHub PR with run status and Tekton Dashboard link."
+  params:
+    - name: git-url
+      description: "Git repo URL (e.g. https://github.com/owner/repo.git); used when pr-repo-url is empty"
+    - name: pr-repo-url
+      description: "When set, PR comment is posted to this repo (app repo); when empty, git-url is used"
+      default: ""
+    - name: pr-number
+      description: "PR number (issue number for the comment)"
+    - name: pipeline-run-name
+      description: "Name of this PipelineRun"
+    - name: namespace
+      description: "Namespace of the PipelineRun"
+    - name: status
+      description: "Pipeline status (Succeeded or Failed)"
+    - name: test-summary
+      description: "Optional test summary JSON string"
+      default: ""
+    - name: dashboard-url
+      description: "Base URL of Tekton Dashboard (e.g. https://dashboard.example.com); comment will include link to this run"
+      default: ""
+    - name: github-secret-name
+      description: "Kubernetes secret name containing key 'token' (GitHub token with repo scope)"
+      default: "github-token"
+  results: []
+  steps:
+    - name: post-comment
+      image: alpine:3.19
+      env:
+        - name: GITHUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: $(params.github-secret-name)
+              key: token
+        - name: GIT_URL
+          value: $(params.git-url)
+        - name: PR_REPO_URL
+          value: $(params.pr-repo-url)
+        - name: PR_NUMBER
+          value: $(params.pr-number)
+        - name: RUN_NAME
+          value: $(params.pipeline-run-name)
+        - name: NAMESPACE
+          value: $(params.namespace)
+        - name: STATUS
+          value: $(params.status)
+        - name: TEST_SUMMARY
+          value: $(params.test-summary)
+        - name: DASHBOARD_URL
+          value: $(params.dashboard-url)
+      script: |
+        #!/bin/sh
+        set -e
+        apk add --no-cache curl jq >/dev/null 2>&1
+        if [ -z "$GITHUB_TOKEN" ]; then
+          echo "No GITHUB_TOKEN secret; skipping PR comment."
+          exit 0
+        fi
+        # Use pr-repo-url when set (PR in app repo), else git-url (platform repo)
+        COMMENT_URL="${PR_REPO_URL:-$GIT_URL}"
+        # Derive owner/repo from URL (https://github.com/owner/repo or git@github.com:owner/repo.git)
+        REPO="${COMMENT_URL#*github.com/}"
+        REPO="${REPO#*:}"
+        REPO="${REPO%.git}"
+        REPO="${REPO#*/}"
+        OWNER="${COMMENT_URL#*github.com/}"
+        OWNER="${OWNER#*:}"
+        OWNER="${OWNER%.git}"
+        OWNER="${OWNER%%/*}"
+        if [ -z "$OWNER" ] || [ -z "$REPO" ]; then
+          echo "Could not parse owner/repo from COMMENT_URL=$COMMENT_URL"
+          exit 0
+        fi
+        BODY="## Tekton Pipeline Run"
+        BODY="${BODY}\n\n**Status:** ${STATUS}"
+        if [ -n "$TEST_SUMMARY" ]; then
+          BODY="${BODY}\n\n**Test summary:**\n\`\`\`json\n${TEST_SUMMARY}\n\`\`\`"
+        fi
+        if [ -n "$DASHBOARD_URL" ]; then
+          DASH_URL="${DASHBOARD_URL%/}/#/namespaces/${NAMESPACE}/pipelineruns/${RUN_NAME}"
+          BODY="${BODY}\n\n[View in Tekton Dashboard](${DASH_URL})"
+        fi
+        BODY="${BODY}\n\n_PipelineRun: \`${RUN_NAME}\`_"
+        JSON_BODY=$(printf '%s' "$BODY" | jq -Rs '{ body: . }')
+        curl -sS -X POST \
+          -H "Authorization: Bearer $GITHUB_TOKEN" \
+          -H "Accept: application/vnd.github.v3+json" \
+          "https://api.github.com/repos/${OWNER}/${REPO}/issues/${PR_NUMBER}/comments" \
+          -d "$JSON_BODY" || echo "Failed to post comment (non-fatal)"
+        echo "Posted comment to PR #${PR_NUMBER}"
