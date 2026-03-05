@@ -1,5 +1,7 @@
 # Milestone 4: Production-safe baggage middleware libraries and multi-namespace pipeline scaling
 
+> **Active milestone.** Completed milestones: [milestone-2](completed/milestone-2.md), [milestone-3](completed/milestone-3.md). Other active: [milestone-2.1](milestone-2.1.md), [milestone-4.1](milestone-4.1.md), [milestone-5](milestone-5.md).
+
 ## 1. Production-safe baggage middleware libraries
 
 ### Goal

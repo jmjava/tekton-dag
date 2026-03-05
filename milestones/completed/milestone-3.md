@@ -1,5 +1,9 @@
 # Milestone 3: Reporting GUI — trigger jobs, monitor jobs, view test results
 
+> **Status: Completed** (moved 2026-03-04). Active milestones: [milestone-4](../milestone-4.md), [milestone-5](../milestone-5.md).
+>
+> **Minor follow-up**: `post-pr-comment` task posts a hardcoded `"Completed"` status. Consider dynamically resolving to `"Succeeded"` or `"Failed"` based on pipeline run outcome.
+
 ## Goal
 
 Deliver a **reporting GUI** that allows users to:

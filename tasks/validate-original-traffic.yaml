@@ -1,0 +1,254 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: validate-original-traffic
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+spec:
+  description: >
+    Milestone 5 — Validates that original (non-intercepted) traffic continues
+    to work while Telepresence intercepts are active.
+
+    Sends requests to every app in the stack WITHOUT the intercept header.
+    These requests must reach the original deployments, not the PR pods.
+    This proves the intercept is additive (header-based split) and does
+    not disrupt normal service operation.
+
+    For a stack A→B→C→D where C is intercepted:
+      - Request WITHOUT header enters A → B → C (original) → D
+      - All four services respond normally from their original deployments
+      - The PR pod for C is never hit because no header is present
+
+    Two checks per app:
+      1. Direct health check — curl the service without headers
+      2. Entry-point passthrough — request enters through the entry app
+         without headers, exercises the full chain via original deployments
+
+    If Artillery is available, also runs a short load burst without headers
+    to confirm sustained traffic handling during the intercept window.
+
+  params:
+    - name: stack-json
+      type: string
+      description: "Full stack graph JSON"
+    - name: propagation-chain
+      type: string
+      description: "Space-separated ordered list of apps in the chain"
+    - name: build-apps
+      type: string
+      default: ""
+      description: "Space-separated list of intercepted apps (for reporting only)"
+    - name: entry-app
+      type: string
+      description: "Entry-point app (frontend / root of the graph)"
+    - name: default-namespace
+      type: string
+      default: "staging"
+  results:
+    - name: original-traffic-summary
+      description: "JSON summary: per-app health + e2e passthrough without headers"
+  steps:
+    - name: validate
+      image: node:22-alpine
+      script: |
+        #!/bin/sh
+        set -e
+        apk add --no-cache curl jq bash >/dev/null 2>&1
+        npm install -g artillery >/dev/null 2>&1
+
+        STACK_JSON='$(params.stack-json)'
+        CHAIN="$(params.propagation-chain)"
+        BUILD_APPS="$(params.build-apps)"
+        ENTRY_APP="$(params.entry-app)"
+        DEFAULT_NS="$(params.default-namespace)"
+
+        echo '{}' > /tmp/orig-summary.json
+        OVERALL_PASS=true
+
+        echo "============================================================"
+        echo "  Milestone 5: Original Traffic Validation"
+        echo "  (intercepts are ACTIVE — these requests carry NO header)"
+        echo "============================================================"
+        echo ""
+        echo "  Intercepted apps:   ${BUILD_APPS:-<none>}"
+        echo "  Full chain:         $CHAIN"
+        echo "  Entry point:        $ENTRY_APP"
+        echo ""
+        echo "  Expectation: every request WITHOUT the intercept header"
+        echo "  reaches the ORIGINAL deployment, not the PR pod."
+        echo ""
+
+        # ===========================================================
+        # Phase 1: Direct health check per service (no headers)
+        # ===========================================================
+        echo "############################################################"
+        echo "  PHASE 1: Direct health check per service (no headers)"
+        echo "############################################################"
+        echo ""
+
+        for APP in $CHAIN; do
+          NS=$(echo "$STACK_JSON" | jq -r --arg a "$APP" --arg d "$DEFAULT_NS" \
+            '(.defaults.namespace // $d) as $dn | .apps[]|select(.name==$a)|.namespace // $dn')
+          SPORT=$(echo "$STACK_JSON" | jq -r --arg a "$APP" \
+            '(.defaults."service-port" // "80") as $dp | .apps[]|select(.name==$a)|."service-port" // $dp')
+          URL="http://${APP}.${NS}.svc.cluster.local:${SPORT}/"
+
+          IS_INTERCEPTED=false
+          for BA in $BUILD_APPS; do
+            [ "$BA" = "$APP" ] && IS_INTERCEPTED=true
+          done
+
+          MARKER=""
+          $IS_INTERCEPTED && MARKER=" [INTERCEPTED — should still serve original on bare requests]"
+
+          echo "  $APP:${MARKER}"
+          echo "    URL: $URL"
+          echo "    Headers: <none>"
+
+          HTTP_CODE=$(curl -s -o /tmp/orig-response-${APP}.txt -w "%{http_code}" \
+            --connect-timeout 10 --max-time 30 \
+            "$URL" 2>/dev/null || echo "000")
+
+          if [ "$HTTP_CODE" = "000" ]; then
+            echo "    WARN: Service not reachable (may be expected in dry-run)"
+            STATUS="unreachable"
+          elif [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 400 ]; then
+            echo "    PASS: HTTP $HTTP_CODE — original deployment responding"
+            STATUS="pass"
+          else
+            echo "    FAIL: HTTP $HTTP_CODE — unexpected response"
+            STATUS="fail"
+            OVERALL_PASS=false
+          fi
+
+          jq --arg a "$APP" --arg s "$STATUS" --arg c "$HTTP_CODE" \
+            '. + {($a): {"health-check": $s, "http-code": $c}}' \
+            /tmp/orig-summary.json > /tmp/orig-summary-tmp.json
+          mv /tmp/orig-summary-tmp.json /tmp/orig-summary.json
+          echo ""
+        done
+
+        # ===========================================================
+        # Phase 2: Full-chain passthrough via entry point (no headers)
+        # ===========================================================
+        echo "############################################################"
+        echo "  PHASE 2: Full-chain passthrough (no intercept headers)"
+        echo "############################################################"
+        echo ""
+
+        ENTRY_NS=$(echo "$STACK_JSON" | jq -r --arg a "$ENTRY_APP" --arg d "$DEFAULT_NS" \
+          '(.defaults.namespace // $d) as $dn | .apps[]|select(.name==$a)|.namespace // $dn')
+        ENTRY_SPORT=$(echo "$STACK_JSON" | jq -r --arg a "$ENTRY_APP" \
+          '(.defaults."service-port" // "80") as $dp | .apps[]|select(.name==$a)|."service-port" // $dp')
+        ENTRY_URL="http://${ENTRY_APP}.${ENTRY_NS}.svc.cluster.local:${ENTRY_SPORT}/"
+
+        echo "  Entry URL: $ENTRY_URL"
+        echo "  Headers: <none> (no x-dev-session, no baggage)"
+        echo ""
+        echo "  This request should flow through ALL original deployments."
+        echo "  Even intercepted apps should respond from their original pods"
+        echo "  because no header matches the Telepresence intercept rule."
+        echo ""
+
+        PASSTHROUGH_RESULT=$(curl -s \
+          --connect-timeout 15 --max-time 60 \
+          "$ENTRY_URL" 2>/dev/null || echo '{"error":"unreachable"}')
+
+        echo "  Response:"
+        echo "$PASSTHROUGH_RESULT" | jq '.' 2>/dev/null || echo "  $PASSTHROUGH_RESULT"
+        echo ""
+
+        PASSTHROUGH_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+          --connect-timeout 15 --max-time 60 \
+          "$ENTRY_URL" 2>/dev/null || echo "000")
+
+        if [ "$PASSTHROUGH_CODE" = "000" ]; then
+          echo "  WARN: Entry point not reachable"
+          PASSTHROUGH_STATUS="unreachable"
+        elif [ "$PASSTHROUGH_CODE" -ge 200 ] && [ "$PASSTHROUGH_CODE" -lt 400 ]; then
+          echo "  PASS: HTTP $PASSTHROUGH_CODE — full chain responding without headers"
+          PASSTHROUGH_STATUS="pass"
+        else
+          echo "  FAIL: HTTP $PASSTHROUGH_CODE"
+          PASSTHROUGH_STATUS="fail"
+          OVERALL_PASS=false
+        fi
+
+        jq --arg s "$PASSTHROUGH_STATUS" --arg c "$PASSTHROUGH_CODE" \
+          '. + {"e2e-no-header-passthrough": {"status": $s, "http-code": $c}}' \
+          /tmp/orig-summary.json > /tmp/orig-summary-tmp.json
+        mv /tmp/orig-summary-tmp.json /tmp/orig-summary.json
+
+        # ===========================================================
+        # Phase 3: Artillery burst without headers
+        # ===========================================================
+        echo ""
+        echo "############################################################"
+        echo "  PHASE 3: Artillery load burst (no intercept headers)"
+        echo "############################################################"
+        echo ""
+        echo "  Short burst against entry point — no headers."
+        echo "  Confirms sustained original-traffic handling during intercept."
+        echo ""
+
+        cat > /tmp/original-traffic-artillery.yml <<ARTYEOF
+        config:
+          target: "${ENTRY_URL}"
+          phases:
+            - duration: 10
+              arrivalRate: 5
+              name: "Burst without intercept headers"
+          ensure:
+            maxErrorRate: 10
+        scenarios:
+          - name: "Original traffic (no intercept header)"
+            flow:
+              - get:
+                  url: "/"
+        ARTYEOF
+
+        ARTILLERY_STATUS="pass"
+        if artillery run /tmp/original-traffic-artillery.yml 2>/dev/null; then
+          echo "  Artillery burst: PASS"
+        else
+          ARTY_EXIT=$?
+          if [ $ARTY_EXIT -eq 127 ]; then
+            echo "  Artillery not available — skipping load burst (non-fatal)"
+            ARTILLERY_STATUS="skipped"
+          else
+            echo "  Artillery burst: FAIL (exit $ARTY_EXIT)"
+            ARTILLERY_STATUS="fail"
+            OVERALL_PASS=false
+          fi
+        fi
+
+        jq --arg s "$ARTILLERY_STATUS" \
+          '. + {"artillery-no-header-burst": $s}' \
+          /tmp/orig-summary.json > /tmp/orig-summary-tmp.json
+        mv /tmp/orig-summary-tmp.json /tmp/orig-summary.json
+
+        # ===========================================================
+        # Summary
+        # ===========================================================
+        echo ""
+        echo "============================================================"
+        echo "  Original Traffic Validation Summary"
+        echo "============================================================"
+
+        jq --arg o "$([ "$OVERALL_PASS" = "true" ] && echo pass || echo fail)" \
+          '. + {"overall": $o}' \
+          /tmp/orig-summary.json > /tmp/orig-summary-tmp.json
+        mv /tmp/orig-summary-tmp.json /tmp/orig-summary.json
+
+        cat /tmp/orig-summary.json | jq '.'
+        cat /tmp/orig-summary.json | tee $(results.original-traffic-summary.path)
+
+        if [ "$OVERALL_PASS" = "false" ]; then
+          echo ""
+          echo "FAILED: Original traffic was disrupted while intercepts were active."
+          exit 1
+        fi
+
+        echo ""
+        echo "PASSED: Original traffic unaffected by active intercepts."

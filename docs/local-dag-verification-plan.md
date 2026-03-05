@@ -8,7 +8,7 @@ This plan verifies that the **stack DAG** (directed acyclic graph), resolve outp
 
 | Phase | Script | When to run |
 |-------|--------|-------------|
-| **Phase 1** | `./scripts/verify-dag-phase1.sh` | No cluster needed. Run from repo root or from ``. |
+| **Phase 1** | `./scripts/verify-dag-phase1.sh` | No cluster needed. Run from repo root. |
 | **Phase 2** | `./scripts/verify-dag-phase2.sh [--stack STACK] [--timeout N]` | After Tekton is installed and tasks + pipelines are applied (including `stack-dag-verify`). Uses HTTPS for git clone by default. Polls every 5s (default 120s timeout). Requires `kubectl` and cluster access. |
 
 **One-liner (Phase 1 only):**
@@ -40,11 +40,11 @@ Phase 3 (full pipeline behavior) is manual: run a full PR or merge pipeline and 
 
 **Goal:** Confirm repo layout, stack YAMLs, and CLI behavior before touching Kubernetes.
 
-**Automated:** Run `./scripts/verify-dag-phase1.sh` from the milestone dir (or repo root). It runs all steps below and exits 0 if all pass.
+**Automated:** Run `./scripts/verify-dag-phase1.sh` from the repo root. It runs all steps below and exits 0 if all pass.
 
 ### 1.1 Repo structure
 
-From the milestone dir (``):
+From the repo root (tekton-dag):
 
 ```bash
 # Required dirs and key files
@@ -209,10 +209,9 @@ See [tests/artillery/README.md](../tests/artillery/README.md) for details and ge
 
 ## Quick reference commands
 
-```bash
-MILESTONE=
-cd "$MILESTONE"
+Run from the **tekton-dag repo root**:
 
+```bash
 # Phase 1 (automated)
 ./scripts/verify-dag-phase1.sh
 

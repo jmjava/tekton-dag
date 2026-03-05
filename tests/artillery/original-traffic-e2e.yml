@@ -1,0 +1,16 @@
+# Milestone 5: Original traffic Artillery test — NO intercept headers.
+# Runs against the stack entry point while Telepresence intercepts are active.
+# All requests must be served by the original deployments (no header = no intercept routing).
+config:
+  target: "http://localhost:8080"
+  phases:
+    - duration: 15
+      arrivalRate: 5
+      name: "Original traffic burst (no intercept headers)"
+  ensure:
+    maxErrorRate: 5
+scenarios:
+  - name: "Original traffic — no x-dev-session, no baggage"
+    flow:
+      - get:
+          url: "/"

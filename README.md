@@ -75,6 +75,14 @@ Two areas of work planned next. See [milestones/milestone-4.md](milestones/miles
 
 **2. Multi-namespace pipeline scaling** — move from a single hardcoded namespace (`tekton-pipelines`) to a three-tier model: local (Kind) → test namespace → production namespace. Pipeline upgrades are validated locally first, then applied to an isolated test namespace before promotion to production. Includes namespace-agnostic YAML (remove hardcoded namespaces), bootstrap and promotion scripts, per-namespace EventListeners, and optional pipeline versioning via Tekton Bundles.
 
+### Planned: Milestone 5
+
+Original traffic validation and MetalBear (mirrord) evaluation. See [milestones/milestone-5.md](milestones/milestone-5.md) for full details.
+
+**1. Original traffic validation (implemented)** — new `validate-original-traffic` task sends requests to every service WITHOUT intercept headers while Telepresence intercepts are active. Proves original deployments continue serving normal traffic during the PR test window. Three phases: per-service health check, entry-point passthrough, and Artillery load burst. Runs in parallel with `validate-propagation` — no additional pipeline duration.
+
+**2. MetalBear (mirrord) evaluation (planned)** — evaluate [mirrord](https://mirrord.dev/) as an alternative to Telepresence for header-based traffic interception. PoC covers header-based filtering parity, in-cluster execution feasibility, reduced cluster footprint (no persistent Traffic Manager), and traffic mirroring for shadow testing. Deliverable: go/no-go recommendation with comparison document.
+
 ---
 
 ## Valid test: real PR flow
@@ -347,12 +355,12 @@ After that, the Run and Debug dropdown will list configs like **Vue (demo-fe): L
 ## Layout
 
 - **stacks/** — Stack YAML (DAG definitions), [registry.yaml](stacks/registry.yaml) (repo → stack mapping), [versions.yaml](stacks/versions.yaml) (per-app version, RC, release)
-- **tasks/** — Tekton tasks: resolve-stack, clone-app-repos, build-app, build-select-tool-apps, build-compile-\* (npm, maven, gradle, pip, composer), build-containerize, deploy-full-stack, deploy-intercept, validate-propagation, run-stack-tests, pr-snapshot-tag, version-bump, tag-release-images, post-pr-comment, cleanup-stack
+- **tasks/** — Tekton tasks: resolve-stack, clone-app-repos, build-app, build-select-tool-apps, build-compile-\* (npm, maven, gradle, pip, composer), build-containerize, deploy-full-stack, deploy-intercept, validate-propagation, validate-original-traffic (milestone 5), run-stack-tests, pr-snapshot-tag, version-bump, tag-release-images, post-pr-comment, cleanup-stack
 - **pipeline/** — stack-pr-test, stack-merge-release, stack-bootstrap, stack-pr-continue, stack-dag-verify, triggers (EventListener + TriggerTemplates)
 - **build-images/** — Dockerfiles and build script for pre-built compile images (node, maven, gradle, python, php)
 - **scripts/** — generate-run, publish-build-images, run-valid-pr-flow, create-test-pr, merge-pr, configure-github-webhooks, kind-with-registry, install-tekton, install-tekton-dashboard, port-forward-tekton-dashboard, install-telepresence-traffic-manager, install-postgres-kind, install-tekton-results, run-all-setup-and-test, verify-dag-phase1, verify-dag-phase2, rerun-pr-from, create-and-push-sample-repos, run-e2e-with-intercepts, stack-graph, cloudflare-add-tunnel-cname
-- **milestones/** — Milestone planning docs (milestone-2 through milestone-4)
-- **docs/** — [DAG-AND-PROPAGATION.md](docs/DAG-AND-PROPAGATION.md), [c4-diagrams.md](docs/c4-diagrams.md), [PR-TEST-FLOW.md](docs/PR-TEST-FLOW.md), [PR-WEBHOOK-TEST-FLOW.md](docs/PR-WEBHOOK-TEST-FLOW.md), [CLOUDFLARE-TUNNEL-EVENTLISTENER.md](docs/CLOUDFLARE-TUNNEL-EVENTLISTENER.md)
+- **milestones/** — Milestone planning docs (milestone-4, milestone-5); **milestones/completed/** — completed milestones (milestone-2, milestone-3)
+- **docs/** — [DAG-AND-PROPAGATION.md](docs/DAG-AND-PROPAGATION.md), [c4-diagrams.md](docs/c4-diagrams.md), [PR-TEST-FLOW.md](docs/PR-TEST-FLOW.md), [PR-WEBHOOK-TEST-FLOW.md](docs/PR-WEBHOOK-TEST-FLOW.md), [CLOUDFLARE-TUNNEL-EVENTLISTENER.md](docs/CLOUDFLARE-TUNNEL-EVENTLISTENER.md), [argocd-architecture-guide.md](docs/argocd-architecture-guide.md), [local-dag-verification-plan.md](docs/local-dag-verification-plan.md), [README-FULL.md](docs/README-FULL.md) (full design doc). See [docs/README.md](docs/README.md) for an index.
 - **reporting-gui/** — Vue + Node reporting GUI (trigger jobs, monitor runs, view test results, embed Tekton Dashboard). See [reporting-gui/README.md](reporting-gui/README.md)
 - **sample-repos/** — Scripts and docs for creating the sample app repos. See [sample-repos/README.md](sample-repos/README.md)
 - **config/** — Kubernetes manifests (Postgres for Tekton Results)
