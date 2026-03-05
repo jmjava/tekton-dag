@@ -3,7 +3,6 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: build-select-tool-apps
-  namespace: tekton-pipelines
   labels:
     app.kubernetes.io/part-of: tekton-job-standardization
 spec:

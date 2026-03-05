@@ -28,6 +28,7 @@ need yq
 APP=""
 STACK="stack-one.yaml"
 STORAGE_CLASS=""
+NAMESPACE="${NAMESPACE:-tekton-pipelines}"
 POLL_INTERVAL="${POLL_INTERVAL:-30}"
 TIMEOUT="${TIMEOUT:-900}"
 
@@ -96,15 +97,15 @@ echo ""
 echo "[3/4] Polling for pipeline success (interval ${POLL_INTERVAL}s, timeout ${TIMEOUT}s)..."
 ELAPSED=0
 while [[ $ELAPSED -lt $TIMEOUT ]]; do
-  STATUS=$(kubectl get pipelinerun "$RUN_NAME" -n tekton-pipelines -o jsonpath='{.status.conditions[0].status}' 2>/dev/null || echo "Unknown")
-  REASON=$(kubectl get pipelinerun "$RUN_NAME" -n tekton-pipelines -o jsonpath='{.status.conditions[0].reason}' 2>/dev/null || echo "")
+  STATUS=$(kubectl get pipelinerun "$RUN_NAME" -n "$NAMESPACE" -o jsonpath='{.status.conditions[0].status}' 2>/dev/null || echo "Unknown")
+  REASON=$(kubectl get pipelinerun "$RUN_NAME" -n "$NAMESPACE" -o jsonpath='{.status.conditions[0].reason}' 2>/dev/null || echo "")
   if [[ "$STATUS" == "True" ]]; then
     echo "  Pipeline succeeded."
     break
   fi
   if [[ "$STATUS" == "False" ]]; then
     echo "  Pipeline failed: $REASON" >&2
-    kubectl get pipelinerun "$RUN_NAME" -n tekton-pipelines -o yaml | tail -50 >&2
+    kubectl get pipelinerun "$RUN_NAME" -n "$NAMESPACE" -o yaml | tail -50 >&2
     exit 1
   fi
   echo "  $(date +%H:%M:%S)  status=$STATUS (${ELAPSED}s elapsed)"
@@ -124,4 +125,4 @@ cd "$TEKTON_DAG_ROOT"
 echo ""
 echo "Done. If the webhook is configured, the merge pipeline was triggered automatically."
 echo "Otherwise run: ./scripts/generate-run.sh --mode merge --stack $STACK --app $APP --apply"
-echo "Merge pipeline runs: kubectl get pipelinerun -n tekton-pipelines -l tekton.dev/pipeline=stack-merge-release"
+echo "Merge pipeline runs: kubectl get pipelinerun -n $NAMESPACE -l tekton.dev/pipeline=stack-merge-release"

@@ -27,22 +27,22 @@ kubectl get namespace "$NAMESPACE" &>/dev/null || kubectl create namespace "$NAM
 # 1. Tekton Pipelines (kubectl apply is idempotent)
 echo "  Installing Tekton Pipelines..."
 kubectl apply -f "$TEKTON_PIPELINE_URL"
-# Relax Pod Security for tekton-pipelines (Kind enforces restricted; catalog/git-clone task pods need it)
-echo "  Configuring namespace for Pod Security (Kind/local clusters)..."
-kubectl label namespace tekton-pipelines pod-security.kubernetes.io/enforce=privileged --overwrite 2>/dev/null || true
-kubectl label namespace tekton-pipelines pod-security.kubernetes.io/audit=privileged --overwrite 2>/dev/null || true
-kubectl label namespace tekton-pipelines pod-security.kubernetes.io/warn=privileged --overwrite 2>/dev/null || true
+# Relax Pod Security for the target namespace (Kind enforces restricted; catalog/git-clone task pods need it)
+echo "  Configuring namespace $NAMESPACE for Pod Security (Kind/local clusters)..."
+kubectl label namespace "$NAMESPACE" pod-security.kubernetes.io/enforce=privileged --overwrite 2>/dev/null || true
+kubectl label namespace "$NAMESPACE" pod-security.kubernetes.io/audit=privileged --overwrite 2>/dev/null || true
+kubectl label namespace "$NAMESPACE" pod-security.kubernetes.io/warn=privileged --overwrite 2>/dev/null || true
 echo "  Waiting for Tekton Pipelines to be ready..."
-kubectl wait --for=condition=Ready pods -l app.kubernetes.io/part-of=tekton-pipelines -n tekton-pipelines --timeout=120s 2>/dev/null || true
+kubectl wait --for=condition=Ready pods -l app.kubernetes.io/part-of=tekton-pipelines -n "$NAMESPACE" --timeout=120s 2>/dev/null || true
 
 # 2. Tekton Triggers (required for pipeline/triggers.yaml — EventListener, TriggerBinding, TriggerTemplate)
 echo "  Installing Tekton Triggers..."
 kubectl apply -f "$TEKTON_TRIGGERS_URL"
 kubectl apply -f "$TEKTON_TRIGGERS_INTERCEPTORS_URL"
 echo "  Waiting for Tekton Triggers to be ready..."
-kubectl wait --for=condition=Ready pods -l app.kubernetes.io/part-of=tekton-triggers -n tekton-pipelines --timeout=120s 2>/dev/null || true
+kubectl wait --for=condition=Ready pods -l app.kubernetes.io/part-of=tekton-triggers -n "$NAMESPACE" --timeout=120s 2>/dev/null || true
 
-# 3. git-clone task (into tekton-pipelines namespace so our pipelines can reference it)
+# 3. git-clone task (into target namespace so our pipelines can reference it)
 echo "  Installing git-clone task..."
 kubectl apply -f "$TEKTON_GIT_CLONE_URL" -n "$NAMESPACE" 2>/dev/null || \
   kubectl apply -f "$TEKTON_GIT_CLONE_URL" -n "$NAMESPACE" --server-side=true 2>/dev/null || true
