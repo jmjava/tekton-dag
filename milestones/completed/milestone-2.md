@@ -1,5 +1,11 @@
 # Milestone 2: Prebuilt containers, version-selection GUI, and Results GUI
 
+> **Status: Archived** (moved 2026-03-04) — core deliverables done; uncompleted tasks tracked below for future work. Active milestones: [milestone-4](../milestone-4.md), [milestone-5](../milestone-5.md).
+>
+> **Uncompleted / remaining follow-up** — now tracked in **[milestone-2.1](../milestone-2.1.md)**:
+> - **Version selection GUI**: Currently a raw JSON override field in `TriggerView.vue`. Needs a dropdown picker that reads `versions.yaml` and presents selectable runtime versions (JDK, Node, PHP, etc.).
+> - **Results GUI (Tekton Results DB)**: `TestResultsView.vue` queries live PipelineRuns via `kubectl`, not the Tekton Results API or Postgres. Needs backend integration with Tekton Results for persistent history, time-range filtering, canned queries by stack/app/duration, and export.
+
 ## 1. Prebuilt JDK21, npm, and PHP containers
 
 ### Goal

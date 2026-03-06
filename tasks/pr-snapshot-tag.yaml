@@ -2,9 +2,9 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: pr-snapshot-tag
-  namespace: tekton-pipelines
   labels:
     app.kubernetes.io/part-of: tekton-job-standardization
+    app.kubernetes.io/version: "1.0.0"
 spec:
   description: >
     Builds a JSON map of app -> snapshot tag for PR pipeline image tagging.

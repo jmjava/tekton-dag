@@ -5,9 +5,9 @@ apiVersion: triggers.tekton.dev/v1beta1
 kind: EventListener
 metadata:
   name: stack-event-listener
-  namespace: tekton-pipelines
   labels:
     app.kubernetes.io/part-of: tekton-job-standardization
+    app.kubernetes.io/version: "1.0.0"
 spec:
   serviceAccountName: tekton-pr-sa
   triggers:
@@ -108,9 +108,9 @@ apiVersion: v1
 kind: Service
 metadata:
   name: el-stack-event-listener
-  namespace: tekton-pipelines
   labels:
     app.kubernetes.io/part-of: tekton-job-standardization
+    app.kubernetes.io/version: "1.0.0"
 spec:
   type: LoadBalancer
   selector:
@@ -126,7 +126,6 @@ apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerBinding
 metadata:
   name: stack-pr-binding
-  namespace: tekton-pipelines
 spec:
   params:
     - name: git-url
@@ -146,7 +145,6 @@ apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerBinding
 metadata:
   name: stack-merge-platform-binding
-  namespace: tekton-pipelines
 spec:
   params:
     - name: git-url
@@ -159,7 +157,6 @@ apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerBinding
 metadata:
   name: stack-merge-binding
-  namespace: tekton-pipelines
 spec:
   params:
     - name: changed-app
@@ -174,7 +171,6 @@ apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerTemplate
 metadata:
   name: stack-pr-template
-  namespace: tekton-pipelines
 spec:
   params:
     - name: git-url
@@ -187,7 +183,6 @@ spec:
       kind: PipelineRun
       metadata:
         generateName: stack-pr-$(tt.params.pr-number)-
-        namespace: tekton-pipelines
       spec:
         pipelineRef:
           name: stack-pr-test
@@ -241,7 +236,6 @@ apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerTemplate
 metadata:
   name: stack-merge-template
-  namespace: tekton-pipelines
 spec:
   params:
     - name: git-url
@@ -253,7 +247,6 @@ spec:
       kind: PipelineRun
       metadata:
         generateName: stack-merge-
-        namespace: tekton-pipelines
       spec:
         pipelineRef:
           name: stack-merge-release

@@ -1,0 +1,78 @@
+# Test stack: Multi-hop mixed frameworks (M4 §1.6).
+# Chain: Spring Boot (originator) → Flask (forwarder) → PHP (forwarder) → Spring Legacy (terminal).
+# Exercises all three roles across four frameworks.
+
+name: test-stack-multi-hop-mixed
+description: "Test: 4-hop mixed — Spring Boot → Flask → PHP → Spring Legacy"
+
+propagation:
+  header-name: x-dev-session
+  baggage-key: dev-session
+  strategy: w3c-baggage
+
+defaults:
+  namespace: staging
+  image-registry: "${IMAGE_REGISTRY}"
+  service-port: "80"
+  container-port: "8080"
+
+apps:
+  - name: release-lifecycle-demo
+    repo: jmjava/tekton-dag-spring-boot
+    role: frontend
+    propagation-role: originator
+    context-dir: "."
+    dockerfile: Dockerfile
+    build:
+      tool: maven
+      runtime: spring-boot
+      java-version: "21"
+      build-command: "mvn -B clean package -DskipTests"
+    downstream:
+      - analytics-api
+    tests: {}
+
+  - name: analytics-api
+    repo: jmjava/tekton-dag-flask
+    role: middleware
+    propagation-role: forwarder
+    container-port: "5000"
+    context-dir: "."
+    dockerfile: Dockerfile
+    build:
+      tool: pip
+      runtime: flask
+      python-version: "3.12"
+      build-command: "pip install --no-cache-dir -r requirements.txt"
+    downstream:
+      - vendor-adapter
+    tests: {}
+
+  - name: vendor-adapter
+    repo: jmjava/tekton-dag-php
+    role: middleware-vendor
+    propagation-role: forwarder
+    context-dir: "."
+    dockerfile: Dockerfile
+    build:
+      tool: composer
+      runtime: php
+      php-version: "8.3"
+      build-command: "composer install --no-dev --optimize-autoloader"
+    downstream:
+      - internal-api
+    tests: {}
+
+  - name: internal-api
+    repo: jmjava/tekton-dag-spring-legacy
+    role: persistence
+    propagation-role: terminal
+    context-dir: "."
+    dockerfile: Dockerfile
+    build:
+      tool: maven
+      runtime: spring-legacy
+      java-version: "17"
+      build-command: "mvn -B clean package -DskipTests"
+    downstream: []
+    tests: {}

@@ -1,6 +1,6 @@
 # Sharing changes back to reference-architecture-poc
 
-This repo is a **standalone copy** of the `milestones/tekton-job-standardization` content, tuned for local runs (Kind, local registry, no AWS). When you have it working locally, you can bring changes back into the main reference-architecture repo.
+This repo (**tekton-dag**) is a **standalone copy** of the `milestones/tekton-job-standardization` content, tuned for local runs (Kind, local registry, no AWS). In *this* repo, all paths are at the **repo root** (`stacks/`, `tasks/`, `pipeline/`, `scripts/`, `docs/`) — there is no `milestones/tekton-job-standardization/` prefix. The instructions below apply when **copying into** the main reference-architecture-poc repo, where that prefix exists.
 
 ## Option A: Copy files back by hand
 

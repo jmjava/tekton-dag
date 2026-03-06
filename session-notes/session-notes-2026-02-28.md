@@ -2,6 +2,8 @@
 
 Everything done in the **tekton-dag** project since milestone 3 and the 2026-02-24 session notes.
 
+*(Milestone 2 and 3 have since been moved to [milestones/completed/](../milestones/completed/) (2026-03-04). Active planning is in [milestones/milestone-4.md](../milestones/milestone-4.md) and [milestones/milestone-5.md](../milestones/milestone-5.md).)*
+
 ---
 
 ## 1. Reporting GUI (milestone 3 implementation)

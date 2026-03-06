@@ -6,9 +6,9 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: post-pr-comment
-  namespace: tekton-pipelines
   labels:
     app.kubernetes.io/part-of: tekton-job-standardization
+    app.kubernetes.io/version: "1.0.0"
 spec:
   description: "Post a comment on the GitHub PR with run status and Tekton Dashboard link."
   params:

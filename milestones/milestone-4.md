@@ -1,5 +1,9 @@
 # Milestone 4: Production-safe baggage middleware libraries and multi-namespace pipeline scaling
 
+> **Active milestone.** Completed milestones: [milestone-2](completed/milestone-2.md), [milestone-3](completed/milestone-3.md). Other active: [milestone-2.1](milestone-2.1.md), [milestone-4.1](milestone-4.1.md), [milestone-5](milestone-5.md).
+>
+> **Implemented:** §1.1–1.5 (middleware + unit tests), §1.6 (test stacks in `stacks/test-stack-*.yaml`), §1.7 (integration matrix in [docs/m4-test-stacks-and-integration.md](../docs/m4-test-stacks-and-integration.md)), §2.3–2.4 (namespace-agnostic YAML, bootstrap/promote scripts), §2.5 (EventListener routing in [docs/m4-eventlistener-per-namespace.md](../docs/m4-eventlistener-per-namespace.md)), §2.7 (version labels), and docs ([m4-multi-namespace.md](../docs/m4-multi-namespace.md), [m4-baggage-libraries-overview.md](../docs/m4-baggage-libraries-overview.md)). Standalone library extraction is [milestone-4.1](milestone-4.1.md).
+
 ## 1. Production-safe baggage middleware libraries
 
 ### Goal

@@ -2,9 +2,9 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: tag-release-images
-  namespace: tekton-pipelines
   labels:
     app.kubernetes.io/part-of: tekton-job-standardization
+    app.kubernetes.io/version: "1.0.0"
 spec:
   description: >
     After a merge build completes, tags the newly built images with

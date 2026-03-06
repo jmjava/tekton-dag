@@ -2,9 +2,9 @@ apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
   name: stack-bootstrap
-  namespace: tekton-pipelines
   labels:
     app.kubernetes.io/part-of: tekton-job-standardization
+    app.kubernetes.io/version: "1.0.0"
 spec:
   description: >
     One-time bootstrap: clone, resolve, build all stack apps, deploy full stack.

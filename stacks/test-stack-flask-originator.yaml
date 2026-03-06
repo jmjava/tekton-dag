@@ -1,0 +1,48 @@
+# Test stack: Flask in originator role (M4 §1.6).
+# Chain: Flask (originator) → Spring Boot (terminal).
+# Use with validate-propagation to verify Flask originates baggage.
+
+name: test-stack-flask-originator
+description: "Test: Flask as originator — Flask → Spring Boot"
+
+propagation:
+  header-name: x-dev-session
+  baggage-key: dev-session
+  strategy: w3c-baggage
+
+defaults:
+  namespace: staging
+  image-registry: "${IMAGE_REGISTRY}"
+  service-port: "80"
+  container-port: "5000"
+
+apps:
+  - name: analytics-api
+    repo: jmjava/tekton-dag-flask
+    role: frontend
+    propagation-role: originator
+    container-port: "5000"
+    context-dir: "."
+    dockerfile: Dockerfile
+    build:
+      tool: pip
+      runtime: flask
+      python-version: "3.12"
+      build-command: "pip install --no-cache-dir -r requirements.txt"
+    downstream:
+      - demo-api
+    tests: {}
+
+  - name: demo-api
+    repo: jmjava/tekton-dag-spring-boot-gradle
+    role: persistence
+    propagation-role: terminal
+    context-dir: "."
+    dockerfile: Dockerfile
+    build:
+      tool: maven
+      runtime: spring-boot
+      java-version: "21"
+      build-command: "mvn -B clean package -DskipTests"
+    downstream: []
+    tests: {}

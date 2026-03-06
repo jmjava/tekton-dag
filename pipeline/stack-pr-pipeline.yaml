@@ -2,9 +2,9 @@ apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
   name: stack-pr-test
-  namespace: tekton-pipelines
   labels:
     app.kubernetes.io/part-of: tekton-job-standardization
+    app.kubernetes.io/version: "1.0.0"
 spec:
   description: >
     PR testing pipeline. Uses the currently running apps in the cluster and only
@@ -77,6 +77,8 @@ spec:
   results:
     - name: test-summary
       value: $(tasks.run-tests.results.test-summary)
+    - name: original-traffic-summary
+      value: $(tasks.validate-original-traffic.results.original-traffic-summary)
 
   tasks:
     - name: fetch-source
@@ -318,6 +320,22 @@ spec:
       runAfter:
         - deploy-intercepts
 
+    # Milestone 5: confirm original traffic is unaffected while intercepts are active
+    - name: validate-original-traffic
+      taskRef:
+        name: validate-original-traffic
+      params:
+        - name: stack-json
+          value: $(tasks.resolve-stack.results.stack-json)
+        - name: propagation-chain
+          value: $(tasks.resolve-stack.results.propagation-chain)
+        - name: build-apps
+          value: $(tasks.resolve-stack.results.build-apps)
+        - name: entry-app
+          value: $(tasks.resolve-stack.results.entry-app)
+      runAfter:
+        - deploy-intercepts
+
     - name: run-tests
       taskRef:
         name: run-stack-tests
@@ -339,6 +357,7 @@ spec:
           workspace: shared-workspace
       runAfter:
         - validate-propagation
+        - validate-original-traffic
 
   finally:
     - name: cleanup

@@ -2,9 +2,9 @@ apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
   name: stack-merge-release
-  namespace: tekton-pipelines
   labels:
     app.kubernetes.io/part-of: tekton-job-standardization
+    app.kubernetes.io/version: "1.0.0"
 spec:
   description: >
     Universal merge/release pipeline. Runs when a PR is merged to develop.

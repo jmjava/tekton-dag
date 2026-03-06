@@ -2,9 +2,9 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: clone-app-repos
-  namespace: tekton-pipelines
   labels:
     app.kubernetes.io/part-of: tekton-job-standardization
+    app.kubernetes.io/version: "1.0.0"
 spec:
   description: >
     Clones each app repo from the stack into workspace/<app-name> via SSH.

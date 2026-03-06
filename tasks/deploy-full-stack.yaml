@@ -2,9 +2,9 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: deploy-full-stack
-  namespace: tekton-pipelines
   labels:
     app.kubernetes.io/part-of: tekton-job-standardization
+    app.kubernetes.io/version: "1.0.0"
 spec:
   description: >
     Deploys the full stack so every app has a Deployment and Service in the cluster.
