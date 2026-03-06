@@ -1,0 +1,17 @@
+{
+  "target": {
+    "path": "deployment/demo-api",
+    "namespace": "staging"
+  },
+  "agent": { "namespace": "staging" },
+  "feature": {
+    "network": {
+      "incoming": {
+        "mode": "steal",
+        "http_filter": { "header_filter": "x-dev-session: pr-2" }
+      },
+      "outgoing": true
+    },
+    "fs": "local"
+  }
+}

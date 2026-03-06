@@ -12,7 +12,7 @@ This folder contains design, operations, and verification docs for the tekton-da
 | [argocd-architecture-guide.md](argocd-architecture-guide.md) | tekton-dag + ArgoCD + Tekton responsibilities and GitOps layout |
 | [local-dag-verification-plan.md](local-dag-verification-plan.md) | Plan and scripts for verifying DAG structure locally (Phase 1/2) |
 | [mirrord-poc-results.md](mirrord-poc-results.md) | Milestone 5: MetalBear mirrord PoC — install, header filter, security/mitigations, recommendation (go with mirrord) |
-| [mirrord-m6-test-scenarios.md](mirrord-m6-test-scenarios.md) | Milestone 6: Full mirrord test scenarios (multiple intercepts + normal traffic) — to be created |
+| [mirrord-m6-test-scenarios.md](mirrord-m6-test-scenarios.md) | Milestone 6: Full mirrord test scenarios (multiple intercepts + normal traffic), procedures and pass criteria |
 | [README-FULL.md](README-FULL.md) | Full design document: Tekton Job Standardization, stack model, intercepts, versioning |
 
 **Milestones** (planning and completed) live in [../milestones/](../milestones/) and [../milestones/completed/](../milestones/completed/). See the main README sections “Planned: Milestone 4” and “Planned: Milestone 5” for current work.
