@@ -93,6 +93,12 @@ Original traffic validation and MetalBear (mirrord) evaluation. See [milestones/
 
 Validated mirrord for all required PR pipeline scenarios: **concurrent intercepts on different services** (1 per app), **normal traffic unaffected** during intercepts, and **combined** (N intercepts + normal traffic, no overlap or cross-talk). OSS mirrord is sufficient — no paid Operator needed. **Run scenarios:** `./scripts/run-mirrord-m6-scenarios.sh [3|4|5|all]`. Results and procedures: [docs/mirrord-m6-test-scenarios.md](docs/mirrord-m6-test-scenarios.md). See [milestones/milestone-6.md](milestones/milestone-6.md).
 
+### In progress: Milestone 7 — Prototype `deploy-intercept-mirrord` Tekton task
+
+**WIP branch:** `milestone-7` — active development happens here until the task is ready to merge to `main`.
+
+Replace the Telepresence-based `deploy-stack-intercepts` task with a mirrord equivalent: same interface (params, results), no Telepresence sidecar, no commercial license. Deliverables: new Tekton task `deploy-intercept-mirrord`, `tekton-dag-build-mirrord` task image (mirrord CLI + kubectl + jq + socat), pipeline integration in `stack-pr-pipeline.yaml`, cleanup of mirrord agent pods, and end-to-end validation. See [milestones/milestone-7.md](milestones/milestone-7.md).
+
 ---
 
 ## Using ArgoCD and Tekton together
