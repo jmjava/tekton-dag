@@ -93,6 +93,10 @@ Original traffic validation and MetalBear (mirrord) evaluation. See [milestones/
 
 Validated mirrord for all required PR pipeline scenarios: **concurrent intercepts on different services** (1 per app), **normal traffic unaffected** during intercepts, and **combined** (N intercepts + normal traffic, no overlap or cross-talk). OSS mirrord is sufficient — no paid Operator needed. **Run scenarios:** `./scripts/run-mirrord-m6-scenarios.sh [3|4|5|all]`. Results and procedures: [docs/mirrord-m6-test-scenarios.md](docs/mirrord-m6-test-scenarios.md). See [milestones/milestone-6.md](milestones/milestone-6.md).
 
+### Planned: Milestone 7 — Prototype `deploy-intercept-mirrord` Tekton task
+
+Replace the Telepresence-based `deploy-stack-intercepts` task with a mirrord equivalent. Same interface (params, results), no Telepresence sidecar, no commercial license. Includes a new `tekton-dag-build-mirrord` task image, pipeline integration, cleanup updates, and end-to-end validation. See [milestones/milestone-7.md](milestones/milestone-7.md).
+
 ---
 
 ## Using ArgoCD and Tekton together
@@ -376,7 +380,7 @@ After that, the Run and Debug dropdown will list configs like **Vue (demo-fe): L
 - **build-images/** — Dockerfiles and build script for pre-built compile images (node, maven, gradle, python, php)
 - **scripts/** — generate-run, publish-build-images, run-valid-pr-flow, create-test-pr, merge-pr, configure-github-webhooks, kind-with-registry, install-tekton, install-tekton-dashboard, port-forward-tekton-dashboard, install-telepresence-traffic-manager, install-mirrord (M5 PoC), install-postgres-kind, install-tekton-results, run-all-setup-and-test, verify-dag-phase1, verify-dag-phase2, rerun-pr-from, create-and-push-sample-repos, run-e2e-with-intercepts, stack-graph, cloudflare-add-tunnel-cname
 - **libs/** — Standalone baggage middleware libraries: `baggage-spring-boot-starter`, `baggage-servlet-filter`, `baggage-node`, `baggage-python`, `baggage-php`. Each has its own build file, tests, and README
-- **milestones/** — Milestone planning docs (milestone-4, milestone-4.1, milestone-5, milestone-6); **milestones/completed/** — completed milestones (milestone-2, milestone-3)
+- **milestones/** — Milestone planning docs (milestone-4, milestone-4.1, milestone-5, milestone-6, milestone-7); **milestones/completed/** — completed milestones (milestone-2, milestone-3)
 - **docs/** — [DAG-AND-PROPAGATION.md](docs/DAG-AND-PROPAGATION.md), [c4-diagrams.md](docs/c4-diagrams.md), [PR-TEST-FLOW.md](docs/PR-TEST-FLOW.md), [PR-WEBHOOK-TEST-FLOW.md](docs/PR-WEBHOOK-TEST-FLOW.md), [CLOUDFLARE-TUNNEL-EVENTLISTENER.md](docs/CLOUDFLARE-TUNNEL-EVENTLISTENER.md), [argocd-architecture-guide.md](docs/argocd-architecture-guide.md), [local-dag-verification-plan.md](docs/local-dag-verification-plan.md), [mirrord-poc-results.md](docs/mirrord-poc-results.md) (M5 mirrord PoC), [README-FULL.md](docs/README-FULL.md) (full design doc). See [docs/README.md](docs/README.md) for an index.
 - **reporting-gui/** — Vue + Node reporting GUI (trigger jobs, monitor runs, view test results, embed Tekton Dashboard). See [reporting-gui/README.md](reporting-gui/README.md)
 - **sample-repos/** — Scripts and docs for creating the sample app repos. See [sample-repos/README.md](sample-repos/README.md)
