@@ -1,0 +1,21 @@
+{
+  "target": {
+    "path": "deployment/release-lifecycle-demo",
+    "namespace": "staging"
+  },
+  "agent": {
+    "namespace": "staging"
+  },
+  "feature": {
+    "network": {
+      "incoming": {
+        "mode": "steal",
+        "http_filter": {
+          "header_filter": "x-dev-session: pr-test"
+        }
+      },
+      "outgoing": true
+    },
+    "fs": "local"
+  }
+}
