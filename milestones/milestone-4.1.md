@@ -1,6 +1,8 @@
 # Milestone 4.1: Extract standalone, reusable baggage middleware libraries
 
 > **Active milestone.** Follows [milestone 4](milestone-4.md) section 1 (baggage middleware). Other active: [milestone-2.1](milestone-2.1.md), [milestone-4](milestone-4.md), [milestone-5](milestone-5.md).
+>
+> **Branch:** `milestone-4.1` (created from `milestone-4` after M4 completion). Use a capable model (e.g. Opus) for multi-repo and build-system work.
 
 ## Current state
 
