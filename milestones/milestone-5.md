@@ -1,6 +1,6 @@
 # Milestone 5: Original traffic validation during intercepts and MetalBear (mirrord) evaluation
 
-> **Active milestone.** Completed milestones: [milestone-2](completed/milestone-2.md), [milestone-3](completed/milestone-3.md). Other active: [milestone-2.1](milestone-2.1.md), [milestone-4](milestone-4.md), [milestone-4.1](milestone-4.1.md).
+> **Complete.** Section 1 (original traffic validation) implemented. Section 2 (mirrord PoC) proven; **recommendation: go with mirrord** for lower environment (multiple intercepts without overlap, free cost, production separate cluster) — see [docs/mirrord-poc-results.md](../docs/mirrord-poc-results.md).
 
 ## 1. Original traffic validation while intercepts are active
 
@@ -100,6 +100,8 @@ artillery run tests/artillery/original-traffic-e2e.yml --target http://localhost
 
 Evaluate mirrord as a potential replacement for or complement to Telepresence in the PR pipeline. Determine whether mirrord can provide the same header-based intercept behavior with reduced cluster footprint and improved reliability.
 
+**Architecture assumption:** Production runs on a **different cluster** from the one used for the PR pipeline (Tekton, intercepts). Intercept tooling (Telepresence or mirrord) therefore never runs in production. See [docs/mirrord-poc-results.md](../docs/mirrord-poc-results.md) §5 for security risks and mitigations.
+
 ### Tasks
 
 #### 2.1 Proof of concept: mirrord intercept in Kind cluster
@@ -154,11 +156,11 @@ Evaluate whether mirror mode is useful for PR testing and whether it can complem
 
 ### Deliverables
 
-- [ ] PoC results document: `docs/mirrord-poc-results.md`
-- [ ] Side-by-side comparison with Telepresence for this pipeline's use cases
-- [ ] Go/no-go recommendation with rationale
-- [ ] If go: prototype `deploy-intercept-mirrord.yaml` task
-- [ ] If go: migration plan (can run both in parallel during transition)
+- [x] PoC results document: `docs/mirrord-poc-results.md`
+- [x] Side-by-side comparison with Telepresence for this pipeline's use cases
+- [x] Recommendation with rationale: **go with mirrord** (lower env — multiple intercepts without overlap, free cost, production separate cluster)
+- [ ] Next: prototype `deploy-intercept-mirrord.yaml` task
+- [ ] Next: migration plan (run both in parallel during transition, then remove Telepresence)
 
 ### Timeline
 
@@ -173,5 +175,5 @@ This is an **evaluation task**, not a commitment to migrate. The PoC should take
 | Original traffic validation task | **Implemented** | `tasks/validate-original-traffic.yaml` |
 | Artillery template (no headers) | **Implemented** | `tests/artillery/original-traffic-e2e.yml` |
 | Pipeline integration | **Implemented** | `pipeline/stack-pr-pipeline.yaml` (parallel with validate-propagation) |
-| MetalBear/mirrord PoC | **Planned** | Section 2 tasks above |
-| mirrord in-pipeline prototype | **Planned** | `tasks/deploy-intercept-mirrord.yaml` (future) |
+| MetalBear/mirrord PoC | **Complete** | [docs/mirrord-poc-results.md](../docs/mirrord-poc-results.md) |
+| Recommendation | **Go with mirrord** (lower env): multiple intercepts without overlap + free cost; production is separate cluster. | Next: [milestone 6](milestone-6.md) (full mirrord testing), then prototype `deploy-intercept-mirrord` task. |

@@ -18,6 +18,9 @@ credentials.json
 Thumbs.db
 
 # -----------------------------------------------------------------------------
+# Local mirrord binary (install script may leave in repo root)
+/mirrord
+
 # Dependencies / build artifacts (do not publish or commit)
 # -----------------------------------------------------------------------------
 node_modules/

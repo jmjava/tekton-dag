@@ -81,13 +81,23 @@ Extracted the embedded middleware from each app repo into standalone, publishabl
 
 **Build-time exclusion:** Maven profiles (`-Pbaggage`), `devDependencies`, `requirements-dev.txt`, `require-dev` — production builds exclude the library entirely.
 
-### Planned: Milestone 5
+### Completed: Milestone 5 — Original traffic validation + mirrord evaluation
 
 Original traffic validation and MetalBear (mirrord) evaluation. See [milestones/milestone-5.md](milestones/milestone-5.md) for full details.
 
 **1. Original traffic validation (implemented)** — new `validate-original-traffic` task sends requests to every service WITHOUT intercept headers while Telepresence intercepts are active. Proves original deployments continue serving normal traffic during the PR test window. Three phases: per-service health check, entry-point passthrough, and Artillery load burst. Runs in parallel with `validate-propagation` — no additional pipeline duration.
 
-**2. MetalBear (mirrord) evaluation (planned)** — evaluate [mirrord](https://mirrord.dev/) as an alternative to Telepresence for header-based traffic interception. PoC covers header-based filtering parity, in-cluster execution feasibility, reduced cluster footprint (no persistent Traffic Manager), and traffic mirroring for shadow testing. Deliverable: go/no-go recommendation with comparison document.
+**2. MetalBear (mirrord) evaluation (complete — go with mirrord)** — evaluated [mirrord](https://github.com/metalbear-co/mirrord) as an alternative to Telepresence. Header-based intercept **works identically** to Telepresence's `--http-match`. **Recommendation: use mirrord in the lower environment.** Prerequisites: multiple concurrent intercepts without overlap (mirrord supports this via per-session agents + header filter), free cost (OSS), and production on a separate cluster (already the case). Full results and security/mitigations: [docs/mirrord-poc-results.md](docs/mirrord-poc-results.md).
+
+### Planned: Milestone 6 — Full MetalBear testing (all scenarios)
+
+Validate mirrord for **all** required scenarios before prototyping `deploy-intercept-mirrord`: single intercept (done in M5), **multiple concurrent intercepts** (same service and different services), **normal traffic** during intercepts, and **combined** (N intercepts + normal traffic all at once, no overlap). See [milestones/milestone-6.md](milestones/milestone-6.md).
+
+---
+
+## Using ArgoCD and Tekton together
+
+**→ [ArgoCD + Tekton architecture guide](docs/argocd-architecture-guide.md)** — How to use **ArgoCD and Tekton at once**: what each is responsible for (ArgoCD = GitOps / desired state; Tekton = pipeline execution), what ArgoCD installs vs what Tekton runs, sync waves, and an example ArgoCD Application so your pipelines and GitOps work together in one setup.
 
 ---
 
@@ -152,7 +162,7 @@ C4Context
     Rel(argocd, argo_rollouts, "Rollout")
 ```
 
-> **Where is ArgoCD?** ArgoCD and Argo Rollouts are **not in this repo**. They are optional **downstream** systems (production): this repo's pipelines push RC and release images to a container registry; in a full production setup, ArgoCD would sync from that registry and Argo Rollouts would perform blue/green promotion. For local/dev you only need Kind, Tekton, and the registry.
+> **Where is ArgoCD?** ArgoCD and Argo Rollouts are **not in this repo**. They are optional **downstream** systems (production): this repo's pipelines push RC and release images to a container registry; in a full production setup, ArgoCD would sync from that registry and Argo Rollouts would perform blue/green promotion. For local/dev you only need Kind, Tekton, and the registry. **Using ArgoCD and Tekton together?** See the [ArgoCD + Tekton architecture guide](docs/argocd-architecture-guide.md).
 
 **Main pieces** — pipelines and config inside the system:
 
@@ -364,10 +374,10 @@ After that, the Run and Debug dropdown will list configs like **Vue (demo-fe): L
 - **tasks/** — Tekton tasks: resolve-stack, clone-app-repos, build-app, build-select-tool-apps, build-compile-\* (npm, maven, gradle, pip, composer), build-containerize, deploy-full-stack, deploy-intercept, validate-propagation, validate-original-traffic (milestone 5), run-stack-tests, pr-snapshot-tag, version-bump, tag-release-images, post-pr-comment, cleanup-stack
 - **pipeline/** — stack-pr-test, stack-merge-release, stack-bootstrap, stack-pr-continue, stack-dag-verify, triggers (EventListener + TriggerTemplates)
 - **build-images/** — Dockerfiles and build script for pre-built compile images (node, maven, gradle, python, php)
-- **scripts/** — generate-run, publish-build-images, run-valid-pr-flow, create-test-pr, merge-pr, configure-github-webhooks, kind-with-registry, install-tekton, install-tekton-dashboard, port-forward-tekton-dashboard, install-telepresence-traffic-manager, install-postgres-kind, install-tekton-results, run-all-setup-and-test, verify-dag-phase1, verify-dag-phase2, rerun-pr-from, create-and-push-sample-repos, run-e2e-with-intercepts, stack-graph, cloudflare-add-tunnel-cname
+- **scripts/** — generate-run, publish-build-images, run-valid-pr-flow, create-test-pr, merge-pr, configure-github-webhooks, kind-with-registry, install-tekton, install-tekton-dashboard, port-forward-tekton-dashboard, install-telepresence-traffic-manager, install-mirrord (M5 PoC), install-postgres-kind, install-tekton-results, run-all-setup-and-test, verify-dag-phase1, verify-dag-phase2, rerun-pr-from, create-and-push-sample-repos, run-e2e-with-intercepts, stack-graph, cloudflare-add-tunnel-cname
 - **libs/** — Standalone baggage middleware libraries: `baggage-spring-boot-starter`, `baggage-servlet-filter`, `baggage-node`, `baggage-python`, `baggage-php`. Each has its own build file, tests, and README
-- **milestones/** — Milestone planning docs (milestone-4, milestone-4.1, milestone-5); **milestones/completed/** — completed milestones (milestone-2, milestone-3)
-- **docs/** — [DAG-AND-PROPAGATION.md](docs/DAG-AND-PROPAGATION.md), [c4-diagrams.md](docs/c4-diagrams.md), [PR-TEST-FLOW.md](docs/PR-TEST-FLOW.md), [PR-WEBHOOK-TEST-FLOW.md](docs/PR-WEBHOOK-TEST-FLOW.md), [CLOUDFLARE-TUNNEL-EVENTLISTENER.md](docs/CLOUDFLARE-TUNNEL-EVENTLISTENER.md), [argocd-architecture-guide.md](docs/argocd-architecture-guide.md), [local-dag-verification-plan.md](docs/local-dag-verification-plan.md), [README-FULL.md](docs/README-FULL.md) (full design doc). See [docs/README.md](docs/README.md) for an index.
+- **milestones/** — Milestone planning docs (milestone-4, milestone-4.1, milestone-5, milestone-6); **milestones/completed/** — completed milestones (milestone-2, milestone-3)
+- **docs/** — [DAG-AND-PROPAGATION.md](docs/DAG-AND-PROPAGATION.md), [c4-diagrams.md](docs/c4-diagrams.md), [PR-TEST-FLOW.md](docs/PR-TEST-FLOW.md), [PR-WEBHOOK-TEST-FLOW.md](docs/PR-WEBHOOK-TEST-FLOW.md), [CLOUDFLARE-TUNNEL-EVENTLISTENER.md](docs/CLOUDFLARE-TUNNEL-EVENTLISTENER.md), [argocd-architecture-guide.md](docs/argocd-architecture-guide.md), [local-dag-verification-plan.md](docs/local-dag-verification-plan.md), [mirrord-poc-results.md](docs/mirrord-poc-results.md) (M5 mirrord PoC), [README-FULL.md](docs/README-FULL.md) (full design doc). See [docs/README.md](docs/README.md) for an index.
 - **reporting-gui/** — Vue + Node reporting GUI (trigger jobs, monitor runs, view test results, embed Tekton Dashboard). See [reporting-gui/README.md](reporting-gui/README.md)
 - **sample-repos/** — Scripts and docs for creating the sample app repos. See [sample-repos/README.md](sample-repos/README.md)
 - **config/** — Kubernetes manifests (Postgres for Tekton Results)
