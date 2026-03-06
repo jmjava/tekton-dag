@@ -73,7 +73,7 @@ Two areas of work planned next. See [milestones/milestone-4.md](milestones/miles
 | `tekton-dag-baggage` | pip | Flask / WSGI |
 | `tekton-dag/baggage-middleware` | Composer | PHP (PSR-15 + Guzzle) |
 
-**2. Multi-namespace pipeline scaling** — move from a single hardcoded namespace (`tekton-pipelines`) to a three-tier model: local (Kind) → test namespace → production namespace. Pipeline upgrades are validated locally first, then applied to an isolated test namespace before promotion to production. Includes namespace-agnostic YAML (remove hardcoded namespaces), bootstrap and promotion scripts, per-namespace EventListeners, and optional pipeline versioning via Tekton Bundles.
+**2. Multi-namespace pipeline scaling** — Implemented. Pipelines and tasks are namespace-agnostic; use `NAMESPACE` or `--namespace` with scripts. **Bootstrap** a namespace: `./scripts/bootstrap-namespace.sh tekton-test`. **Promote** pipelines: `./scripts/promote-pipelines.sh --from tekton-test --to tekton-pipelines`. See [docs/m4-multi-namespace.md](docs/m4-multi-namespace.md) and [docs/m4-eventlistener-per-namespace.md](docs/m4-eventlistener-per-namespace.md).
 
 ### Planned: Milestone 5
 

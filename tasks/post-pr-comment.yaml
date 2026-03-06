@@ -8,6 +8,7 @@ metadata:
   name: post-pr-comment
   labels:
     app.kubernetes.io/part-of: tekton-job-standardization
+    app.kubernetes.io/version: "1.0.0"
 spec:
   description: "Post a comment on the GitHub PR with run status and Tekton Dashboard link."
   params:

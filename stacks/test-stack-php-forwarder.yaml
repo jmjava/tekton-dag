@@ -1,0 +1,63 @@
+# Test stack: PHP in forwarder role (M4 §1.6).
+# Chain: Vue (originator) → PHP (forwarder) → Spring Legacy (terminal).
+# Use with validate-propagation to verify PHP forwards baggage.
+
+name: test-stack-php-forwarder
+description: "Test: PHP as forwarder — Vue → PHP → Spring Legacy"
+
+propagation:
+  header-name: x-dev-session
+  baggage-key: dev-session
+  strategy: w3c-baggage
+
+defaults:
+  namespace: staging
+  image-registry: "${IMAGE_REGISTRY}"
+  service-port: "80"
+  container-port: "8080"
+
+apps:
+  - name: vendor-fe
+    repo: jmjava/tekton-dag-vue-fe
+    role: frontend
+    propagation-role: originator
+    container-port: "3000"
+    context-dir: "."
+    dockerfile: Dockerfile
+    build:
+      tool: npm
+      runtime: vue
+      node-version: "22"
+      build-command: "npm install && npm run build"
+    downstream:
+      - vendor-adapter
+    tests: {}
+
+  - name: vendor-adapter
+    repo: jmjava/tekton-dag-php
+    role: middleware-vendor
+    propagation-role: forwarder
+    context-dir: "."
+    dockerfile: Dockerfile
+    build:
+      tool: composer
+      runtime: php
+      php-version: "8.3"
+      build-command: "composer install --no-dev --optimize-autoloader"
+    downstream:
+      - internal-api
+    tests: {}
+
+  - name: internal-api
+    repo: jmjava/tekton-dag-spring-legacy
+    role: persistence
+    propagation-role: terminal
+    context-dir: "."
+    dockerfile: Dockerfile
+    build:
+      tool: maven
+      runtime: spring-legacy
+      java-version: "17"
+      build-command: "mvn -B clean package -DskipTests"
+    downstream: []
+    tests: {}

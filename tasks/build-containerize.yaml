@@ -4,6 +4,7 @@ metadata:
   name: build-containerize
   labels:
     app.kubernetes.io/part-of: tekton-job-standardization
+    app.kubernetes.io/version: "1.0.0"
 spec:
   description: "Runs Kaniko to build and push images for build-apps; runs after compile task(s)."
   params:

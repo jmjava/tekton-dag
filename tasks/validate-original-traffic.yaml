@@ -4,6 +4,7 @@ metadata:
   name: validate-original-traffic
   labels:
     app.kubernetes.io/part-of: tekton-job-standardization
+    app.kubernetes.io/version: "1.0.0"
 spec:
   description: >
     Milestone 5 — Validates that original (non-intercepted) traffic continues

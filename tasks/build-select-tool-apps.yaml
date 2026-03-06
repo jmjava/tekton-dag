@@ -5,6 +5,7 @@ metadata:
   name: build-select-tool-apps
   labels:
     app.kubernetes.io/part-of: tekton-job-standardization
+    app.kubernetes.io/version: "1.0.0"
 spec:
   description: "Writes .tool-apps.json from stack-json and build-apps; used by conditional compile tasks."
   params:

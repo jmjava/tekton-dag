@@ -7,6 +7,7 @@ metadata:
   name: stack-event-listener
   labels:
     app.kubernetes.io/part-of: tekton-job-standardization
+    app.kubernetes.io/version: "1.0.0"
 spec:
   serviceAccountName: tekton-pr-sa
   triggers:
@@ -109,6 +110,7 @@ metadata:
   name: el-stack-event-listener
   labels:
     app.kubernetes.io/part-of: tekton-job-standardization
+    app.kubernetes.io/version: "1.0.0"
 spec:
   type: LoadBalancer
   selector:

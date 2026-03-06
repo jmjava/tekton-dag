@@ -4,6 +4,7 @@ metadata:
   name: version-bump
   labels:
     app.kubernetes.io/part-of: tekton-job-standardization
+    app.kubernetes.io/version: "1.0.0"
 spec:
   description: >
     Bumps the version for one or more apps in the central versions.yaml.

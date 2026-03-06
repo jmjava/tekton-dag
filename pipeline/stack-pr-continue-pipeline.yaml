@@ -4,6 +4,7 @@ metadata:
   name: stack-pr-continue
   labels:
     app.kubernetes.io/part-of: tekton-job-standardization
+    app.kubernetes.io/version: "1.0.0"
 spec:
   description: >
     Continuation pipeline: skips fetch/resolve/clone/build and starts from

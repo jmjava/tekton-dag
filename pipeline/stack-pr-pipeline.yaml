@@ -4,6 +4,7 @@ metadata:
   name: stack-pr-test
   labels:
     app.kubernetes.io/part-of: tekton-job-standardization
+    app.kubernetes.io/version: "1.0.0"
 spec:
   description: >
     PR testing pipeline. Uses the currently running apps in the cluster and only

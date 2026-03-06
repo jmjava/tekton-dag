@@ -4,6 +4,7 @@ metadata:
   name: deploy-stack-intercepts
   labels:
     app.kubernetes.io/part-of: tekton-job-standardization
+    app.kubernetes.io/version: "1.0.0"
 spec:
   description: >
     Deploys PR pods with Telepresence intercepts ONLY for the app(s)

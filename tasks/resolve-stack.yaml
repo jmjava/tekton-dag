@@ -4,6 +4,7 @@ metadata:
   name: resolve-stack
   labels:
     app.kubernetes.io/part-of: tekton-job-standardization
+    app.kubernetes.io/version: "1.0.0"
 spec:
   description: >
     Reads a stack definition and the version registry from the workspace,

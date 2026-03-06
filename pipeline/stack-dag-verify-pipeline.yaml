@@ -4,6 +4,7 @@ metadata:
   name: stack-dag-verify
   labels:
     app.kubernetes.io/part-of: tekton-job-standardization
+    app.kubernetes.io/version: "1.0.0"
 spec:
   description: >
     Minimal pipeline for local DAG verification: clone + resolve only.
