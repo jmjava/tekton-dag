@@ -59,21 +59,27 @@ cloudflared tunnel run menkelabs-sso-tunnel-config &
 kubectl port-forward svc/el-stack-event-listener 8080:8080 -n tekton-pipelines &
 ```
 
-### Planned: Milestone 4
+### Completed: Milestone 4 — Baggage middleware + multi-namespace pipelines
 
-Two areas of work planned next. See [milestones/milestone-4.md](milestones/milestone-4.md) for full details.
+See [milestones/milestone-4.md](milestones/milestone-4.md) for full details.
 
-**1. Production-safe baggage middleware libraries** — one standalone library per framework (Spring Boot, Spring Legacy, Node, Flask, PHP) that handles `x-dev-session` / W3C Baggage propagation. Each library supports all three propagation roles (originator, forwarder, terminal) via configuration, so any app on any framework can sit at any position in any DAG. Two guard layers (build-time exclusion + runtime env-var gate) ensure zero chance of execution in production. Test stacks will exercise every framework in every role.
+**1. Production-safe baggage middleware** — role-aware `x-dev-session` / W3C Baggage propagation embedded in each app repo (originator, forwarder, terminal roles). Two guard layers (build-time exclusion + runtime env-var gate). Test stacks exercise every framework in every role.
 
-| Library | Package | Framework |
-|---------|---------|-----------|
-| `baggage-spring-boot-starter` | Maven | Spring Boot |
-| `baggage-servlet-filter` | Maven | Spring Legacy / WAR |
-| `@tekton-dag/baggage` | npm | Node (Express, Nitro, Vue) |
-| `tekton-dag-baggage` | pip | Flask / WSGI |
-| `tekton-dag/baggage-middleware` | Composer | PHP (PSR-15 + Guzzle) |
+**2. Multi-namespace pipeline scaling** — pipelines and tasks are namespace-agnostic; use `NAMESPACE` or `--namespace` with scripts. **Bootstrap** a namespace: `./scripts/bootstrap-namespace.sh tekton-test`. **Promote** pipelines: `./scripts/promote-pipelines.sh --from tekton-test --to tekton-pipelines`. See [docs/m4-multi-namespace.md](docs/m4-multi-namespace.md) and [docs/m4-eventlistener-per-namespace.md](docs/m4-eventlistener-per-namespace.md).
 
-**2. Multi-namespace pipeline scaling** — Implemented. Pipelines and tasks are namespace-agnostic; use `NAMESPACE` or `--namespace` with scripts. **Bootstrap** a namespace: `./scripts/bootstrap-namespace.sh tekton-test`. **Promote** pipelines: `./scripts/promote-pipelines.sh --from tekton-test --to tekton-pipelines`. See [docs/m4-multi-namespace.md](docs/m4-multi-namespace.md) and [docs/m4-eventlistener-per-namespace.md](docs/m4-eventlistener-per-namespace.md).
+### Completed: Milestone 4.1 — Standalone baggage libraries
+
+Extracted the embedded middleware from each app repo into standalone, publishable libraries under `libs/`. App repos now consume these as dependencies. See [milestones/milestone-4.1.md](milestones/milestone-4.1.md) and [docs/m41-publishing-strategy.md](docs/m41-publishing-strategy.md).
+
+| Library | Package | Framework | Location |
+|---------|---------|-----------|----------|
+| `baggage-spring-boot-starter` | Maven | Spring Boot | `libs/baggage-spring-boot-starter/` |
+| `baggage-servlet-filter` | Maven | Spring Legacy / WAR | `libs/baggage-servlet-filter/` |
+| `@tekton-dag/baggage` | npm | Node (Express, Nitro, Vue) | `libs/baggage-node/` |
+| `tekton-dag-baggage` | pip | Flask / WSGI | `libs/baggage-python/` |
+| `tekton-dag/baggage-middleware` | Composer | PHP (PSR-15 + Guzzle) | `libs/baggage-php/` |
+
+**Build-time exclusion:** Maven profiles (`-Pbaggage`), `devDependencies`, `requirements-dev.txt`, `require-dev` — production builds exclude the library entirely.
 
 ### Planned: Milestone 5
 
@@ -359,7 +365,8 @@ After that, the Run and Debug dropdown will list configs like **Vue (demo-fe): L
 - **pipeline/** — stack-pr-test, stack-merge-release, stack-bootstrap, stack-pr-continue, stack-dag-verify, triggers (EventListener + TriggerTemplates)
 - **build-images/** — Dockerfiles and build script for pre-built compile images (node, maven, gradle, python, php)
 - **scripts/** — generate-run, publish-build-images, run-valid-pr-flow, create-test-pr, merge-pr, configure-github-webhooks, kind-with-registry, install-tekton, install-tekton-dashboard, port-forward-tekton-dashboard, install-telepresence-traffic-manager, install-postgres-kind, install-tekton-results, run-all-setup-and-test, verify-dag-phase1, verify-dag-phase2, rerun-pr-from, create-and-push-sample-repos, run-e2e-with-intercepts, stack-graph, cloudflare-add-tunnel-cname
-- **milestones/** — Milestone planning docs (milestone-4, milestone-5); **milestones/completed/** — completed milestones (milestone-2, milestone-3)
+- **libs/** — Standalone baggage middleware libraries: `baggage-spring-boot-starter`, `baggage-servlet-filter`, `baggage-node`, `baggage-python`, `baggage-php`. Each has its own build file, tests, and README
+- **milestones/** — Milestone planning docs (milestone-4, milestone-4.1, milestone-5); **milestones/completed/** — completed milestones (milestone-2, milestone-3)
 - **docs/** — [DAG-AND-PROPAGATION.md](docs/DAG-AND-PROPAGATION.md), [c4-diagrams.md](docs/c4-diagrams.md), [PR-TEST-FLOW.md](docs/PR-TEST-FLOW.md), [PR-WEBHOOK-TEST-FLOW.md](docs/PR-WEBHOOK-TEST-FLOW.md), [CLOUDFLARE-TUNNEL-EVENTLISTENER.md](docs/CLOUDFLARE-TUNNEL-EVENTLISTENER.md), [argocd-architecture-guide.md](docs/argocd-architecture-guide.md), [local-dag-verification-plan.md](docs/local-dag-verification-plan.md), [README-FULL.md](docs/README-FULL.md) (full design doc). See [docs/README.md](docs/README.md) for an index.
 - **reporting-gui/** — Vue + Node reporting GUI (trigger jobs, monitor runs, view test results, embed Tekton Dashboard). See [reporting-gui/README.md](reporting-gui/README.md)
 - **sample-repos/** — Scripts and docs for creating the sample app repos. See [sample-repos/README.md](sample-repos/README.md)

@@ -1,0 +1,19 @@
+{
+  "name": "@tekton-dag/baggage",
+  "version": "1.0.0",
+  "description": "Role-aware W3C baggage / x-dev-session middleware for browser and Node.js",
+  "main": "src/index.js",
+  "module": "src/index.js",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.18"
+  },
+  "files": ["src/"],
+  "license": "MIT"
+}

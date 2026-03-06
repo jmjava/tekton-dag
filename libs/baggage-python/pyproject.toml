@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tekton-dag-baggage"
+version = "1.0.0"
+description = "Role-aware W3C baggage / x-dev-session middleware for Flask"
+requires-python = ">=3.10"
+dependencies = ["flask>=3.0.0", "requests>=2.31.0"]
+
+[project.optional-dependencies]
+test = ["pytest>=7.0"]
+
+[tool.setuptools.packages.find]
+include = ["tekton_dag_baggage*"]

@@ -1,8 +1,10 @@
 # Milestone 4.1: Extract standalone, reusable baggage middleware libraries
 
-> **Active milestone.** Follows [milestone 4](milestone-4.md) section 1 (baggage middleware). Other active: [milestone-2.1](milestone-2.1.md), [milestone-4](milestone-4.md), [milestone-5](milestone-5.md).
+> **Implemented.** All five standalone libraries extracted, app repos converted to consumers, build-time exclusion configured, and publishing strategy documented.
 >
-> **Branch:** `milestone-4.1` (created from `milestone-4` after M4 completion). Use a capable model (e.g. Opus) for multi-repo and build-system work.
+> **Branch:** `milestone-4.1` (created from `milestone-4` after M4 completion).
+>
+> **Docs:** [Publishing strategy](../docs/m41-publishing-strategy.md) | Per-library READMEs in `libs/*/README.md`.
 
 ## Current state
 
