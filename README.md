@@ -89,9 +89,9 @@ Original traffic validation and MetalBear (mirrord) evaluation. See [milestones/
 
 **2. MetalBear (mirrord) evaluation (complete — go with mirrord)** — evaluated [mirrord](https://github.com/metalbear-co/mirrord) as an alternative to Telepresence. Header-based intercept **works identically** to Telepresence's `--http-match`. **Recommendation: use mirrord in the lower environment.** Prerequisites: multiple concurrent intercepts without overlap (mirrord supports this via per-session agents + header filter), free cost (OSS), and production on a separate cluster (already the case). Full results and security/mitigations: [docs/mirrord-poc-results.md](docs/mirrord-poc-results.md).
 
-### Planned: Milestone 6 — Full MetalBear testing (all scenarios)
+### Completed: Milestone 6 — Full MetalBear testing (all scenarios)
 
-Validate mirrord for **all** required scenarios before prototyping `deploy-intercept-mirrord`: single intercept (done in M5), **multiple concurrent intercepts** (same service and different services), **normal traffic** during intercepts, and **combined** (N intercepts + normal traffic all at once, no overlap). See [milestones/milestone-6.md](milestones/milestone-6.md).
+Validated mirrord for all required PR pipeline scenarios: **concurrent intercepts on different services** (1 per app), **normal traffic unaffected** during intercepts, and **combined** (N intercepts + normal traffic, no overlap or cross-talk). OSS mirrord is sufficient — no paid Operator needed. **Run scenarios:** `./scripts/run-mirrord-m6-scenarios.sh [3|4|5|all]`. Results and procedures: [docs/mirrord-m6-test-scenarios.md](docs/mirrord-m6-test-scenarios.md). See [milestones/milestone-6.md](milestones/milestone-6.md).
 
 ---
 
