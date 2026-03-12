@@ -4,7 +4,7 @@
 
 ## Goal
 
-Use traces from nightly regression runs to build a **system test graph** (nodes = services/endpoints, edges = calls observed during tests). Use that graph to (a) know which tests touch which parts of the system, and (b) select the **minimal set of regression tests** for a given change area. In production, Datadog would be the source; in **this test system there is no real Datadog** — we **simulate** the Datadog REST API with **mock returns** and **generate infrastructure test data** so the full flow can be demonstrated and the result made **available to the CI engine** to determine which tests to invoke for a given app change.
+Use traces from nightly regression runs to build a **system test graph** (nodes = services/endpoints, edges = calls observed during tests). Use that graph to (a) know which tests (e2e and individual) touch which paths/nodes, and (b) select the **minimal set of regression tests** for a given change. The set **must** include **e2e tests (first priority)** whose path includes the changed node (callers into the flow), and **also** include **individual/API-level tests** that touch that node. In production, Datadog would be the source; in **this test system there is no real Datadog** — we **simulate** the Datadog REST API with **mock returns** and **generate infrastructure test data** so the full flow can be demonstrated and the result made **available to the CI engine** to determine which tests to invoke for a given app change.
 
 **Scope:** Mock API, data generator, CI-facing output. No dependency on a real Datadog account in the repo/test system.
 
@@ -16,6 +16,14 @@ Use traces from nightly regression runs to build a **system test graph** (nodes 
 - **Tracing:** [milestones/milestone-4.md](milestone-4.md) and baggage libs mention OpenTelemetry/Datadog-compatible baggage. There is no existing nightly regression pipeline or Datadog integration in the repo.
 - **Milestone 9** introduces a **test-centric** graph: nodes/edges come from **observed trace data** during test runs (which services/endpoints each test hits), not only from the static stack YAML.
 
+### E2E (mandatory) and individual/API tests in the plan
+
+The selected test set is **not only e2e**; it includes both. **E2E tests (first priority, mandatory):** full end-to-end invocations that exercise a flow through the stack (e.g. entry app → BFF → API). For a changed node, we **must** include all e2e tests whose path includes that node (callers into the flow). **Individual/API-level tests:** tests that hit the changed node (or API) in isolation are **also** included. So minimal set = **e2e tests (mandatory, first priority)** whose path includes the node + **individual/component tests** that touch that node. The graph stores test → (path / set of nodes touched) and test type (e2e vs individual). The query returns e2e tests that traverse the flow and touch the changed node (mandatory) plus individual tests that touch the node.
+
+### Blast radius and why Neo4j fits
+
+**Blast radius** = how far from the changed node we look when selecting tests. **Radius 1** (default): only tests whose path or touch set includes the changed node. **Radius 2+**: also include tests that touch nodes within N hops (e.g. callers or callees of the changed node), so you catch integration/contract impact. The query becomes: “from the changed node, expand the subgraph to depth N along caller/callee edges; return all e2e tests (mandatory) and individual tests that touch any node in that expanded set.” That’s a **variable-length traversal** (e.g. 1..N hops). **Neo4j** is a strong fit: Cypher expresses this as a variable-depth path from the changed node, then a join to tests that touch those nodes; Postgres would need recursive CTEs and gets heavier as N grows. So with e2e + individual + tunable blast radius, Neo4j makes more sense for the store/query layer.
+
 ---
 
 ## End-to-end flow (idea → actual running tests)
@@ -25,8 +33,8 @@ The system must proceed from **idea to actual running tests** as the end point. 
 | Stage | What happens | Deliverable |
 |-------|--------------|--------------|
 | **1. Collect** | Call (mock) Datadog REST APIs to fetch traces from nightly regression (or use pre-generated trace payloads). | Mock server/fixtures; graph-builder job that calls the API and parses response. |
-| **2. Store** | Persist the derived graph and test→nodes/edges mapping so it can be queried later. | Storage design: e.g. file in workspace, Postgres table, or Tekton Results–backed store; schema for test plan / graph. |
-| **3. Query** | Given a change (file/method or node), query the stored plan to get the list of tests to run (or unmapped-area result). | Query step: input = change; output = test IDs (or "no mapped regression; area needs regression built"). |
+| **2. Store** | Persist the derived graph and test→nodes/edges mapping so it can be queried later. | Storage design: **Neo4j** (natural fit for graph; nodes/edges, Cypher queries), or file in workspace, Postgres table, or Tekton Results–backed store; schema for test plan / graph. |
+| **3. Query** | Given a change (file/method or node), query the stored plan to get tests to run: **e2e tests whose path includes** that node (mandatory, first priority) **plus** individual/API tests that touch that node. | Query step: input = change; output = test IDs (e2e + individual) or "no mapped regression; area needs regression built". |
 | **4. Execute** | CI build (Tekton) runs **only** the selected tests (e.g. Postman collections/suites, Playwright tests). | Pipeline/task that receives the test list (param or artifact) and **executes** those specific tests; pass/fail reported in CI. |
 
 ```mermaid
@@ -53,7 +61,7 @@ The M9 flow is **worked into the PR build that already runs in the repo** — th
 
 - **Current PR pipeline:** `stack-pr-test` does: fetch-source → resolve-stack → clone-app-repos → build (compile, containerize) → deploy-intercepts → validate-propagation / validate-original-traffic → **run-tests** ([tasks/run-stack-tests.yaml](../tasks/run-stack-tests.yaml)) → finally cleanup, post-pr-comment. The trigger already supplies **changed-app** (from the PR base repo name via [pipeline/triggers.yaml](../pipeline/triggers.yaml) and stack-pr-binding).
 
-- **Collect & Store:** May be done outside the PR run (e.g. nightly job or one-off) that calls the mock Datadog API, builds the graph, and persists the plan. The PR pipeline must have **access** to that stored plan (e.g. ConfigMap, PVC, or a small service the query task calls). Implementation must specify where the plan is stored and how the PR run reads it.
+- **Collect & Store:** May be done outside the PR run (e.g. nightly job or one-off) that calls the mock Datadog API, builds the graph, and persists the plan. **Neo4j** is a natural fit for storing the graph (nodes/edges, Cypher for “which tests touch node X?”). The PR pipeline must have **access** to that stored plan (e.g. Neo4j HTTP API, ConfigMap, PVC, or a small service the query task calls). Implementation must specify where the plan is stored and how the PR run reads it.
 
 - **Query in the PR build:** Add a task (e.g. **compute-minimal-tests** or **query-test-plan**) that runs during the PR pipeline — after **resolve-stack** (so changed-app and stack are known) and before **run-tests**. Inputs: **changed-app** (from pipeline param) and optionally changed files (e.g. from a task that runs `git diff` against base). The task reads the stored plan, resolves change → node/area, and outputs either (a) the list of test IDs to run, or (b) unmapped-area + message "no mapped regression; identify as needing regression built." Output must be consumable by the next task (e.g. result or workspace file).
 
@@ -89,11 +97,11 @@ Regression tests run **outside** the CI/build framework (Postman, Playwright, Ar
 
 ---
 
-## Pillar 2: Minimal regression set
+## Pillar 2: Minimal regression set (e2e mandatory + individual tests)
 
 - **“Work in a particular area”** = changed service(s), changed endpoint(s), or changed edges (e.g. “BFF” or “all calls into demo-api”).
-- **Minimal set** = all tests whose recorded traces **touch** that area (nodes or edges). Optionally include tests that touch upstream/downstream (impact analysis).
-- **Query design:** Input = area (node/edge/service or changed-app); output = list of test IDs to run (or unmapped-area + message).
+- **Minimal set** = **(1) e2e tests (mandatory, first priority)** whose path includes that area — callers into the flow that traverse the changed node; **(2) individual/API-level tests** that touch that node. E2e is always included; individual tests are in addition. Optionally include tests within N hops (tunable blast radius).
+- **Query design:** Input = area (node/edge/service or changed-app); output = list of test IDs (e2e + individual) to run (or unmapped-area + message).
 
 ---
 
@@ -115,13 +123,13 @@ The test system **does not have Datadog**. To demonstrate the full flow (traces 
 
 **2. Generate infrastructure test data — complex enough to show realistic mapping**
 
-- **Expand the mock data** so the graph is **complex enough** to show realistic behaviour: e.g. changing **node A** (or a file/method mapped to node A) results in a test plan that includes **Postman tests a, b, c** and **Playwright tests g, h**. The mock trace payloads and derived graph must support: multiple tests per node, multiple test types (Postman, Playwright), and a test plan that lists concrete test IDs by type.
+- **Expand the mock data** so the graph is **complex enough** to show realistic behaviour: e.g. changing **node A** (or a file/method mapped to node A) results in a test plan that includes **e2e tests (mandatory)** and **individual/API tests** — e.g. Postman a, b, c and Playwright g, h. The mock trace payloads and derived graph must support: test type (e2e vs individual), multiple tests per node, and a test plan that lists concrete test IDs (e2e first, then individual).
 - Use the same app/service names as in [stacks/stack-one.yaml](../stacks/stack-one.yaml) (demo-fe, release-lifecycle-demo, demo-api) and optionally map **file/method** to node.
-- **Sample inputs and expected outputs:** (1) Change to node A → test plan = Postman a, b, c + Playwright g, h. (2) Change to node B → different set. (3) Change to an area with **no mapped tests** → unmapped result (see below).
+- **Sample inputs and expected outputs:** (1) Change to node A → test plan = e2e tests (e.g. Postman a, b, c + Playwright g, h) whose path includes A. (2) Change to node B → different e2e set. (3) Change to an area with **no mapped tests** → unmapped result (see below).
 
 **3. Test engine simulates change; system generates test plan**
 
-- The test engine (or demo harness) **simulates a change** to a **file or method** (or node). The system **generates the test plan** based on that change: maps the change to a node/area, looks up which tests touch that node/area from the graph, and outputs the list of tests to run (or unmapped result). That test plan is what CI consumes.
+- The test engine (or demo harness) **simulates a change** to a **file or method** (or node). The system **generates the test plan** based on that change: maps the change to a node/area, looks up which **e2e tests’ paths include** that node/area from the graph, and outputs the list of e2e tests to run (or unmapped result). That test plan is what CI consumes.
 - **Unmapped case:** When the change is in an **area that has no mapped regression tests** (e.g. new service, new code path), the system must **output that no mapped regression was found** and **identify that area as needing regression (tests) to be built**. Example: `{ "tests": [], "unmapped_area": "node-C", "message": "No mapped regression found in area; identify as needing regression built" }`. This case must be **tested**.
 
 **4. Expose result to the CI engine**
@@ -149,7 +157,7 @@ The mock data and test engine must support triggering each case (e.g. a “chang
 
 - **Mock server or fixtures** conforming to Datadog REST API shape.
 - **Richer mock data** (complex enough that e.g. node A → Postman a,b,c + Playwright g,h); data generator or curated mock data.
-- **Graph-builder job** that calls the (mock) API and builds test→nodes/edges; **storage** for the plan (location and schema).
+- **Graph-builder job** that calls the (mock) API and builds test→nodes/edges; **storage** for the plan — **Neo4j** preferred for graph (nodes/edges, Cypher queries), or file/Postgres/Tekton Results; schema for test plan / graph.
 - **Query task** (e.g. query-test-plan or compute-minimal-tests) used in the PR pipeline; inputs: changed-app, optionally changed files; output: test list or unmapped-area.
 - **Extended run-stack-tests task** with optional params **tests-to-run** and **unmapped-area**; when provided, run only listed tests or report unmapped.
 - **Pipeline updates:** [pipeline/stack-pr-pipeline.yaml](../pipeline/stack-pr-pipeline.yaml) — insert query task before run-tests, wire params; optionally [pipeline/stack-pr-continue-pipeline.yaml](../pipeline/stack-pr-continue-pipeline.yaml).

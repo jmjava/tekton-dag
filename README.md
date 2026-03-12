@@ -68,7 +68,7 @@ kubectl port-forward svc/el-stack-event-listener 8080:8080 -n tekton-pipelines &
 | [M5](milestones/milestone-5.md) | **Completed** | Original traffic validation + mirrord evaluation |
 | [M6](milestones/milestone-6.md) | **Completed** | Full MetalBear testing (all scenarios) |
 | [M7](milestones/milestone-7.md) | **In progress** | Run either Telepresence or mirrord for intercepts (param `intercept-backend`; default: Telepresence) |
-| [M9](milestones/milestone-9.md) | **Planned** | Test-trace regression graph + minimal test selection (PR pipeline) |
+| [M9](milestones/milestone-9.md) | **Planned** | Test-trace regression graph + minimal test selection (PR pipeline); graph store (Neo4j) for blast radius |
 | [M8](milestones/milestone-8.md) | **Planned** | Demo assets (data flow, live tests, local step-debug) |
 
 Older milestones (M2, M3) are in [milestones/completed/](milestones/completed/).
@@ -119,7 +119,7 @@ Validated mirrord for all required PR pipeline scenarios: **concurrent intercept
 
 ### Planned: Milestone 9 — Test-trace–driven regression graph and minimal test selection
 
-Use traces from nightly regression to build a **system test graph**, then select the **minimal set of regression tests** for a given change (file/method or node). End-to-end flow: **Collect** (call mock Datadog REST APIs for trace data) → **Store** (persist graph / test→nodes mapping) → **Query** (change → test list or unmapped area) → **Execute** (CI runs only the selected tests). No real Datadog in this test system — mock API and generated data only. **Integrated into the existing PR pipeline** (stack-pr-test): a new query task runs before `run-tests`; `run-stack-tests` is extended to accept a test list (or unmapped result) so the same PR run runs only the selected tests or reports "no mapped regression; area needs regression built." Test cases: mapped change (e.g. node A → Postman a,b,c + Playwright g,h), different node, and unmapped (new functionality). See [milestones/milestone-9.md](milestones/milestone-9.md).
+Use traces from nightly regression to build a **system test graph**, then select the **minimal set of regression tests** for a given change (file/method or node). End-to-end flow: **Collect** (call mock Datadog REST APIs for trace data) → **Store** (persist graph / test→nodes mapping) → **Query** (change → test list or unmapped area) → **Execute** (CI runs only the selected tests). No real Datadog in this test system — mock API and generated data only. **Persistence:** The design uses a **graph-capable store** (Neo4j preferred) so we can represent nodes (services/endpoints), edges (caller→callee, test→touches→node), and test type (e2e vs individual). That store supports **tunable blast radius** (variable-depth traversal from the changed node): radius 1 = tests that touch the node; radius 2+ = also tests that touch callees/callers within N hops, catching integration and contract errors and improving system stability. A relational DB would require recursive CTEs and scales poorly for this; a graph store is the right persistence mechanism for this data and these queries. **Integrated into the existing PR pipeline** (stack-pr-test): a new query task runs before `run-tests`; `run-stack-tests` is extended to accept a test list (or unmapped result). See [milestones/milestone-9.md](milestones/milestone-9.md).
 
 ### Planned: Milestone 8 — Demo assets (data flow + live tests + local step-debug)
 
