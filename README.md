@@ -113,7 +113,7 @@ Validated mirrord for all required PR pipeline scenarios: **concurrent intercept
 
 ### In progress: Milestone 7 — Run either Telepresence or mirrord for intercepts
 
-**WIP branch:** `milestone-7` — active development happens here until the task is ready to merge to `main`.
+**Work on Milestone 7 (and planned M8, M9) continues on the `milestone-7` branch.** This branch remains the active development branch for M7 implementation and for M8/M9 planning and follow-on work; it is intentionally kept unmerged to `main` until M7 is complete and validated. Use `milestone-7` for M7, M8, and M9 work.
 
 **Delayed migration:** Do not replace Telepresence; add mirrord as an option. The pipeline will support **running either** via a parameter (`intercept-backend`: `telepresence` | `mirrord`; default `telepresence`). Deliverables: new Tekton task `deploy-intercept-mirrord`, `tekton-dag-build-mirrord` image, pipeline updated to choose backend and pass through results, cleanup of mirrord agent pods when mirrord is used, and end-to-end validation for both backends. See [milestones/milestone-7.md](milestones/milestone-7.md).
 
