@@ -1,10 +1,10 @@
-# Milestone 7: Prototype `deploy-intercept-mirrord` Tekton task
+# Milestone 7: Prototype `deploy-intercept-mirrord` Tekton task (run either backend)
 
-> **Active milestone.** Follows [milestone 6](milestone-6.md) (mirrord validated for all PR pipeline scenarios). Replaces the Telepresence-based `deploy-stack-intercepts` task with a mirrord equivalent, eliminating Telepresence licensing costs.
+> **Active milestone.** Follows [milestone 6](milestone-6.md) (mirrord validated for all PR pipeline scenarios). **Delayed migration:** do not replace Telepresence yet; add mirrord as an option and support **running either** via a pipeline parameter. Default remains Telepresence so existing behavior is unchanged until you opt in to mirrord.
 
 ## Goal
 
-Create a production-ready Tekton task (`deploy-intercept-mirrord`) that uses mirrord instead of Telepresence for header-based traffic interception in the PR pipeline. Integrate it into `stack-pr-pipeline.yaml` and validate end-to-end.
+Create a production-ready Tekton task (`deploy-intercept-mirrord`) that uses mirrord for header-based traffic interception, and integrate it into the PR pipeline **alongside** the existing Telepresence task. The pipeline gains an optional parameter (e.g. `intercept-backend: telepresence | mirrord`); when set to `mirrord`, use the new task; otherwise keep using `deploy-stack-intercepts`. This allows running either backend and defers a full cutover until mirrord is preferred.
 
 ---
 
@@ -60,13 +60,20 @@ New task `tasks/deploy-intercept-mirrord.yaml` with the same interface as the ex
 - **How does stolen traffic reach the PR pod?** mirrord wraps a local process — in this case a lightweight TCP proxy (socat/netcat) that forwards to the PR pod's ClusterIP. Alternatively, the PR pod runs the app directly and mirrord wraps it (but then mirrord must run on the same pod as the app, which loses the "no sidecar" benefit). **Recommended:** mirrord wraps a socat proxy in the task pod that forwards to the PR pod.
 - **Task image:** Build a `tekton-dag-build-mirrord` image with `mirrord` CLI, `kubectl`, `jq`, and `socat`. Publish alongside existing compile images.
 
-### 7.2 Update `stack-pr-pipeline.yaml`
+### 7.2 Update `stack-pr-pipeline.yaml` (run either, do not replace)
 
-Replace the `deploy-intercepts` pipeline task reference from `deploy-stack-intercepts` to `deploy-intercept-mirrord`. All params remain the same (interface-compatible).
+- Add a pipeline param **`intercept-backend`** (default: `telepresence`). Values: `telepresence` | `mirrord`.
+- **Keep** the existing `deploy-stack-intercepts` task (Telepresence). Add the new `deploy-intercept-mirrord` task.
+- Use **two pipeline tasks** with `when` conditions so only one runs:
+  - `deploy-intercepts-telepresence` (taskRef: `deploy-stack-intercepts`) when `intercept-backend == telepresence`
+  - `deploy-intercepts-mirrord` (taskRef: `deploy-intercept-mirrord`) when `intercept-backend == mirrord`
+- Both tasks write **`deployed-pods`** to a shared workspace path (e.g. `$(workspaces.shared-workspace.path)/deployed-pods.json`). Add a small **pass-through task** `deploy-intercepts-result` that runs after both, reads that file from the workspace, and writes it to its result `deployed-pods`. Downstream tasks (validate-propagation, validate-original-traffic, run-tests) and `finally` (cleanup) reference **`$(tasks.deploy-intercepts-result.results.deployed-pods)`** instead of `$(tasks.deploy-intercepts.results.deployed-pods)`.
+- Trigger binding / manual runs: default remains Telepresence; to use mirrord, pass `intercept-backend=mirrord` when creating the PipelineRun (or set in TriggerTemplate for webhook).
+- Apply the same pattern to **stack-pr-continue-pipeline.yaml** (re-run from deploy): add `intercept-backend` param and the two deploy tasks + pass-through result so continuation can use either backend.
 
 ### 7.3 Cleanup task update
 
-The existing `cleanup-pr-pods` task deletes pods with label `managed-by: tekton-job-standardization`. mirrord agents are labeled `app: mirrord` — add cleanup of mirrord agent pods alongside PR pod cleanup.
+The existing cleanup task deletes pods with label `managed-by: tekton-job-standardization`. When mirrord is used, mirrord agents are labeled `app: mirrord` — ensure cleanup removes mirrord agent pods when present (e.g. cleanup task reads `deployed-pods` and also deletes pods with `app: mirrord` in the same namespace(s), or a separate step when `intercept-backend == mirrord`).
 
 ### 7.4 Build image: `tekton-dag-build-mirrord`
 
@@ -84,27 +91,27 @@ Add to `scripts/publish-build-images.sh`.
 
 ### 7.6 Documentation
 
-- Update `tasks/deploy-intercept.yaml` header comment to note it's superseded
-- Add `docs/m7-mirrord-intercept-task.md` explaining the new task architecture
-- Update README to reflect M7 completion
+- Document the **intercept-backend** pipeline param and how to run with Telepresence (default) vs mirrord. Do not mark the Telepresence task as superseded — both remain supported.
+- Add `docs/m7-mirrord-intercept-task.md` explaining the mirrord task and the "run either" design
+- Update README to reflect M7 completion (ability to run either backend)
 
 ---
 
 ## Success criteria
 
-- [ ] `deploy-intercept-mirrord` task works in a PipelineRun (intercept active, header-routed traffic reaches PR pod)
-- [ ] Normal traffic unaffected during intercepts (re-validate via pipeline)
-- [ ] Cleanup task removes both PR pods and mirrord agent pods
+- [ ] `deploy-intercept-mirrord` task works in a PipelineRun when `intercept-backend=mirrord` (intercept active, header-routed traffic reaches PR pod)
+- [ ] Pipeline **default** (`intercept-backend=telepresence` or unset) still uses `deploy-stack-intercepts` — no behavior change for existing runs
+- [ ] Normal traffic unaffected during intercepts for both backends (re-validate via pipeline)
+- [ ] Cleanup removes PR pods and, when mirrord was used, mirrord agent pods
 - [ ] `tekton-dag-build-mirrord` image published to Kind registry
-- [ ] Pipeline runs without Telepresence — no Telepresence image, no Helm install, no commercial license required
-- [ ] End-to-end PR flow validated (PR → build → intercept → test → cleanup)
-- [ ] Documentation updated
+- [ ] End-to-end PR flow validated with **both** backends (Telepresence and mirrord)
+- [ ] Documentation updated (run either; param and trigger binding)
 
 ---
 
-## Non-goals (future milestones)
+## Non-goals (this milestone)
 
-- Removing Telepresence entirely from the codebase (keep as fallback until mirrord is proven in CI)
+- **Removing or replacing Telepresence** — both backends remain available; migration/cutover is deferred.
 - mirrord Operator evaluation (not needed per M6 findings)
 - Multi-cluster intercept scenarios
 
