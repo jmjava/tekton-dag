@@ -50,10 +50,10 @@ kubectl port-forward -n "$NAMESPACE" svc/tekton-results-api-service 8080:8080 &
 PORT_FWD_PID=$!
 sleep 3
 
-# Get a token (watcher SA has write; default or a readonly SA for list)
-TOKEN=$(kubectl create token default -n "$NAMESPACE" 2>/dev/null || kubectl create token tekton-results-watcher -n "$NAMESPACE" 2>/dev/null || true)
+# Use default SA token (install-tekton-results.sh grants default tekton-results-readonly for list/get)
+TOKEN=$(kubectl create token default -n "$NAMESPACE" 2>/dev/null || true)
 if [[ -z "$TOKEN" ]]; then
-  echo "  WARN: Could not create token; trying without auth (may fail)."
+  echo "  WARN: Could not create token for default SA; run install-tekton-results.sh to grant tekton-results-readonly to default." >&2
 fi
 
 # List results (REST: parents/-/results lists all; use -k for self-signed cert)

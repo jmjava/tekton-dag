@@ -59,6 +59,12 @@ echo "  Waiting for Results API and Watcher to be ready..."
 kubectl wait --for=condition=Available deployment/tekton-results-api -n "$NAMESPACE" --timeout=120s 2>/dev/null || echo "  (API may still be rolling out.)"
 kubectl wait --for=condition=Available deployment/tekton-results-watcher -n "$NAMESPACE" --timeout=120s 2>/dev/null || echo "  (Watcher may still be rolling out.)"
 
+# Grant default SA list/get on Results API so verify-results-in-db.sh can list results (watcher has create/update only)
+kubectl create clusterrolebinding tekton-results-readonly-default \
+  --clusterrole=tekton-results-readonly \
+  --serviceaccount="${NAMESPACE}:default" \
+  2>/dev/null || kubectl get clusterrolebinding tekton-results-readonly-default &>/dev/null || true
+
 echo ""
 echo "  Done. Tekton Results is installed; the Watcher will store PipelineRun/TaskRun data in Postgres."
 echo "  Verify with: ./scripts/verify-results-in-db.sh (after running a pipeline)."

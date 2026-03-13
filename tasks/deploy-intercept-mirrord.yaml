@@ -143,6 +143,7 @@ spec:
             component: ${APP}
             managed-by: tekton-job-standardization
         spec:
+          hostPID: true
           containers:
           - name: mirrord-proxy
             image: ${MIRRORD_IMAGE}
@@ -162,14 +163,13 @@ spec:
             - name: config
               mountPath: /config
               readOnly: true
+            securityContext:
+              capabilities:
+                add: [SYS_ADMIN, SYS_PTRACE, NET_ADMIN]
           volumes:
           - name: config
             configMap:
               name: ${CM_NAME}
-          securityContext:
-            capabilities:
-              add: [SYS_ADMIN, SYS_PTRACE, NET_ADMIN]
-            hostPID: true
         PROXYPOD
 
           kubectl wait --for=condition=Ready "pod/${PROXY_NAME}" --namespace "$NS" --timeout=120s || true

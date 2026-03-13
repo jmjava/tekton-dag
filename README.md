@@ -69,6 +69,7 @@ kubectl port-forward svc/el-stack-event-listener 8080:8080 -n tekton-pipelines &
 | [M5](milestones/milestone-5.md) | **Completed** | Original traffic validation + mirrord evaluation |
 | [M6](milestones/milestone-6.md) | **Completed** | Full MetalBear testing (all scenarios) |
 | [M7](milestones/milestone-7.md) | **Completed** | Run either Telepresence or mirrord for intercepts (param `intercept-backend`; default: Telepresence). See [docs/m7-mirrord-intercept-task.md](docs/m7-mirrord-intercept-task.md). |
+| [M7.1](milestones/milestone-7-1.md) | **Planned** | Pipeline speed optimizations (parallel containerize, Kaniko cache, parallel clone, optional resources, missing Postman tests). |
 | [M9](milestones/milestone-9.md) | **Planned** | Test-trace regression graph + minimal test selection (PR pipeline); graph store (Neo4j) for blast radius |
 | [M8](milestones/milestone-8.md) | **Planned** | Demo assets (data flow, live tests, local step-debug) |
 
@@ -76,7 +77,7 @@ Older milestones (M2, M3) are in [milestones/completed/](milestones/completed/).
 
 ### Plan for next working session
 
-→ **[docs/next-session-plan.md](docs/next-session-plan.md)** — Prioritized list for when you return: M7 implementation (deploy-intercept-mirrord task, pipeline "run either" param, pass-through result, cleanup, trigger binding, test both backends). Optional: M9 or M8. Branch: `milestone-7`.
+→ **Milestone 7.1** — Pipeline speed optimizations (parallel containerize, Kaniko cache, parallel clone, optional compile resources, missing Postman tests). See [milestones/milestone-7-1.md](milestones/milestone-7-1.md). Optional: M9 or M8. Branch: `milestone-7`.
 
 ### Completed: Milestone 4 — Baggage middleware + multi-namespace pipelines
 
@@ -112,11 +113,9 @@ Original traffic validation and MetalBear (mirrord) evaluation. See [milestones/
 
 Validated mirrord for all required PR pipeline scenarios: **concurrent intercepts on different services** (1 per app), **normal traffic unaffected** during intercepts, and **combined** (N intercepts + normal traffic, no overlap or cross-talk). OSS mirrord is sufficient — no paid Operator needed. **Run scenarios:** `./scripts/run-mirrord-m6-scenarios.sh [3|4|5|all]`. Results and procedures: [docs/mirrord-m6-test-scenarios.md](docs/mirrord-m6-test-scenarios.md). See [milestones/milestone-6.md](milestones/milestone-6.md).
 
-### In progress: Milestone 7 — Run either Telepresence or mirrord for intercepts
+### Completed: Milestone 7 — Run either Telepresence or mirrord for intercepts
 
-**Work on Milestone 7 (and planned M8, M9) continues on the `milestone-7` branch.** This branch remains the active development branch for M7 implementation and for M8/M9 planning and follow-on work; it is intentionally kept unmerged to `main` until M7 is complete and validated. Use `milestone-7` for M7, M8, and M9 work.
-
-**Delayed migration:** Do not replace Telepresence; add mirrord as an option. The pipeline will support **running either** via a parameter (`intercept-backend`: `telepresence` | `mirrord`; default `telepresence`). Deliverables: new Tekton task `deploy-intercept-mirrord`, `tekton-dag-build-mirrord` image, pipeline updated to choose backend and pass through results, cleanup of mirrord agent pods when mirrord is used, and end-to-end validation for both backends. See [milestones/milestone-7.md](milestones/milestone-7.md).
+**M7 is complete on the `milestone-7` branch.** Deliverables done: `deploy-intercept-mirrord` task, `tekton-dag-build-mirrord` image, pipeline `intercept-backend` param (default `telepresence`), pass-through result task, cleanup for mirrord pods, E2E for both backends, Tekton Results RBAC fix for verify-results-in-db.sh, `--skip-bootstrap` and regression docs. See [milestones/milestone-7.md](milestones/milestone-7.md) and [docs/m7-mirrord-intercept-task.md](docs/m7-mirrord-intercept-task.md). **Next:** [Milestone 7.1](milestones/milestone-7-1.md) (pipeline speed optimizations).
 
 ### Planned: Milestone 9 — Test-trace–driven regression graph and minimal test selection
 
@@ -158,6 +157,28 @@ The **only valid test** for the PR feature is using a **real GitHub PR**: create
 | **Bootstrap** (`stack-bootstrap`) | Deploy full stack once; prerequisite for PR runs. |
 | **PR** (`stack-pr-test`) | Test only — build changed app with snapshot tag, deploy intercepts, validate, test, post PR comment. No version bump. |
 | **Merge** (`stack-merge-release`) | Promote RC → release, build all apps, tag release images, push version commit. Triggered by merge webhook. |
+
+### Regression (E2E with intercepts)
+
+To run **full regression** (bootstrap + PR pipeline with intercepts and both backends), use:
+
+```bash
+# Full run: bootstrap then PR pipeline (Telepresence, default)
+./scripts/run-e2e-with-intercepts.sh --intercept-backend telepresence
+
+# Full run with mirrord instead of Telepresence
+./scripts/run-e2e-with-intercepts.sh --intercept-backend mirrord
+```
+
+**Do not re-run bootstrap every time.** If the stack is already deployed (e.g. a previous E2E or bootstrap run succeeded), run **only the PR pipeline** with `--skip-bootstrap`:
+
+```bash
+# PR pipeline only — reuse existing stack (saves ~8–12 min)
+./scripts/run-e2e-with-intercepts.sh --intercept-backend telepresence --skip-bootstrap
+./scripts/run-e2e-with-intercepts.sh --intercept-backend mirrord --skip-bootstrap
+```
+
+Use `--skip-bootstrap` when (1) you already ran full E2E once and want to test the other backend, or (2) you only changed pipeline/task code and want to re-run the PR path. The script still runs Step 2 (PR pipeline) and Step 3 (Tekton Results DB check).
 
 ---
 
