@@ -10,8 +10,13 @@
 #   kubectl create secret generic git-ssh-key --from-file=id_ed25519=$HOME/.ssh/id_ed25519 -n $NAMESPACE
 # Override name with GIT_SSH_SECRET_NAME.
 #
-# Usage: ./run-e2e-with-intercepts.sh [--stack STACK] [--changed-app APP] [--pr N] [--registry URL] [--namespace NS] [--skip-install-check] [--no-verify-db]
+# Usage: ./run-e2e-with-intercepts.sh [--stack STACK] [--changed-app APP] [--pr N] [--registry URL] [--namespace NS] [--intercept-backend telepresence|mirrord] [--skip-bootstrap] [--skip-install-check] [--no-verify-db]
 set -euo pipefail
+
+# Require bash (script uses [[ ]], etc.); re-exec if run with sh
+if [ -z "${BASH_VERSION:-}" ]; then
+  exec bash "$0" "$@"
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -21,6 +26,7 @@ STACK_FILE="stack-one.yaml"
 STACK_PATH="stacks/$STACK_FILE"
 CHANGED_APP="demo-fe"
 PR_NUMBER="1"
+INTERCEPT_BACKEND="${INTERCEPT_BACKEND:-telepresence}"
 IMAGE_REGISTRY="${IMAGE_REGISTRY:-localhost:5000}"
 GIT_URL="${GIT_URL:-https://github.com/jmjava/tekton-dag.git}"
 GIT_REV="${GIT_REV:-main}"
@@ -28,6 +34,7 @@ GIT_SSH_SECRET_NAME="${GIT_SSH_SECRET_NAME:-git-ssh-key}"
 NAMESPACE="${NAMESPACE:-tekton-pipelines}"
 SKIP_INSTALL_CHECK=false
 NO_VERIFY_DB=false
+SKIP_BOOTSTRAP=false
 BOOTSTRAP_TIMEOUT=900
 PR_TIMEOUT=900
 
@@ -38,6 +45,8 @@ while [[ $# -gt 0 ]]; do
     --pr)                  PR_NUMBER="$2"; shift 2 ;;
     --registry)            IMAGE_REGISTRY="$2"; shift 2 ;;
     --namespace)           NAMESPACE="$2"; shift 2 ;;
+    --intercept-backend)   INTERCEPT_BACKEND="$2"; shift 2 ;;
+    --skip-bootstrap)      SKIP_BOOTSTRAP=true; shift ;;
     --skip-install-check)  SKIP_INSTALL_CHECK=true; shift ;;
     --no-verify-db)        NO_VERIFY_DB=true; shift ;;
     *)                     echo "Unknown option: $1" >&2; exit 1 ;;
@@ -51,7 +60,9 @@ need jq
 if [[ "$SKIP_INSTALL_CHECK" != "true" ]]; then
   kubectl cluster-info &>/dev/null || { echo "No cluster. Run kind-with-registry.sh and install-tekton.sh." >&2; exit 1; }
   kubectl get deployment tekton-results-api -n "$NAMESPACE" &>/dev/null || { echo "Tekton Results not found. Run install-postgres-kind.sh and install-tekton-results.sh." >&2; exit 1; }
-  kubectl get deployment traffic-manager -n ambassador &>/dev/null || { echo "Telepresence Traffic Manager not found. Run install-telepresence-traffic-manager.sh." >&2; exit 1; }
+  if [[ "$INTERCEPT_BACKEND" == "telepresence" ]]; then
+    kubectl get deployment traffic-manager -n ambassador &>/dev/null || { echo "Telepresence Traffic Manager not found. Run install-telepresence-traffic-manager.sh." >&2; exit 1; }
+  fi
   kubectl get secret "$GIT_SSH_SECRET_NAME" -n "$NAMESPACE" &>/dev/null || { echo "Secret $GIT_SSH_SECRET_NAME not found. Create it with: kubectl create secret generic $GIT_SSH_SECRET_NAME --from-file=id_ed25519=\$HOME/.ssh/id_ed25519 -n $NAMESPACE" >&2; exit 1; }
 fi
 
@@ -63,7 +74,7 @@ kubectl create clusterrolebinding tekton-pr-sa-admin --clusterrole=cluster-admin
 
 echo "=============================================="
 echo "  E2E with live Telepresence intercepts"
-echo "  Stack: $STACK_FILE  changed-app: $CHANGED_APP  pr: $PR_NUMBER"
+echo "  Stack: $STACK_FILE  changed-app: $CHANGED_APP  pr: $PR_NUMBER  intercept-backend: $INTERCEPT_BACKEND"
 echo "  Registry: $IMAGE_REGISTRY"
 echo "=============================================="
 
@@ -85,10 +96,14 @@ spec:
 CACHEPVC
 fi
 
-# 1. Bootstrap: build all apps, deploy full stack
-echo ""
-echo ">>> Step 1: Bootstrap (build all + deploy full stack)"
-BOOTSTRAP_RUN=$(kubectl create -f - -o name <<EOF
+# 1. Bootstrap: build all apps, deploy full stack (unless --skip-bootstrap)
+if [[ "$SKIP_BOOTSTRAP" == "true" ]]; then
+  echo ""
+  echo ">>> Step 1: Bootstrap (skipped; reusing existing deployed stack)"
+else
+  echo ""
+  echo ">>> Step 1: Bootstrap (build all + deploy full stack)"
+  BOOTSTRAP_RUN=$(kubectl create -f - -o name <<EOF
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
@@ -126,45 +141,46 @@ spec:
         claimName: $CACHE_PVC
 EOF
 )
-BOOTSTRAP_NAME=$(echo "$BOOTSTRAP_RUN" | sed 's|.*/||')
-[[ -n "$BOOTSTRAP_NAME" ]] || { echo "FAILED: could not get bootstrap PipelineRun name" >&2; exit 1; }
-echo "  PipelineRun: $BOOTSTRAP_NAME (waiting up to ${BOOTSTRAP_TIMEOUT}s)..."
-PHASE=""
-for i in $(seq 1 $((BOOTSTRAP_TIMEOUT/10))); do
-  sleep 10
-  PHASE=$(kubectl get pipelinerun "$BOOTSTRAP_NAME" -n "$NAMESPACE" -o jsonpath='{.status.conditions[0].reason}' 2>/dev/null || true)
-  if [[ "$PHASE" == "Succeeded" ]]; then
-    echo "  Bootstrap succeeded."
-    break
-  fi
-  if [[ "$PHASE" == "Failed" ]]; then
-    echo "FAILED: Bootstrap pipeline failed." >&2
-    echo "  kubectl describe pipelinerun $BOOTSTRAP_NAME -n $NAMESPACE" >&2
-    kubectl describe pipelinerun "$BOOTSTRAP_NAME" -n "$NAMESPACE" 2>&1 | tail -40
+  BOOTSTRAP_NAME=$(echo "$BOOTSTRAP_RUN" | sed 's|.*/||')
+  [[ -n "$BOOTSTRAP_NAME" ]] || { echo "FAILED: could not get bootstrap PipelineRun name" >&2; exit 1; }
+  echo "  PipelineRun: $BOOTSTRAP_NAME (waiting up to ${BOOTSTRAP_TIMEOUT}s)..."
+  PHASE=""
+  for i in $(seq 1 $((BOOTSTRAP_TIMEOUT/10))); do
+    sleep 10
+    PHASE=$(kubectl get pipelinerun "$BOOTSTRAP_NAME" -n "$NAMESPACE" -o jsonpath='{.status.conditions[0].reason}' 2>/dev/null || true)
+    if [[ "$PHASE" == "Succeeded" || "$PHASE" == "Completed" ]]; then
+      echo "  Bootstrap succeeded."
+      break
+    fi
+    if [[ "$PHASE" == "Failed" ]]; then
+      echo "FAILED: Bootstrap pipeline failed." >&2
+      echo "  kubectl describe pipelinerun $BOOTSTRAP_NAME -n $NAMESPACE" >&2
+      kubectl describe pipelinerun "$BOOTSTRAP_NAME" -n "$NAMESPACE" 2>&1 | tail -40
+      exit 1
+    fi
+    echo "    ${i}0s..."
+  done
+  if [[ "$PHASE" != "Succeeded" && "$PHASE" != "Completed" ]]; then
+    echo "FAILED: Bootstrap pipeline timed out (last phase: ${PHASE:-unknown})." >&2
     exit 1
   fi
-  echo "    ${i}0s..."
-done
-if [[ "$PHASE" != "Succeeded" ]]; then
-  echo "FAILED: Bootstrap pipeline timed out (last phase: ${PHASE:-unknown})." >&2
-  exit 1
 fi
 
 # 2. PR pipeline: build changed app, deploy intercepts, run E2E
 echo ""
 echo ">>> Step 2: PR pipeline (intercepts + E2E)"
-./scripts/generate-run.sh --mode pr --stack "$STACK_FILE" --app "$CHANGED_APP" --pr "$PR_NUMBER" \
+PR_CREATE_OUT=$(./scripts/generate-run.sh --mode pr --stack "$STACK_FILE" --app "$CHANGED_APP" --pr "$PR_NUMBER" \
+  --intercept-backend "$INTERCEPT_BACKEND" \
   --registry "$IMAGE_REGISTRY" --git-url "$GIT_URL" --git-revision "$GIT_REV" \
-  --storage-class "" | kubectl create -f - || { echo "FAILED: creating PR PipelineRun" >&2; exit 1; }
-sleep 3
-PR_RUN_NAME=$(kubectl get pipelinerun -n "$NAMESPACE" -l tekton.dev/pipeline=stack-pr-test --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1].metadata.name}' 2>/dev/null)
-[[ -n "$PR_RUN_NAME" ]] || { echo "FAILED: could not get PR PipelineRun name" >&2; exit 1; }
+  --storage-class "" | kubectl create -f - -o name 2>&1) || { echo "FAILED: creating PR PipelineRun" >&2; exit 1; }
+PR_RUN_NAME=$(echo "$PR_CREATE_OUT" | sed 's|.*/||')
+[[ -n "$PR_RUN_NAME" ]] || { echo "FAILED: could not get PR PipelineRun name from create output." >&2; exit 1; }
 echo "  PipelineRun: $PR_RUN_NAME (waiting up to ${PR_TIMEOUT}s)..."
 PHASE=""
 for i in $(seq 1 $((PR_TIMEOUT/10))); do
   sleep 10
   PHASE=$(kubectl get pipelinerun "$PR_RUN_NAME" -n "$NAMESPACE" -o jsonpath='{.status.conditions[0].reason}' 2>/dev/null || true)
-  if [[ "$PHASE" == "Succeeded" ]]; then
+  if [[ "$PHASE" == "Succeeded" || "$PHASE" == "Completed" ]]; then
     echo "  PR pipeline (E2E) succeeded."
     break
   fi
@@ -176,7 +192,7 @@ for i in $(seq 1 $((PR_TIMEOUT/10))); do
   fi
   echo "    ${i}0s..."
 done
-if [[ "$PHASE" != "Succeeded" ]]; then
+if [[ "$PHASE" != "Succeeded" && "$PHASE" != "Completed" ]]; then
   echo "FAILED: PR pipeline timed out (last phase: ${PHASE:-unknown})." >&2
   exit 1
 fi
@@ -184,7 +200,7 @@ fi
 # 3. Verify Tekton Results DB (bootstrap + PR pipeline => at least 2 results stored)
 if [[ "$NO_VERIFY_DB" != "true" ]]; then
   echo ""
-  sleep 10
+  sleep 15
   echo ">>> Step 3: Verify Tekton Results DB"
   ./scripts/verify-results-in-db.sh --min-count 2 --namespace "$NAMESPACE" || { echo "FAILED: Tekton Results DB verification." >&2; exit 1; }
 else

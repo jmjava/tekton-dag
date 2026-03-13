@@ -1,0 +1,185 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: deploy-intercept-mirrord
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+    app.kubernetes.io/version: "1.0.0"
+spec:
+  description: >
+    Deploys PR pods with mirrord-based intercepts (M7). For each built app:
+    1) Deploys a PR pod running only the built image (no Telepresence sidecar).
+    2) Deploys a mirrord-proxy pod that runs mirrord exec wrapping a socat proxy;
+       traffic matching the intercept header is stolen from the original deployment
+       and forwarded to the PR pod. Same interface as deploy-stack-intercepts;
+       use when intercept-backend=mirrord.
+  params:
+    - name: stack-json
+      type: string
+      description: "Full stack graph JSON (used to resolve ports, namespaces, topology)"
+    - name: build-apps
+      type: string
+      description: "Space-separated list of apps that were built (ONLY these get intercepts)"
+    - name: propagation-chain
+      type: string
+      default: ""
+      description: "Full ordered chain from entry to leaf (for logging context)"
+    - name: built-images
+      type: string
+      description: "JSON map of app → image URI"
+    - name: intercept-header-value
+      type: string
+      description: "Header match for mirrord (e.g. x-dev-session:pr-42)"
+    - name: default-namespace
+      type: string
+      default: "staging"
+    - name: mirrord-image
+      type: string
+      default: "localhost:5001/tekton-dag-build-mirrord:latest"
+      description: "Image for mirrord proxy pods (mirrord CLI + socat)"
+  workspaces:
+    - name: shared-workspace
+      description: "Workspace to write deployed-pods.json for pass-through result"
+  results:
+    - name: deployed-pods
+      description: "JSON map of app → pod name (PR pods)"
+  steps:
+    - name: deploy
+      image: bitnami/kubectl:latest
+      script: |
+        #!/bin/bash
+        set -e
+
+        STACK_JSON='$(params.stack-json)'
+        BUILD_APPS="$(params.build-apps)"
+        CHAIN="$(params.propagation-chain)"
+        BUILT='$(params.built-images)'
+        INTERCEPT="$(params.intercept-header-value)"
+        DEFAULT_NS="$(params.default-namespace)"
+        MIRRORD_IMAGE="$(params.mirrord-image)"
+        DEPLOYED_PODS_FILE="$(workspaces.shared-workspace.path)/deployed-pods.json"
+
+        echo "============================================="
+        echo "  mirrord Intercept Deployment"
+        echo "============================================="
+        echo "  Build apps:       $BUILD_APPS"
+        echo "  Intercept header: $INTERCEPT"
+        echo "  Namespace:        $DEFAULT_NS"
+        echo ""
+
+        echo '{}' > /tmp/pods.json
+
+        for APP in $BUILD_APPS; do
+          echo "========================================="
+          echo "  Deploying intercept: $APP"
+          echo "========================================="
+
+          IMAGE=$(echo "$BUILT" | jq -r --arg a "$APP" '.[$a]')
+          NS=$(echo "$STACK_JSON" | jq -r --arg a "$APP" --arg d "$DEFAULT_NS" \
+            '(.defaults.namespace // $d) as $dn | .apps[]|select(.name==$a)|.namespace // $dn')
+          CPORT=$(echo "$STACK_JSON" | jq -r --arg a "$APP" \
+            '(.defaults."container-port" // "8080") as $dp | .apps[]|select(.name==$a)|."container-port" // $dp')
+
+          TS=$(date +%s)
+          POD_NAME="pr-${APP}-${TS}"
+          PROXY_NAME="mirrord-proxy-${APP}-${TS}"
+          CM_NAME="mirrord-config-${APP}-${TS}"
+
+          echo "  Deploying PR pod: $POD_NAME in $NS"
+          cat <<PRPOD | kubectl apply -f -
+        apiVersion: v1
+        kind: Pod
+        metadata:
+          name: ${POD_NAME}
+          namespace: ${NS}
+          labels:
+            app: pr-test
+            component: ${APP}
+            managed-by: tekton-job-standardization
+        spec:
+          containers:
+          - name: pr-component
+            image: ${IMAGE}
+            command: ["/bin/sh"]
+            args: ["-c", "while true; do echo 'PR build for ${APP}'; sleep 30; done"]
+            ports:
+            - containerPort: ${CPORT}
+        PRPOD
+
+          kubectl wait --for=condition=Ready "pod/${POD_NAME}" --namespace "$NS" --timeout=300s
+          PR_POD_IP=$(kubectl get pod "$POD_NAME" -n "$NS" -o jsonpath='{.status.podIP}')
+          echo "  PR pod ready: $POD_NAME (IP: $PR_POD_IP)"
+
+          # mirrord config: steal traffic matching header, target the deployment (original app)
+          HEADER_FILTER="${INTERCEPT}"
+          [ -z "$HEADER_FILTER" ] && HEADER_FILTER=".*"
+          MIRRORD_CONFIG=$(jq -n \
+            --arg path "deployment/${APP}" \
+            --arg ns "$NS" \
+            --arg header "$HEADER_FILTER" \
+            '{
+              target: { path: $path, namespace: $ns },
+              agent: { namespace: $ns },
+              feature: {
+                network: {
+                  incoming: { mode: "steal", http_filter: { header_filter: $header } },
+                  outgoing: true
+                },
+                fs: "local"
+              }
+            }')
+
+          kubectl create configmap "$CM_NAME" --namespace "$NS" --from-literal=config.json="$MIRRORD_CONFIG"
+
+          echo "  Deploying mirrord proxy: $PROXY_NAME"
+          cat <<PROXYPOD | kubectl apply -f -
+        apiVersion: v1
+        kind: Pod
+        metadata:
+          name: ${PROXY_NAME}
+          namespace: ${NS}
+          labels:
+            app: mirrord-proxy
+            component: ${APP}
+            managed-by: tekton-job-standardization
+        spec:
+          hostPID: true
+          containers:
+          - name: mirrord-proxy
+            image: ${MIRRORD_IMAGE}
+            command: ["/bin/sh"]
+            args:
+            - -c
+            - |
+              set -e
+              echo "Starting mirrord proxy for ${APP} -> ${PR_POD_IP}:${CPORT}"
+              exec mirrord exec -f /config/config.json -- socat TCP-LISTEN:${CPORT},fork TCP:${PR_POD_IP}:${CPORT}
+            env:
+            - name: PR_POD_IP
+              value: "${PR_POD_IP}"
+            - name: CPORT
+              value: "${CPORT}"
+            volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+            securityContext:
+              capabilities:
+                add: [SYS_ADMIN, SYS_PTRACE, NET_ADMIN]
+          volumes:
+          - name: config
+            configMap:
+              name: ${CM_NAME}
+        PROXYPOD
+
+          kubectl wait --for=condition=Ready "pod/${PROXY_NAME}" --namespace "$NS" --timeout=120s || true
+          echo "  Intercept active for $APP (traffic with header -> PR pod $POD_NAME)"
+          echo ""
+
+          jq --arg a "$APP" --arg p "$POD_NAME" '. + {($a): $p}' /tmp/pods.json > /tmp/pods-tmp.json
+          mv /tmp/pods-tmp.json /tmp/pods.json
+        done
+
+        mkdir -p "$(dirname "${DEPLOYED_PODS_FILE}")"
+        cat /tmp/pods.json > "$DEPLOYED_PODS_FILE"
+        cat /tmp/pods.json | tee $(results.deployed-pods.path)

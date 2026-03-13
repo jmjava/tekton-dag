@@ -20,6 +20,10 @@ spec:
     - name: stack-json
       type: string
       default: "{}"
+    - name: intercept-backend
+      type: string
+      default: "telepresence"
+      description: "When mirrord, also delete mirrord agent and proxy pods"
   steps:
     - name: cleanup
       image: bitnami/kubectl:latest
@@ -30,6 +34,7 @@ spec:
         PODS='$(params.deployed-pods)'
         DEFAULT_NS="$(params.default-namespace)"
         STACK_JSON='$(params.stack-json)'
+        INTERCEPT_BACKEND="$(params.intercept-backend)"
 
         echo "========================================="
         echo "  Cleanup: removing PR pods"
@@ -57,5 +62,24 @@ spec:
         echo "  Cleaning orphaned pr-test pods..."
         kubectl delete pods -l managed-by=tekton-job-standardization \
           -n "$DEFAULT_NS" --ignore-not-found=true 2>/dev/null || true
+
+        # When mirrord was used: remove mirrord agent and proxy pods in same namespace(s)
+        if [ "$INTERCEPT_BACKEND" = "mirrord" ]; then
+          echo "  Cleaning mirrord agent and proxy pods..."
+          for APP in $(echo "$PODS" | jq -r 'keys[]'); do
+            NS="$DEFAULT_NS"
+            if [ "$STACK_JSON" != "{}" ] && [ -n "$STACK_JSON" ]; then
+              NS=$(echo "$STACK_JSON" | jq -r --arg a "$APP" --arg d "$DEFAULT_NS" \
+                '(.defaults.namespace // $d) as $dn | .apps[]|select(.name==$a)|.namespace // $dn' 2>/dev/null || echo "$DEFAULT_NS")
+            fi
+            kubectl delete pods -l app=mirrord -n "$NS" --ignore-not-found=true 2>/dev/null || true
+            kubectl delete pods -l app=mirrord-proxy -n "$NS" --ignore-not-found=true 2>/dev/null || true
+          done
+          # Fallback: delete in default namespace if no apps in PODS
+          if [ "$PODS" = "{}" ] || [ -z "$PODS" ]; then
+            kubectl delete pods -l app=mirrord -n "$DEFAULT_NS" --ignore-not-found=true 2>/dev/null || true
+            kubectl delete pods -l app=mirrord-proxy -n "$DEFAULT_NS" --ignore-not-found=true 2>/dev/null || true
+          fi
+        fi
 
         echo "  Cleanup complete."

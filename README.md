@@ -24,6 +24,7 @@ Dedicated build images (one per tool) eliminate in-pod tool installation:
 | `tekton-dag-build-gradle` | `eclipse-temurin:21-jdk` | JDK 21 + jq (apps use `./gradlew`) |
 | `tekton-dag-build-python` | `python:3.12-slim` | Python 3.12 + pip + jq |
 | `tekton-dag-build-php` | `php:8.3-cli` | PHP 8.3 + Composer + zip ext + jq |
+| `tekton-dag-build-mirrord` (M7) | `bitnami/kubectl:latest` | mirrord CLI + jq + socat (for mirrord intercept task) |
 
 Publish with one command (defaults to Kind registry on port 5001):
 
@@ -59,6 +60,25 @@ cloudflared tunnel run menkelabs-sso-tunnel-config &
 kubectl port-forward svc/el-stack-event-listener 8080:8080 -n tekton-pipelines &
 ```
 
+### Milestone status
+
+| Milestone | Status | Description |
+|-----------|--------|-------------|
+| [M4](milestones/milestone-4.md) | **Completed** | Baggage middleware + multi-namespace pipelines |
+| [M4.1](milestones/milestone-4.1.md) | **Completed** | Standalone baggage libraries |
+| [M5](milestones/milestone-5.md) | **Completed** | Original traffic validation + mirrord evaluation |
+| [M6](milestones/milestone-6.md) | **Completed** | Full MetalBear testing (all scenarios) |
+| [M7](milestones/milestone-7.md) | **Completed** | Run either Telepresence or mirrord for intercepts (param `intercept-backend`; default: Telepresence). See [docs/m7-mirrord-intercept-task.md](docs/m7-mirrord-intercept-task.md). |
+| [M7.1](milestones/milestone-7-1.md) | **Planned** | Pipeline speed optimizations (parallel containerize, Kaniko cache, parallel clone, optional resources, missing Postman tests). |
+| [M9](milestones/milestone-9.md) | **Planned** | Test-trace regression graph + minimal test selection (PR pipeline); graph store (Neo4j) for blast radius |
+| [M8](milestones/milestone-8.md) | **Planned** | Demo assets (data flow, live tests, local step-debug) |
+
+Older milestones (M2, M3) are in [milestones/completed/](milestones/completed/).
+
+### Plan for next working session
+
+→ **Milestone 7.1** — Pipeline speed optimizations (parallel containerize, Kaniko cache, parallel clone, optional compile resources, missing Postman tests). See [milestones/milestone-7-1.md](milestones/milestone-7-1.md). Optional: M9 or M8. Branch: `milestone-7`.
+
 ### Completed: Milestone 4 — Baggage middleware + multi-namespace pipelines
 
 See [milestones/milestone-4.md](milestones/milestone-4.md) for full details.
@@ -93,11 +113,17 @@ Original traffic validation and MetalBear (mirrord) evaluation. See [milestones/
 
 Validated mirrord for all required PR pipeline scenarios: **concurrent intercepts on different services** (1 per app), **normal traffic unaffected** during intercepts, and **combined** (N intercepts + normal traffic, no overlap or cross-talk). OSS mirrord is sufficient — no paid Operator needed. **Run scenarios:** `./scripts/run-mirrord-m6-scenarios.sh [3|4|5|all]`. Results and procedures: [docs/mirrord-m6-test-scenarios.md](docs/mirrord-m6-test-scenarios.md). See [milestones/milestone-6.md](milestones/milestone-6.md).
 
-### In progress: Milestone 7 — Prototype `deploy-intercept-mirrord` Tekton task
+### Completed: Milestone 7 — Run either Telepresence or mirrord for intercepts
 
-**WIP branch:** `milestone-7` — active development happens here until the task is ready to merge to `main`.
+**M7 is complete.** Deliverables done: `deploy-intercept-mirrord` task, `tekton-dag-build-mirrord` image, pipeline `intercept-backend` param (default `telepresence`), pass-through result task, cleanup for mirrord pods, E2E for both backends, Tekton Results RBAC fix for verify-results-in-db.sh, `--skip-bootstrap` and regression docs. See [milestones/milestone-7.md](milestones/milestone-7.md) and [docs/m7-mirrord-intercept-task.md](docs/m7-mirrord-intercept-task.md). **Next:** [Milestone 7.1](milestones/milestone-7-1.md) (pipeline speed optimizations).
 
-Replace the Telepresence-based `deploy-stack-intercepts` task with a mirrord equivalent: same interface (params, results), no Telepresence sidecar, no commercial license. Deliverables: new Tekton task `deploy-intercept-mirrord`, `tekton-dag-build-mirrord` task image (mirrord CLI + kubectl + jq + socat), pipeline integration in `stack-pr-pipeline.yaml`, cleanup of mirrord agent pods, and end-to-end validation. See [milestones/milestone-7.md](milestones/milestone-7.md).
+### Planned: Milestone 9 — Test-trace–driven regression graph and minimal test selection
+
+Use traces from nightly regression to build a **system test graph**, then select the **minimal set of regression tests** for a given change (file/method or node). End-to-end flow: **Collect** (call mock Datadog REST APIs for trace data) → **Store** (persist graph / test→nodes mapping) → **Query** (change → test list or unmapped area) → **Execute** (CI runs only the selected tests). No real Datadog in this test system — mock API and generated data only. **Persistence:** The design uses a **graph-capable store** (Neo4j preferred) so we can represent nodes (services/endpoints), edges (caller→callee, test→touches→node), and test type (e2e vs individual). That store supports **tunable blast radius** (variable-depth traversal from the changed node): radius 1 = tests that touch the node; radius 2+ = also tests that touch callees/callers within N hops, catching integration and contract errors and improving system stability. A relational DB would require recursive CTEs and scales poorly for this; a graph store is the right persistence mechanism for this data and these queries. **Integrated into the existing PR pipeline** (stack-pr-test): a new query task runs before `run-tests`; `run-stack-tests` is extended to accept a test list (or unmapped result). See [milestones/milestone-9.md](milestones/milestone-9.md).
+
+### Planned: Milestone 8 — Demo assets (data flow + live tests + local step-debug)
+
+Prepare **PowerPoint and/or screen recordings** that show (1) **data flow through the system** with live tests (request path, header propagation, intercept routing), and (2) **step-debug when running the app locally** — run one service locally with mirrord, attach the IDE debugger, and show breakpoints firing on live traffic from the cluster. See [milestones/milestone-8.md](milestones/milestone-8.md).
 
 ---
 
@@ -131,6 +157,28 @@ The **only valid test** for the PR feature is using a **real GitHub PR**: create
 | **Bootstrap** (`stack-bootstrap`) | Deploy full stack once; prerequisite for PR runs. |
 | **PR** (`stack-pr-test`) | Test only — build changed app with snapshot tag, deploy intercepts, validate, test, post PR comment. No version bump. |
 | **Merge** (`stack-merge-release`) | Promote RC → release, build all apps, tag release images, push version commit. Triggered by merge webhook. |
+
+### Regression (E2E with intercepts)
+
+To run **full regression** (bootstrap + PR pipeline with intercepts and both backends), use:
+
+```bash
+# Full run: bootstrap then PR pipeline (Telepresence, default)
+./scripts/run-e2e-with-intercepts.sh --intercept-backend telepresence
+
+# Full run with mirrord instead of Telepresence
+./scripts/run-e2e-with-intercepts.sh --intercept-backend mirrord
+```
+
+**Do not re-run bootstrap every time.** If the stack is already deployed (e.g. a previous E2E or bootstrap run succeeded), run **only the PR pipeline** with `--skip-bootstrap`:
+
+```bash
+# PR pipeline only — reuse existing stack (saves ~8–12 min)
+./scripts/run-e2e-with-intercepts.sh --intercept-backend telepresence --skip-bootstrap
+./scripts/run-e2e-with-intercepts.sh --intercept-backend mirrord --skip-bootstrap
+```
+
+Use `--skip-bootstrap` when (1) you already ran full E2E once and want to test the other backend, or (2) you only changed pipeline/task code and want to re-run the PR path. The script still runs Step 2 (PR pipeline) and Step 3 (Tekton Results DB check).
 
 ---
 
@@ -382,7 +430,7 @@ After that, the Run and Debug dropdown will list configs like **Vue (demo-fe): L
 - **build-images/** — Dockerfiles and build script for pre-built compile images (node, maven, gradle, python, php)
 - **scripts/** — generate-run, publish-build-images, run-valid-pr-flow, create-test-pr, merge-pr, configure-github-webhooks, kind-with-registry, install-tekton, install-tekton-dashboard, port-forward-tekton-dashboard, install-telepresence-traffic-manager, install-mirrord (M5 PoC), install-postgres-kind, install-tekton-results, run-all-setup-and-test, verify-dag-phase1, verify-dag-phase2, rerun-pr-from, create-and-push-sample-repos, run-e2e-with-intercepts, stack-graph, cloudflare-add-tunnel-cname
 - **libs/** — Standalone baggage middleware libraries: `baggage-spring-boot-starter`, `baggage-servlet-filter`, `baggage-node`, `baggage-python`, `baggage-php`. Each has its own build file, tests, and README
-- **milestones/** — Milestone planning docs (milestone-4, milestone-4.1, milestone-5, milestone-6); **milestones/completed/** — completed milestones (milestone-2, milestone-3)
+- **milestones/** — Milestone planning docs (milestone-4, milestone-4.1, milestone-5, milestone-6, milestone-7, milestone-9, milestone-8); **milestones/completed/** — completed milestones (milestone-2, milestone-3)
 - **docs/** — [DAG-AND-PROPAGATION.md](docs/DAG-AND-PROPAGATION.md), [c4-diagrams.md](docs/c4-diagrams.md), [PR-TEST-FLOW.md](docs/PR-TEST-FLOW.md), [PR-WEBHOOK-TEST-FLOW.md](docs/PR-WEBHOOK-TEST-FLOW.md), [CLOUDFLARE-TUNNEL-EVENTLISTENER.md](docs/CLOUDFLARE-TUNNEL-EVENTLISTENER.md), [argocd-architecture-guide.md](docs/argocd-architecture-guide.md), [local-dag-verification-plan.md](docs/local-dag-verification-plan.md), [mirrord-poc-results.md](docs/mirrord-poc-results.md) (M5 mirrord PoC), [README-FULL.md](docs/README-FULL.md) (full design doc). See [docs/README.md](docs/README.md) for an index.
 - **reporting-gui/** — Vue + Node reporting GUI (trigger jobs, monitor runs, view test results, embed Tekton Dashboard). See [reporting-gui/README.md](reporting-gui/README.md)
 - **sample-repos/** — Scripts and docs for creating the sample app repos. See [sample-repos/README.md](sample-repos/README.md)
