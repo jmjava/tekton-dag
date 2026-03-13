@@ -34,6 +34,10 @@ spec:
     - name: built-images
       type: string
       description: "JSON map of app → image URI (from build-apps result)"
+    - name: intercept-backend
+      type: string
+      description: "Which intercept backend was used: telepresence or mirrord"
+      default: "telepresence"
     - name: bumped-versions
       type: string
       description: "JSON map of app → version (from bump-rc-version result)"
@@ -55,7 +59,11 @@ spec:
       value: $(tasks.run-tests.results.test-summary)
 
   tasks:
-    - name: deploy-intercepts
+    - name: deploy-intercepts-telepresence
+      when:
+        - input: $(params.intercept-backend)
+          operator: in
+          values: ["telepresence"]
       taskRef:
         name: deploy-stack-intercepts
       params:
@@ -69,6 +77,41 @@ spec:
           value: $(params.built-images)
         - name: intercept-header-value
           value: $(params.intercept-header-value)
+      workspaces:
+        - name: shared-workspace
+          workspace: shared-workspace
+
+    - name: deploy-intercepts-mirrord
+      when:
+        - input: $(params.intercept-backend)
+          operator: in
+          values: ["mirrord"]
+      taskRef:
+        name: deploy-intercept-mirrord
+      params:
+        - name: stack-json
+          value: $(params.stack-json)
+        - name: build-apps
+          value: $(params.build-apps)
+        - name: propagation-chain
+          value: $(params.propagation-chain)
+        - name: built-images
+          value: $(params.built-images)
+        - name: intercept-header-value
+          value: $(params.intercept-header-value)
+      workspaces:
+        - name: shared-workspace
+          workspace: shared-workspace
+
+    - name: deploy-intercepts-result
+      taskRef:
+        name: deploy-intercepts-result
+      workspaces:
+        - name: shared-workspace
+          workspace: shared-workspace
+      runAfter:
+        - deploy-intercepts-telepresence
+        - deploy-intercepts-mirrord
 
     - name: validate-propagation
       taskRef:
@@ -83,7 +126,7 @@ spec:
         - name: intercept-header-value
           value: $(params.intercept-header-value)
       runAfter:
-        - deploy-intercepts
+        - deploy-intercepts-result
 
     - name: run-tests
       taskRef:
@@ -135,6 +178,8 @@ spec:
         name: cleanup-stack-pods
       params:
         - name: deployed-pods
-          value: $(tasks.deploy-intercepts.results.deployed-pods)
+          value: $(tasks.deploy-intercepts-result.results.deployed-pods)
         - name: stack-json
           value: $(params.stack-json)
+        - name: intercept-backend
+          value: $(params.intercept-backend)

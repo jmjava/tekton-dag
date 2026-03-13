@@ -26,6 +26,7 @@ set -euo pipefail
 #   --no-build-images    Use bare ubuntu:22.04 and install Node/Maven/etc. in-pod each run (slower).
 #   --namespace           Target namespace (default: tekton-pipelines)
 #   --storage-class      PVC storage class (default: gp3 for AWS; use standard or omit for kind/minikube)
+#   --intercept-backend  telepresence (default) | mirrord (M7)
 #   --apply              kubectl create the PipelineRun immediately
 #   --dry-run            Print the YAML without applying
 
@@ -56,6 +57,7 @@ APPLY=false
 # Default: use pre-built build images (Node/Maven/etc.) so compile steps load quickly. Use --no-build-images for bare ubuntu:22.04.
 BUILD_IMAGES="${BUILD_IMAGES:-true}"
 BUILD_IMAGE_TAG="${BUILD_IMAGE_TAG:-latest}"
+INTERCEPT_BACKEND="${INTERCEPT_BACKEND:-telepresence}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -75,6 +77,7 @@ while [[ $# -gt 0 ]]; do
     --storage-class)      STORAGE_CLASS="$2"; shift 2 ;;
     --namespace)          NAMESPACE="$2"; shift 2 ;;
     --ssh-secret)         GIT_SSH_SECRET_NAME="$2"; shift 2 ;;
+    --intercept-backend)  INTERCEPT_BACKEND="$2"; shift 2 ;;
     --apply)              APPLY=true; shift ;;
     --dry-run)            APPLY=false; shift ;;
     *)                    die "Unknown option: $1" ;;
@@ -154,6 +157,8 @@ spec:
       value: "${PIPELINE_IMAGE_REGISTRY}"
     - name: version-overrides
       value: '${VERSION_OVERRIDES}'
+    - name: intercept-backend
+      value: "${INTERCEPT_BACKEND}"
     $([ "$BUILD_IMAGES" = "true" ] && [ -n "$IMAGE_REGISTRY" ] && echo "
     - name: compile-image-npm
       value: \"${COMPILE_IMAGE_REGISTRY}/tekton-dag-build-node:${BUILD_IMAGE_TAG}\"
@@ -165,6 +170,8 @@ spec:
       value: \"${COMPILE_IMAGE_REGISTRY}/tekton-dag-build-python:${BUILD_IMAGE_TAG}\"
     - name: compile-image-php
       value: \"${COMPILE_IMAGE_REGISTRY}/tekton-dag-build-php:${BUILD_IMAGE_TAG}\"
+    - name: compile-image-mirrord
+      value: \"${COMPILE_IMAGE_REGISTRY}/tekton-dag-build-mirrord:${BUILD_IMAGE_TAG}\"
     ")
   workspaces:
     - name: shared-workspace
@@ -309,6 +316,7 @@ if [[ "$APPLY" == "true" ]]; then
   echo "# Applying PipelineRun..."
   "$0" --mode "$MODE" --stack "$STACK" --app "$APP" \
     ${PR:+--pr "$PR"} \
+    --intercept-backend "$INTERCEPT_BACKEND" \
     --app-revisions-json "$APP_REVISIONS" \
     --version-overrides "$VERSION_OVERRIDES" \
     --git-url "$GIT_URL" --git-revision "$GIT_REV" \

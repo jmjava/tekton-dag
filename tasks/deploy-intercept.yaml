@@ -44,6 +44,10 @@ spec:
     - name: telepresence-image
       type: string
       default: "ghcr.io/telepresenceio/tel2:2.20.0"
+  workspaces:
+    - name: shared-workspace
+      optional: true
+      description: "Workspace to write deployed-pods.json for pass-through result (M7)"
   results:
     - name: deployed-pods
       description: "JSON map of app → pod name"
@@ -238,4 +242,11 @@ spec:
           mv /tmp/pods-tmp.json /tmp/pods.json
         done
 
+        # Write to result and optionally to workspace for deploy-intercepts-result pass-through (M7)
         cat /tmp/pods.json | tee $(results.deployed-pods.path)
+        WS_PATH="$(workspaces.shared-workspace.path)"
+        if [ -n "${WS_PATH}" ]; then
+          DEPLOYED_PODS_FILE="${WS_PATH}/deployed-pods.json"
+          mkdir -p "$(dirname "${DEPLOYED_PODS_FILE}")"
+          cp /tmp/pods.json "${DEPLOYED_PODS_FILE}"
+        fi

@@ -10,7 +10,7 @@ REGISTRY="${1:-localhost:5000}"
 TAG="${2:-latest}"
 IMAGE_BASE="tekton-dag-build"
 
-TOOLS=(node maven gradle python php)
+TOOLS=(node maven gradle python php mirrord)
 
 for tool in "${TOOLS[@]}"; do
   dockerfile="Dockerfile.$tool"

@@ -1,0 +1,16 @@
+# Build image for mirrord-based intercept task (M7).
+# Contains: kubectl, mirrord CLI, jq, socat.
+# Base: bitnami/kubectl for cluster access; add mirrord + socat for proxy pods.
+FROM bitnami/kubectl:latest
+
+# bitnami/kubectl already has jq, curl; add socat for TCP proxy
+USER root
+RUN install_packages socat 2>/dev/null || (apt-get update -qq && apt-get install -y -qq --no-install-recommends socat && rm -rf /var/lib/apt/lists/*)
+
+# Install mirrord CLI (pin version for reproducibility; override with build-arg)
+ARG MIRRORD_VERSION=3.193.0
+RUN curl -fsSL "https://github.com/metalbear-co/mirrord/releases/download/${MIRRORD_VERSION}/mirrord_linux_x86_64" -o /usr/local/bin/mirrord \
+  && chmod +x /usr/local/bin/mirrord
+
+RUN mirrord --version && kubectl version --client=true -o yaml | head -5
+USER 1001

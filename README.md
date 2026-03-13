@@ -24,6 +24,7 @@ Dedicated build images (one per tool) eliminate in-pod tool installation:
 | `tekton-dag-build-gradle` | `eclipse-temurin:21-jdk` | JDK 21 + jq (apps use `./gradlew`) |
 | `tekton-dag-build-python` | `python:3.12-slim` | Python 3.12 + pip + jq |
 | `tekton-dag-build-php` | `php:8.3-cli` | PHP 8.3 + Composer + zip ext + jq |
+| `tekton-dag-build-mirrord` (M7) | `bitnami/kubectl:latest` | mirrord CLI + jq + socat (for mirrord intercept task) |
 
 Publish with one command (defaults to Kind registry on port 5001):
 
@@ -67,7 +68,7 @@ kubectl port-forward svc/el-stack-event-listener 8080:8080 -n tekton-pipelines &
 | [M4.1](milestones/milestone-4.1.md) | **Completed** | Standalone baggage libraries |
 | [M5](milestones/milestone-5.md) | **Completed** | Original traffic validation + mirrord evaluation |
 | [M6](milestones/milestone-6.md) | **Completed** | Full MetalBear testing (all scenarios) |
-| [M7](milestones/milestone-7.md) | **In progress** | Run either Telepresence or mirrord for intercepts (param `intercept-backend`; default: Telepresence) |
+| [M7](milestones/milestone-7.md) | **Completed** | Run either Telepresence or mirrord for intercepts (param `intercept-backend`; default: Telepresence). See [docs/m7-mirrord-intercept-task.md](docs/m7-mirrord-intercept-task.md). |
 | [M9](milestones/milestone-9.md) | **Planned** | Test-trace regression graph + minimal test selection (PR pipeline); graph store (Neo4j) for blast radius |
 | [M8](milestones/milestone-8.md) | **Planned** | Demo assets (data flow, live tests, local step-debug) |
 

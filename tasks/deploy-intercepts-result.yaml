@@ -1,0 +1,33 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: deploy-intercepts-result
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+    app.kubernetes.io/version: "1.0.0"
+spec:
+  description: >
+    Pass-through task (M7). Reads deployed-pods.json from the shared workspace
+    (written by either deploy-intercepts-telepresence or deploy-intercepts-mirrord)
+    and writes it to the deployed-pods result. Downstream and finally tasks
+    reference this task's result so they work with either intercept backend.
+  workspaces:
+    - name: shared-workspace
+      description: "Workspace containing deployed-pods.json from the deploy step"
+  results:
+    - name: deployed-pods
+      description: "JSON map of app → pod name"
+  steps:
+    - name: pass-through
+      image: busybox
+      script: |
+        #!/bin/sh
+        set -e
+        FILE="$(workspaces.shared-workspace.path)/deployed-pods.json"
+        if [ ! -f "$FILE" ]; then
+          echo '{}' > "$(results.deployed-pods.path)"
+          echo "No deployed-pods.json found; wrote empty object."
+          exit 0
+        fi
+        cp "$FILE" "$(results.deployed-pods.path)"
+        echo "Wrote deployed-pods to result: $(cat $(results.deployed-pods.path))"

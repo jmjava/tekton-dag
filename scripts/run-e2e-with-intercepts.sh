@@ -10,7 +10,7 @@
 #   kubectl create secret generic git-ssh-key --from-file=id_ed25519=$HOME/.ssh/id_ed25519 -n $NAMESPACE
 # Override name with GIT_SSH_SECRET_NAME.
 #
-# Usage: ./run-e2e-with-intercepts.sh [--stack STACK] [--changed-app APP] [--pr N] [--registry URL] [--namespace NS] [--skip-install-check] [--no-verify-db]
+# Usage: ./run-e2e-with-intercepts.sh [--stack STACK] [--changed-app APP] [--pr N] [--registry URL] [--namespace NS] [--intercept-backend telepresence|mirrord] [--skip-install-check] [--no-verify-db]
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -21,6 +21,7 @@ STACK_FILE="stack-one.yaml"
 STACK_PATH="stacks/$STACK_FILE"
 CHANGED_APP="demo-fe"
 PR_NUMBER="1"
+INTERCEPT_BACKEND="${INTERCEPT_BACKEND:-telepresence}"
 IMAGE_REGISTRY="${IMAGE_REGISTRY:-localhost:5000}"
 GIT_URL="${GIT_URL:-https://github.com/jmjava/tekton-dag.git}"
 GIT_REV="${GIT_REV:-main}"
@@ -38,6 +39,7 @@ while [[ $# -gt 0 ]]; do
     --pr)                  PR_NUMBER="$2"; shift 2 ;;
     --registry)            IMAGE_REGISTRY="$2"; shift 2 ;;
     --namespace)           NAMESPACE="$2"; shift 2 ;;
+    --intercept-backend)   INTERCEPT_BACKEND="$2"; shift 2 ;;
     --skip-install-check)  SKIP_INSTALL_CHECK=true; shift ;;
     --no-verify-db)        NO_VERIFY_DB=true; shift ;;
     *)                     echo "Unknown option: $1" >&2; exit 1 ;;
@@ -51,7 +53,9 @@ need jq
 if [[ "$SKIP_INSTALL_CHECK" != "true" ]]; then
   kubectl cluster-info &>/dev/null || { echo "No cluster. Run kind-with-registry.sh and install-tekton.sh." >&2; exit 1; }
   kubectl get deployment tekton-results-api -n "$NAMESPACE" &>/dev/null || { echo "Tekton Results not found. Run install-postgres-kind.sh and install-tekton-results.sh." >&2; exit 1; }
-  kubectl get deployment traffic-manager -n ambassador &>/dev/null || { echo "Telepresence Traffic Manager not found. Run install-telepresence-traffic-manager.sh." >&2; exit 1; }
+  if [[ "$INTERCEPT_BACKEND" == "telepresence" ]]; then
+    kubectl get deployment traffic-manager -n ambassador &>/dev/null || { echo "Telepresence Traffic Manager not found. Run install-telepresence-traffic-manager.sh." >&2; exit 1; }
+  fi
   kubectl get secret "$GIT_SSH_SECRET_NAME" -n "$NAMESPACE" &>/dev/null || { echo "Secret $GIT_SSH_SECRET_NAME not found. Create it with: kubectl create secret generic $GIT_SSH_SECRET_NAME --from-file=id_ed25519=\$HOME/.ssh/id_ed25519 -n $NAMESPACE" >&2; exit 1; }
 fi
 
@@ -63,7 +67,7 @@ kubectl create clusterrolebinding tekton-pr-sa-admin --clusterrole=cluster-admin
 
 echo "=============================================="
 echo "  E2E with live Telepresence intercepts"
-echo "  Stack: $STACK_FILE  changed-app: $CHANGED_APP  pr: $PR_NUMBER"
+echo "  Stack: $STACK_FILE  changed-app: $CHANGED_APP  pr: $PR_NUMBER  intercept-backend: $INTERCEPT_BACKEND"
 echo "  Registry: $IMAGE_REGISTRY"
 echo "=============================================="
 
@@ -154,6 +158,7 @@ fi
 echo ""
 echo ">>> Step 2: PR pipeline (intercepts + E2E)"
 ./scripts/generate-run.sh --mode pr --stack "$STACK_FILE" --app "$CHANGED_APP" --pr "$PR_NUMBER" \
+  --intercept-backend "$INTERCEPT_BACKEND" \
   --registry "$IMAGE_REGISTRY" --git-url "$GIT_URL" --git-revision "$GIT_REV" \
   --storage-class "" | kubectl create -f - || { echo "FAILED: creating PR PipelineRun" >&2; exit 1; }
 sleep 3
