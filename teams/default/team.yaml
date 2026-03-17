@@ -1,0 +1,14 @@
+# Default team config — matches the current single-team Kind setup.
+# This file is loaded by the orchestration service on startup.
+# For multi-team: create teams/<team-name>/team.yaml per team.
+
+name: default
+namespace: tekton-pipelines
+cluster: kind-tekton-stack
+imageRegistry: localhost:5000
+cacheRepo: localhost:5000/kaniko-cache
+interceptBackend: telepresence
+maxConcurrentRuns: 3
+maxParallelBuilds: 5
+stacks:
+  - stacks/stack-one.yaml

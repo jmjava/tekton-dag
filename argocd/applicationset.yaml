@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: tekton-dag-teams
+  namespace: argocd
+spec:
+  generators:
+    - git:
+        repoURL: https://github.com/jmjava/tekton-dag.git
+        revision: main
+        files:
+          - path: "teams/*/values.yaml"
+  template:
+    metadata:
+      name: "tekton-dag-{{path.basenameNormalized}}"
+      labels:
+        app.kubernetes.io/part-of: tekton-job-standardization
+    spec:
+      project: tekton-dag
+      source:
+        repoURL: https://github.com/jmjava/tekton-dag.git
+        targetRevision: main
+        path: helm/tekton-dag
+        helm:
+          valueFiles:
+            - "../../{{path}}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{namespace}}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true

@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: tekton-dag
+  namespace: argocd
+spec:
+  description: "tekton-dag CI/CD pipeline system — multi-team deployment"
+  sourceRepos:
+    - "https://github.com/jmjava/tekton-dag.git"
+  destinations:
+    - namespace: "tekton-pipelines"
+      server: "*"
+    - namespace: "staging"
+      server: "*"
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+    - group: tekton.dev
+      kind: "*"
+    - group: triggers.tekton.dev
+      kind: "*"

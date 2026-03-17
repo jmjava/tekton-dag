@@ -1,0 +1,17 @@
+apiVersion: v2
+name: tekton-dag
+description: >
+  Tekton-based CI/CD pipeline system with DAG-driven stack resolution,
+  intercept-based PR testing, and in-cluster orchestration service.
+  Supports multi-team deployment via ArgoCD ApplicationSet.
+type: application
+version: 0.10.0
+appVersion: "1.0.0"
+keywords:
+  - tekton
+  - ci-cd
+  - kubernetes
+  - pipelines
+  - multi-team
+maintainers:
+  - name: jmjava

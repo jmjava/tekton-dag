@@ -1,0 +1,8 @@
+{{- /*
+  Include all Tekton Pipeline and Trigger definitions from the pipeline/ directory.
+  These are stored as raw files in the chart and applied as-is.
+*/ -}}
+{{- range $path, $_ := .Files.Glob "raw/pipelines/**.yaml" }}
+---
+{{ $.Files.Get $path }}
+{{- end }}

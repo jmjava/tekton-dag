@@ -1,0 +1,163 @@
+# M10: Multi-Team Architecture
+
+## Overview
+
+Milestone 10 scales tekton-dag from a single-team, script-driven system to a multi-team, in-cluster orchestration platform. Each team gets their own Kubernetes cluster (or namespace) with up to 40 apps, deployed via a Helm chart and provisioned by ArgoCD.
+
+**Tekton remains the pipeline execution engine.** The orchestration service sits on top.
+
+---
+
+## Architecture layers
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  ArgoCD (GitOps)                                            │
+│  - ApplicationSet reads teams/*/values.yaml                 │
+│  - Deploys tekton-dag Helm chart per team                   │
+│  - Hub-and-spoke: one ArgoCD manages all clusters           │
+├─────────────────────────────────────────────────────────────┤
+│  Orchestration Service (in-cluster pod)                     │
+│  - POST /webhook/github: receives GitHub events             │
+│  - Resolves repo → stack → app dynamically                  │
+│  - Creates PipelineRuns via Kubernetes API                   │
+│  - REST API: /api/run, /api/bootstrap, /api/stacks          │
+├─────────────────────────────────────────────────────────────┤
+│  Tekton (execution engine — unchanged)                      │
+│  - Same Tasks and Pipelines as before                       │
+│  - PipelineRuns created by orchestration service or scripts  │
+├─────────────────────────────────────────────────────────────┤
+│  Kubernetes (per team cluster)                              │
+│  - Apps deployed in staging namespace                       │
+│  - Tekton in tekton-pipelines namespace                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Request flow: PR webhook
+
+```
+GitHub PR event
+      │
+      ▼
+Orchestration Service (POST /webhook/github)
+      │
+      ├─ Validate HMAC signature
+      ├─ Parse: repo_name, action, pr_number, head_sha
+      ├─ Resolve: repo_name → {stack_file, app_name} (from loaded stacks)
+      │
+      ▼
+Create PipelineRun (stack-pr-test)
+      │
+      ▼
+Tekton executes: clone → resolve → compile → containerize → intercept → test → cleanup
+      │
+      ▼
+Results: PR comment + Tekton Results DB
+```
+
+---
+
+## Key components
+
+### Helm chart (`helm/tekton-dag/`)
+
+Packages everything into a single deployable unit:
+- All Tekton Tasks (from `tasks/`)
+- All Tekton Pipelines and Triggers (from `pipeline/`)
+- RBAC (ServiceAccount, ClusterRoleBinding)
+- Orchestration Service (Deployment + Service)
+- ConfigMaps for stacks and team config
+
+Parameterized via `values.yaml` per team.
+
+### Orchestration service (`orchestrator/`)
+
+Python/Flask service replacing `generate-run.sh` and CEL overlays:
+- Loads stack YAMLs on startup, builds repo-to-stack map
+- Handles GitHub webhooks (replaces EventListener + CEL)
+- Creates PipelineRuns via Kubernetes Python client
+- REST API for manual triggers, listing runs, bootstrap
+
+### Team data model (`teams/<team>/`)
+
+Each team has:
+- `team.yaml`: team config (namespace, registry, stacks, limits)
+- `values.yaml`: Helm values for ArgoCD ApplicationSet
+
+### ArgoCD ApplicationSet (`argocd/`)
+
+Git File Generator scans `teams/*/values.yaml`:
+- Adding a new team directory auto-provisions their cluster
+- Removing it cleans up (automated sync with prune)
+
+---
+
+## Scaling to 40 apps
+
+**PR pipeline**: Only builds the 1 changed app. A 40-app stack just means a larger DAG for intercept routing — no 40x build cost.
+
+**Bootstrap pipeline**: Parallel Kaniko pods (M7.1) + batching via `max-parallel-builds` param. With 40 apps and `max-parallel-builds=8`, runs 5 batches of 8 concurrent builds.
+
+**Webhook throughput**: Orchestration service handles concurrent PRs. Tekton schedules PipelineRuns based on cluster capacity.
+
+---
+
+## Local dev (preserved)
+
+Everything still works locally on Kind:
+
+| Method | Use case |
+|---|---|
+| `kubectl apply -f tasks/ -f pipeline/` | Quick task/pipeline iteration |
+| `helm install tekton-dag ./helm/tekton-dag` | Test full chart |
+| `./scripts/generate-run.sh --apply` | Manual PipelineRun |
+| `./scripts/run-e2e-with-intercepts.sh` | E2E regression |
+| Orchestration service in Kind | Test webhook flow |
+
+---
+
+## Framework decisions
+
+| Framework | Used? | Role |
+|---|---|---|
+| **Tekton** | Yes (kept) | Pipeline execution engine |
+| **Helm** | Yes (new) | Package and deploy tekton-dag |
+| **ArgoCD** | Yes (new) | GitOps provisioning across clusters |
+| **Orkestra** | No | Its DAG is for Helm chart deps, not app deps; would add Argo Workflows alongside Tekton |
+
+---
+
+## Files added in M10
+
+```
+helm/tekton-dag/            # Helm chart
+  Chart.yaml
+  values.yaml
+  templates/
+    _helpers.tpl
+    rbac.yaml
+    orchestration-deployment.yaml
+    tasks/tasks.yaml          # includes raw task YAMLs
+    pipelines/pipelines.yaml  # includes raw pipeline YAMLs
+  raw/                        # staged copies (generated by package.sh)
+  package.sh                  # stages raw YAMLs into chart
+
+orchestrator/               # Orchestration service
+  app.py                    # Flask app factory
+  routes.py                 # All REST endpoints
+  stack_resolver.py         # Stack loading and repo-to-stack mapping
+  pipelinerun_builder.py    # PipelineRun manifest generation
+  k8s_client.py             # Kubernetes API wrapper
+  Dockerfile
+  requirements.txt
+
+teams/default/              # Default team config
+  team.yaml                 # Team metadata
+  values.yaml               # Helm values for ArgoCD
+
+argocd/                     # ArgoCD manifests
+  appproject.yaml           # AppProject for tekton-dag
+  applicationset.yaml       # Git File Generator for teams
+```

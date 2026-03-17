@@ -26,6 +26,10 @@ spec:
       type: string
       default: ""
       description: "Kaniko cache repo (e.g. localhost:5000/kaniko-cache). Empty disables cache."
+    - name: max-parallel-builds
+      type: string
+      default: "0"
+      description: "Max Kaniko pods to run concurrently. 0 = unlimited (all at once)."
   workspaces:
     - name: source
   results:
@@ -49,6 +53,7 @@ spec:
         IMAGE_TAG='$(params.image-tag)'
         TAG_PREFIX="$(params.tag-prefix)"
         CACHE_REPO="$(params.cache-repo)"
+        MAX_PARALLEL="$(params.max-parallel-builds)"
         SOURCE_PVC="$(workspaces.source.claim)"
         SOURCE_PATH="$(workspaces.source.path)"
         NS="$POD_NAMESPACE"
@@ -75,10 +80,34 @@ spec:
         echo "  Apps:  $BUILD_APPS"
         echo "  PVC:   $SOURCE_PVC"
         echo "  Cache: ${CACHE_REPO:-disabled}"
+        echo "  Max parallel: ${MAX_PARALLEL:-0 (unlimited)}"
         echo ""
 
         > /tmp/pod-list.txt
         > /tmp/app-images.txt
+        > /tmp/batch-pods.txt
+        BATCH_COUNT=0
+
+        wait_for_batch() {
+          local BATCH_FAILED=""
+          while IFS= read -r P; do
+            [ -z "$P" ] && continue
+            echo "    Waiting: $P"
+            while true; do
+              PH=$(kubectl get pod "$P" -n "$NS" -o jsonpath='{.status.phase}' 2>/dev/null || echo "Pending")
+              case "$PH" in
+                Succeeded) echo "      $P: Succeeded"; break ;;
+                Failed)    echo "      $P: FAILED"; BATCH_FAILED="${BATCH_FAILED} ${P}"; break ;;
+                *)         sleep 5 ;;
+              esac
+            done
+          done < /tmp/batch-pods.txt
+          > /tmp/batch-pods.txt
+          BATCH_COUNT=0
+          echo "$BATCH_FAILED"
+        }
+
+        FAILED=""
 
         for APP in $BUILD_APPS; do
           echo "========================================="
@@ -144,23 +173,23 @@ spec:
         KPOD
 
           echo "$POD_NAME" >> /tmp/pod-list.txt
+          echo "$POD_NAME" >> /tmp/batch-pods.txt
           echo "${APP}=${PULL_IMAGE}" >> /tmp/app-images.txt
+          BATCH_COUNT=$((BATCH_COUNT + 1))
           echo ""
+
+          if [ "$MAX_PARALLEL" -gt 0 ] && [ "$BATCH_COUNT" -ge "$MAX_PARALLEL" ]; then
+            echo "  --- Batch limit ($MAX_PARALLEL) reached, waiting for batch ---"
+            BATCH_RESULT=$(wait_for_batch)
+            [ -n "$BATCH_RESULT" ] && FAILED="${FAILED}${BATCH_RESULT}"
+          fi
         done
 
-        FAILED=""
-        while IFS= read -r POD_NAME; do
-          [ -z "$POD_NAME" ] && continue
-          echo "  Waiting: $POD_NAME"
-          while true; do
-            PHASE=$(kubectl get pod "$POD_NAME" -n "$NS" -o jsonpath='{.status.phase}' 2>/dev/null || echo "Pending")
-            case "$PHASE" in
-              Succeeded) echo "    $POD_NAME: Succeeded"; break ;;
-              Failed)    echo "    $POD_NAME: FAILED"; FAILED="${FAILED} ${POD_NAME}"; break ;;
-              *)         sleep 5 ;;
-            esac
-          done
-        done < /tmp/pod-list.txt
+        if [ -s /tmp/batch-pods.txt ]; then
+          echo "  --- Waiting for final batch ---"
+          BATCH_RESULT=$(wait_for_batch)
+          [ -n "$BATCH_RESULT" ] && FAILED="${FAILED}${BATCH_RESULT}"
+        fi
 
         echo ""
         echo "  Cleaning up Kaniko pods..."

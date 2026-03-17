@@ -1,0 +1,54 @@
+teamName: "default"
+namespace: "tekton-pipelines"
+
+imageRegistry: "localhost:5000"
+cacheRepo: "localhost:5000/kaniko-cache"
+interceptBackend: "telepresence"
+maxParallelBuilds: 5
+
+compileImages:
+  npm: "localhost:5000/tekton-dag-build-node:latest"
+  maven: "localhost:5000/tekton-dag-build-maven:latest"
+  gradle: "localhost:5000/tekton-dag-build-gradle:latest"
+  pip: "localhost:5000/tekton-dag-build-python:latest"
+  php: "localhost:5000/tekton-dag-build-php:latest"
+  mirrord: "localhost:5000/tekton-dag-build-mirrord:latest"
+
+gitUrl: "https://github.com/jmjava/tekton-dag.git"
+gitRevision: "main"
+stackFile: "stacks/stack-one.yaml"
+
+rbac:
+  create: true
+  serviceAccountName: "tekton-pr-sa"
+  clusterAdmin: true
+
+workspaces:
+  sharedWorkspace:
+    storageClass: ""
+    size: "2Gi"
+  buildCache:
+    enabled: true
+    storageClass: ""
+    size: "5Gi"
+
+orchestrationService:
+  enabled: true
+  image: "localhost:5000/tekton-dag-orchestrator:latest"
+  replicas: 1
+  port: 8080
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "256Mi"
+
+triggers:
+  enabled: true
+  webhookSecretName: "github-webhook-secret"
+  githubTokenSecretName: "github-token"
+
+dashboard:
+  url: ""

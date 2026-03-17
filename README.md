@@ -70,6 +70,7 @@ kubectl port-forward svc/el-stack-event-listener 8080:8080 -n tekton-pipelines &
 | [M6](milestones/milestone-6.md) | **Completed** | Full MetalBear testing (all scenarios) |
 | [M7](milestones/milestone-7.md) | **Completed** | Run either Telepresence or mirrord for intercepts (param `intercept-backend`; default: Telepresence). See [docs/m7-mirrord-intercept-task.md](docs/m7-mirrord-intercept-task.md). |
 | [M7.1](milestones/milestone-7-1.md) | **Completed** | Pipeline speed optimizations (parallel containerize, Kaniko cache, parallel clone). |
+| [M10](milestones/milestone-10.md) | **In Progress** | Multi-team scaling: in-cluster orchestration service, Helm chart, ArgoCD provisioning, bootstrap at scale (40 apps/team). |
 | [M9](milestones/milestone-9.md) | **Planned** | Test-trace regression graph + minimal test selection (PR pipeline); graph store (Neo4j) for blast radius |
 | [M8](milestones/milestone-8.md) | **Planned** | Demo assets (data flow, live tests, local step-debug) |
 
@@ -77,7 +78,7 @@ Older milestones (M2, M3) are in [milestones/completed/](milestones/completed/).
 
 ### Plan for next working session
 
-→ **Milestone 9** — Test-trace regression graph and minimal test selection. See [milestones/milestone-9.md](milestones/milestone-9.md). Then M8 (demo assets).
+→ **Milestone 10** — Multi-team scaling and in-cluster orchestration. See [milestones/milestone-10.md](milestones/milestone-10.md). Then M9 (test-trace graph), then M8 (demo assets).
 
 ### Completed: Milestone 4 — Baggage middleware + multi-namespace pipelines
 

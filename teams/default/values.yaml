@@ -1,0 +1,17 @@
+# Helm values for the default team.
+# ArgoCD ApplicationSet reads this file to deploy tekton-dag for this team.
+
+teamName: "default"
+namespace: "tekton-pipelines"
+imageRegistry: "localhost:5000"
+cacheRepo: "localhost:5000/kaniko-cache"
+interceptBackend: "telepresence"
+maxParallelBuilds: 5
+stackFile: "stacks/stack-one.yaml"
+gitUrl: "https://github.com/jmjava/tekton-dag.git"
+gitRevision: "main"
+
+orchestrationService:
+  enabled: true
+  image: "localhost:5000/tekton-dag-orchestrator:latest"
+  replicas: 1

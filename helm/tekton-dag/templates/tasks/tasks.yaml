@@ -1,0 +1,10 @@
+{{- /*
+  Include all Tekton Task definitions from the tasks/ directory.
+  These are stored as raw files in the chart and applied as-is.
+  The .Files.Glob function picks up all YAML files copied into
+  the chart's tasks/ directory at package time.
+*/ -}}
+{{- range $path, $_ := .Files.Glob "raw/tasks/**.yaml" }}
+---
+{{ $.Files.Get $path }}
+{{- end }}

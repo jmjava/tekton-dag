@@ -41,6 +41,9 @@ spec:
     - name: cache-repo
       description: "Kaniko cache repo (e.g. localhost:5000/kaniko-cache). Empty disables cache."
       default: "localhost:5000/kaniko-cache"
+    - name: max-parallel-builds
+      description: "Max concurrent Kaniko pods for containerize. 0 = unlimited."
+      default: "0"
   workspaces:
     - name: shared-workspace
     - name: ssh-key
@@ -225,6 +228,8 @@ spec:
           value: ""
         - name: cache-repo
           value: $(params.cache-repo)
+        - name: max-parallel-builds
+          value: $(params.max-parallel-builds)
       workspaces:
         - name: source
           workspace: shared-workspace

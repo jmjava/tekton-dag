@@ -1,0 +1,97 @@
+{{- if .Values.orchestrationService.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tekton-dag-orchestrator
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: tekton-dag-orchestrator
+    {{- include "tekton-dag.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.orchestrationService.replicas }}
+  selector:
+    matchLabels:
+      app: tekton-dag-orchestrator
+  template:
+    metadata:
+      labels:
+        app: tekton-dag-orchestrator
+        tekton-dag/team: {{ .Values.teamName }}
+    spec:
+      serviceAccountName: {{ include "tekton-dag.serviceAccountName" . }}
+      containers:
+        - name: orchestrator
+          image: {{ .Values.orchestrationService.image }}
+          ports:
+            - containerPort: {{ .Values.orchestrationService.port }}
+              name: http
+          env:
+            - name: NAMESPACE
+              value: {{ .Values.namespace }}
+            - name: TEAM_NAME
+              value: {{ .Values.teamName }}
+            - name: IMAGE_REGISTRY
+              value: {{ .Values.imageRegistry }}
+            - name: CACHE_REPO
+              value: {{ .Values.cacheRepo }}
+            - name: INTERCEPT_BACKEND
+              value: {{ .Values.interceptBackend }}
+            - name: MAX_PARALLEL_BUILDS
+              value: {{ .Values.maxParallelBuilds | quote }}
+            - name: GIT_URL
+              value: {{ .Values.gitUrl }}
+            - name: GIT_REVISION
+              value: {{ .Values.gitRevision }}
+            - name: STACK_FILE
+              value: {{ .Values.stackFile }}
+            - name: WEBHOOK_SECRET_NAME
+              value: {{ .Values.triggers.webhookSecretName }}
+          resources:
+            {{- toYaml .Values.orchestrationService.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          volumeMounts:
+            - name: stacks
+              mountPath: /stacks
+              readOnly: true
+            - name: teams
+              mountPath: /teams
+              readOnly: true
+      volumes:
+        - name: stacks
+          configMap:
+            name: tekton-dag-stacks
+            optional: true
+        - name: teams
+          configMap:
+            name: tekton-dag-teams
+            optional: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tekton-dag-orchestrator
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: tekton-dag-orchestrator
+    {{- include "tekton-dag.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.orchestrationService.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app: tekton-dag-orchestrator
+{{- end }}
