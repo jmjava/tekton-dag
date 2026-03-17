@@ -70,6 +70,9 @@ spec:
     - name: pr-repo-url
       description: "When PR is in the app repo, pass the app repo URL here so the PR comment is posted to the correct repo; empty = use git-url (platform repo)"
       default: ""
+    - name: cache-repo
+      description: "Kaniko cache repo (e.g. localhost:5000/kaniko-cache). Empty disables cache."
+      default: "localhost:5000/kaniko-cache"
 
   workspaces:
     - name: shared-workspace
@@ -284,6 +287,8 @@ spec:
           value: $(tasks.pr-snapshot-tag.results.snapshot-versions)
         - name: tag-prefix
           value: ""
+        - name: cache-repo
+          value: $(params.cache-repo)
       workspaces:
         - name: source
           workspace: shared-workspace

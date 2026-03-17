@@ -38,6 +38,9 @@ spec:
     - name: compile-image-php
       description: "Image for Composer/PHP compile step"
       default: "localhost:5000/tekton-dag-build-php:latest"
+    - name: cache-repo
+      description: "Kaniko cache repo (e.g. localhost:5000/kaniko-cache). Empty disables cache."
+      default: "localhost:5000/kaniko-cache"
   workspaces:
     - name: shared-workspace
     - name: ssh-key
@@ -220,6 +223,8 @@ spec:
           value: $(params.image-tag)
         - name: tag-prefix
           value: ""
+        - name: cache-repo
+          value: $(params.cache-repo)
       workspaces:
         - name: source
           workspace: shared-workspace

@@ -69,7 +69,7 @@ kubectl port-forward svc/el-stack-event-listener 8080:8080 -n tekton-pipelines &
 | [M5](milestones/milestone-5.md) | **Completed** | Original traffic validation + mirrord evaluation |
 | [M6](milestones/milestone-6.md) | **Completed** | Full MetalBear testing (all scenarios) |
 | [M7](milestones/milestone-7.md) | **Completed** | Run either Telepresence or mirrord for intercepts (param `intercept-backend`; default: Telepresence). See [docs/m7-mirrord-intercept-task.md](docs/m7-mirrord-intercept-task.md). |
-| [M7.1](milestones/milestone-7-1.md) | **Planned** | Pipeline speed optimizations (parallel containerize, Kaniko cache, parallel clone, optional resources, missing Postman tests). |
+| [M7.1](milestones/milestone-7-1.md) | **Completed** | Pipeline speed optimizations (parallel containerize, Kaniko cache, parallel clone). |
 | [M9](milestones/milestone-9.md) | **Planned** | Test-trace regression graph + minimal test selection (PR pipeline); graph store (Neo4j) for blast radius |
 | [M8](milestones/milestone-8.md) | **Planned** | Demo assets (data flow, live tests, local step-debug) |
 
@@ -77,7 +77,7 @@ Older milestones (M2, M3) are in [milestones/completed/](milestones/completed/).
 
 ### Plan for next working session
 
-→ **Milestone 7.1** — Pipeline speed optimizations (parallel containerize, Kaniko cache, parallel clone, optional compile resources, missing Postman tests). See [milestones/milestone-7-1.md](milestones/milestone-7-1.md). Optional: M9 or M8. Branch: `milestone-7`.
+→ **Milestone 9** — Test-trace regression graph and minimal test selection. See [milestones/milestone-9.md](milestones/milestone-9.md). Then M8 (demo assets).
 
 ### Completed: Milestone 4 — Baggage middleware + multi-namespace pipelines
 
@@ -116,6 +116,16 @@ Validated mirrord for all required PR pipeline scenarios: **concurrent intercept
 ### Completed: Milestone 7 — Run either Telepresence or mirrord for intercepts
 
 **M7 is complete.** Deliverables done: `deploy-intercept-mirrord` task, `tekton-dag-build-mirrord` image, pipeline `intercept-backend` param (default `telepresence`), pass-through result task, cleanup for mirrord pods, E2E for both backends, Tekton Results RBAC fix for verify-results-in-db.sh, `--skip-bootstrap` and regression docs. See [milestones/milestone-7.md](milestones/milestone-7.md) and [docs/m7-mirrord-intercept-task.md](docs/m7-mirrord-intercept-task.md). **Next:** [Milestone 7.1](milestones/milestone-7-1.md) (pipeline speed optimizations).
+
+### Completed: Milestone 7.1 — Pipeline speed optimizations
+
+**M7.1 is complete.** Three key optimizations applied to both bootstrap and PR pipelines:
+
+1. **Parallel containerize** — `build-containerize` task now spawns one Kaniko pod per app in parallel (via kubectl), each mounting the shared workspace PVC. Build time = max(per-app) instead of sum.
+2. **Kaniko cache** — `--cache=true --cache-repo=<registry>/kaniko-cache` enabled via new `cache-repo` pipeline param (default: `localhost:5000/kaniko-cache`). Second+ runs reuse cached layers.
+3. **Parallel clone** — `clone-app-repos` task clones all app repos in background (`&`) and waits. Clone time = max(per-repo) instead of sum.
+
+Optional items deferred: compile step resource tuning (7.1.4, documented), Postman test collections (7.1.5, documented). See [milestones/milestone-7-1.md](milestones/milestone-7-1.md) and [docs/bootstrap-pipeline-speed-analysis.md](docs/bootstrap-pipeline-speed-analysis.md).
 
 ### Planned: Milestone 9 — Test-trace–driven regression graph and minimal test selection
 

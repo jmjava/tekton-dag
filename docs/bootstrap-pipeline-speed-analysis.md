@@ -83,7 +83,21 @@ So: **parallel containerize** and **Kaniko cache** give the biggest gains; **par
 
 ---
 
-## 5. Stack-one approximate timing (for orientation)
+## 5. Implemented optimizations (M7.1)
+
+The following recommendations from this analysis were implemented in Milestone 7.1:
+
+| Optimization | Implementation |
+|---|---|
+| **Parallel containerize** | `build-containerize` task spawns one Kaniko **pod per app** in parallel (via kubectl), each mounting the shared workspace PVC. Wall-clock time = max(per-app build) instead of sum. |
+| **Kaniko cache** | `--cache=true --cache-repo=<registry>/kaniko-cache --cache-ttl=168h` passed to each Kaniko pod. New pipeline param `cache-repo` (default `localhost:5000/kaniko-cache`). Second+ runs reuse cached layers. |
+| **Parallel clone** | `clone-app-repos` task clones all app repos in background (`&`) and waits for all. Wall-clock time = max(per-repo clone) instead of sum. |
+| **Compile resources** | Deferred (7.1.4). Compile tasks are already parallel; adding explicit CPU/memory requests is a tuning exercise for specific environments. Documented as optional in milestone-7-1.md. |
+| **Postman test collections** | Documented (7.1.5). Missing `bff-tests.json` and `api-tests.json` are noted; pipeline skips them without failing. See milestone-7-1.md for details. |
+
+---
+
+## 6. Stack-one approximate timing (for orientation)
 
 Rough order of magnitude (will vary by machine and cache):
 

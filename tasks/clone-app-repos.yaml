@@ -69,6 +69,16 @@ spec:
         fi
         ssh-keyscan -H github.com >> /root/.ssh/known_hosts 2>/dev/null || true
 
+        # Clone all app repos in parallel (M7.1)
+        clone_app() {
+          local APP="$1" REPO="$2" REVISION="$3" URL="$4"
+          echo "  Cloning $APP from $URL (revision: $REVISION) -> $WORKSPACE/$APP"
+          git clone --depth 1 "$URL" "$WORKSPACE/$APP" 2>&1 | sed "s/^/  [$APP] /"
+          (cd "$WORKSPACE/$APP" && git fetch --depth 1 origin "$REVISION" 2>/dev/null && git checkout "$REVISION" 2>/dev/null || true)
+          echo "  Done: $APP"
+        }
+
+        PIDS=""
         for APP in $BUILD_APPS; do
           REPO=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '.apps[]|select(.name==$a)|.repo')
           if [ -z "$REPO" ] || [ "$REPO" = "null" ]; then
@@ -78,13 +88,23 @@ spec:
           REVISION=$(echo "$APP_REVISIONS" | jq -r --arg a "$APP" '.[$a] // empty')
           [ -z "$REVISION" ] && REVISION="$DEFAULT_REVISION"
           URL="git@github.com:${REPO}.git"
-          echo "  Cloning $APP from $URL (revision: $REVISION) -> $WORKSPACE/$APP"
-          git clone --depth 1 "$URL" "$WORKSPACE/$APP"
-          (cd "$WORKSPACE/$APP" && git fetch --depth 1 origin "$REVISION" 2>/dev/null && git checkout "$REVISION" 2>/dev/null || true)
-          echo "  Done: $APP"
+          clone_app "$APP" "$REPO" "$REVISION" "$URL" &
+          PIDS="$PIDS $!"
         done
+
+        CLONE_FAILED=false
+        for PID in $PIDS; do
+          if ! wait "$PID"; then
+            CLONE_FAILED=true
+          fi
+        done
+        if [ "$CLONE_FAILED" = "true" ]; then
+          echo "ERROR: One or more clones failed" >&2
+          exit 1
+        fi
+
         echo ""
-        echo "App repos cloned. Listing:"
+        echo "App repos cloned (parallel). Listing:"
         for APP in $BUILD_APPS; do
           [ -d "$WORKSPACE/$APP" ] && echo "  $WORKSPACE/$APP" || true
         done

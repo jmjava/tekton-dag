@@ -4,9 +4,12 @@ metadata:
   name: build-containerize
   labels:
     app.kubernetes.io/part-of: tekton-job-standardization
-    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/version: "1.1.0"
 spec:
-  description: "Runs Kaniko to build and push images for build-apps; runs after compile task(s)."
+  description: >
+    Runs Kaniko to build and push images for build-apps. M7.1: builds all apps
+    in parallel by spawning one Kaniko pod per app (each mounts the shared PVC).
+    Supports Kaniko layer cache via cache-repo param.
   params:
     - name: stack-json
       type: string
@@ -19,6 +22,10 @@ spec:
     - name: tag-prefix
       type: string
       default: "pr-"
+    - name: cache-repo
+      type: string
+      default: ""
+      description: "Kaniko cache repo (e.g. localhost:5000/kaniko-cache). Empty disables cache."
   workspaces:
     - name: source
   results:
@@ -26,10 +33,14 @@ spec:
       description: "JSON map of app-name → full image URI"
   steps:
     - name: containerize
-      image: gcr.io/kaniko-project/executor:debug
-      workingDir: $(workspaces.source.path)
+      image: bitnami/kubectl:latest
+      env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
       script: |
-        #!/busybox/sh
+        #!/bin/bash
         set -e
 
         STACK_JSON='$(params.stack-json)'
@@ -37,20 +48,39 @@ spec:
         REGISTRY="$(params.image-registry)"
         IMAGE_TAG='$(params.image-tag)'
         TAG_PREFIX="$(params.tag-prefix)"
-        WORKSPACE="$(workspaces.source.path)"
+        CACHE_REPO="$(params.cache-repo)"
+        SOURCE_PVC="$(workspaces.source.claim)"
+        SOURCE_PATH="$(workspaces.source.path)"
+        NS="$POD_NAMESPACE"
 
         PUSH_REGISTRY=$(echo "$REGISTRY" | sed 's|localhost:|kind-registry:|')
+        PUSH_CACHE=""
+        if [ -n "$CACHE_REPO" ]; then
+          PUSH_CACHE=$(echo "$CACHE_REPO" | sed 's|localhost:|kind-registry:|')
+        fi
 
-        BUILT_JSON="${WORKSPACE}/.built-images.json"
-        echo '{}' > "$BUILT_JSON"
+        if [ -z "$SOURCE_PVC" ]; then
+          echo "ERROR: source workspace must be PVC-backed for parallel containerize" >&2
+          exit 1
+        fi
 
         IS_JSON=false
-        case "$IMAGE_TAG" in
-          *"{"*) IS_JSON=true ;;
-        esac
+        case "$IMAGE_TAG" in *"{"*) IS_JSON=true ;; esac
+
+        TS=$(date +%s)
+
+        echo "============================================="
+        echo "  Parallel Containerize (Kaniko pods)"
+        echo "============================================="
+        echo "  Apps:  $BUILD_APPS"
+        echo "  PVC:   $SOURCE_PVC"
+        echo "  Cache: ${CACHE_REPO:-disabled}"
+        echo ""
+
+        > /tmp/pod-list.txt
+        > /tmp/app-images.txt
 
         for APP in $BUILD_APPS; do
-          echo ""
           echo "========================================="
           echo "  Containerize: $APP"
           echo "========================================="
@@ -63,54 +93,112 @@ spec:
             TAG="${TAG_PREFIX}${IMAGE_TAG}"
           fi
 
-          CONTEXT="."
-          DOCKERFILE="Dockerfile"
-
+          CONTEXT_PATH="${SOURCE_PATH}/${APP}"
+          FULL_DOCKERFILE="${CONTEXT_PATH}/Dockerfile"
           PUSH_IMAGE="${PUSH_REGISTRY}/${APP}:${TAG}"
           PULL_IMAGE="${REGISTRY}/${APP}:${TAG}"
-          echo "  Push to:    $PUSH_IMAGE"
-          echo "  Pull as:    $PULL_IMAGE"
 
-          CONTEXT_PATH="${WORKSPACE}"
-          if [ -d "${WORKSPACE}/${APP}" ]; then
-            CONTEXT_PATH="${WORKSPACE}/${APP}"
+          if [ ! -f "$FULL_DOCKERFILE" ] && [ ! -d "$CONTEXT_PATH" ]; then
+            echo "  WARN: No Dockerfile at $FULL_DOCKERFILE — skipping"
+            echo "${APP}=${PULL_IMAGE}" >> /tmp/app-images.txt
+            continue
           fi
 
-          FULL_CONTEXT="${CONTEXT_PATH}/${CONTEXT}"
-          FULL_DOCKERFILE="${FULL_CONTEXT}/${DOCKERFILE}"
-
-          if [ -f "${FULL_DOCKERFILE}" ]; then
-            /kaniko/executor \
-              --dockerfile="${FULL_DOCKERFILE}" \
-              --context="${FULL_CONTEXT}" \
-              --destination="${PUSH_IMAGE}" \
-              --cache=false \
-              --insecure \
-              --insecure-pull \
-              --ignore-path /product_uuid \
-              --ignore-path /sys
-            echo "  Built and pushed: $PUSH_IMAGE"
+          KANIKO_ARGS="[\"--dockerfile=${FULL_DOCKERFILE}\",\"--context=${CONTEXT_PATH}\",\"--destination=${PUSH_IMAGE}\",\"--insecure\",\"--insecure-pull\",\"--ignore-path=/product_uuid\",\"--ignore-path=/sys\""
+          if [ -n "$PUSH_CACHE" ]; then
+            KANIKO_ARGS="${KANIKO_ARGS},\"--cache=true\",\"--cache-repo=${PUSH_CACHE}\",\"--cache-ttl=168h\""
           else
-            echo "  WARN: Dockerfile not found at ${FULL_DOCKERFILE}"
-            echo "  Skipping containerize (image may already exist in registry)"
+            KANIKO_ARGS="${KANIKO_ARGS},\"--cache=false\""
           fi
+          KANIKO_ARGS="${KANIKO_ARGS}]"
 
-          echo "\"${APP}\": \"${PULL_IMAGE}\"" >> "${BUILT_JSON}.parts"
+          POD_NAME="kaniko-${APP}-${TS}"
+          echo "  Launching: $POD_NAME"
+          echo "  Push to:   $PUSH_IMAGE"
+          echo "  Pull as:   $PULL_IMAGE"
+
+          cat <<KPOD | kubectl apply -f - -n "$NS"
+        apiVersion: v1
+        kind: Pod
+        metadata:
+          name: ${POD_NAME}
+          namespace: ${NS}
+          labels:
+            app: kaniko-build
+            component: ${APP}
+            managed-by: tekton-job-standardization
+        spec:
+          activeDeadlineSeconds: 600
+          containers:
+          - name: kaniko
+            image: gcr.io/kaniko-project/executor:latest
+            args: ${KANIKO_ARGS}
+            volumeMounts:
+            - name: source
+              mountPath: ${SOURCE_PATH}
+          volumes:
+          - name: source
+            persistentVolumeClaim:
+              claimName: ${SOURCE_PVC}
+          restartPolicy: Never
+        KPOD
+
+          echo "$POD_NAME" >> /tmp/pod-list.txt
+          echo "${APP}=${PULL_IMAGE}" >> /tmp/app-images.txt
+          echo ""
         done
 
-        echo '{' > "$BUILT_JSON"
-        if [ -f "${BUILT_JSON}.parts" ]; then
-          TOTAL=$(wc -l < "${BUILT_JSON}.parts")
-          COUNT=0
-          while IFS= read -r line; do
-            COUNT=$((COUNT + 1))
-            if [ "$COUNT" -lt "$TOTAL" ]; then
-              echo "  ${line}," >> "$BUILT_JSON"
-            else
-              echo "  ${line}" >> "$BUILT_JSON"
-            fi
-          done < "${BUILT_JSON}.parts"
-        fi
-        echo '}' >> "$BUILT_JSON"
+        FAILED=""
+        while IFS= read -r POD_NAME; do
+          [ -z "$POD_NAME" ] && continue
+          echo "  Waiting: $POD_NAME"
+          while true; do
+            PHASE=$(kubectl get pod "$POD_NAME" -n "$NS" -o jsonpath='{.status.phase}' 2>/dev/null || echo "Pending")
+            case "$PHASE" in
+              Succeeded) echo "    $POD_NAME: Succeeded"; break ;;
+              Failed)    echo "    $POD_NAME: FAILED"; FAILED="${FAILED} ${POD_NAME}"; break ;;
+              *)         sleep 5 ;;
+            esac
+          done
+        done < /tmp/pod-list.txt
 
-        cat "$BUILT_JSON" | tee $(results.built-images.path)
+        echo ""
+        echo "  Cleaning up Kaniko pods..."
+        while IFS= read -r POD_NAME; do
+          [ -z "$POD_NAME" ] && continue
+          kubectl delete pod "$POD_NAME" -n "$NS" --ignore-not-found=true 2>/dev/null &
+        done < /tmp/pod-list.txt
+        wait
+
+        if [ -n "$FAILED" ]; then
+          echo "FAILED: Kaniko pods failed:$FAILED" >&2
+          for P in $FAILED; do
+            echo "--- Logs for $P ---"
+            kubectl logs "$P" -n "$NS" --tail=30 2>/dev/null || true
+          done
+          exit 1
+        fi
+
+        > /tmp/parts.txt
+        while IFS='=' read -r APP IMG; do
+          [ -z "$APP" ] && continue
+          echo "  \"${APP}\": \"${IMG}\"" >> /tmp/parts.txt
+        done < /tmp/app-images.txt
+
+        TOTAL=$(wc -l < /tmp/parts.txt)
+        COUNT=0
+        echo '{' > /tmp/built.json
+        while IFS= read -r line; do
+          COUNT=$((COUNT + 1))
+          if [ "$COUNT" -lt "$TOTAL" ]; then
+            echo "${line}," >> /tmp/built.json
+          else
+            echo "${line}" >> /tmp/built.json
+          fi
+        done < /tmp/parts.txt
+        echo '}' >> /tmp/built.json
+
+        echo ""
+        echo "  Built images:"
+        cat /tmp/built.json
+        cat /tmp/built.json | tee $(results.built-images.path)

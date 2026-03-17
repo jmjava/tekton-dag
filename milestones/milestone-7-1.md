@@ -116,13 +116,13 @@ See [docs/bootstrap-pipeline-speed-analysis.md](../docs/bootstrap-pipeline-speed
 
 ## Success criteria
 
-- [ ] Bootstrap pipeline builds app images in parallel (7.1.1).
-- [ ] Kaniko cache is enabled and repeat runs show faster containerize phase (7.1.2).
-- [ ] App repos are cloned in parallel in bootstrap (7.1.3).
-- [ ] (Optional) Compile resource requests are configurable and documented (7.1.4).
-- [ ] Missing Postman collections (bff-tests.json, api-tests.json) documented; optionally add collections or make skip/fail configurable (7.1.5).
-- [ ] Existing behavior preserved: same `built-images` format, same deploy and PR pipeline behavior; only wall-clock time improves.
-- [ ] [docs/bootstrap-pipeline-speed-analysis.md](../docs/bootstrap-pipeline-speed-analysis.md) updated to note that optimizations have been implemented (and how).
+- [x] Bootstrap pipeline builds app images in parallel (7.1.1).
+- [x] Kaniko cache is enabled and repeat runs show faster containerize phase (7.1.2).
+- [x] App repos are cloned in parallel in bootstrap (7.1.3).
+- [x] (Optional) Compile resource requests are configurable and documented (7.1.4) — deferred; documented as optional tuning.
+- [x] Missing Postman collections (bff-tests.json, api-tests.json) documented; optionally add collections or make skip/fail configurable (7.1.5) — documented.
+- [x] Existing behavior preserved: same `built-images` format, same deploy and PR pipeline behavior; only wall-clock time improves.
+- [x] [docs/bootstrap-pipeline-speed-analysis.md](../docs/bootstrap-pipeline-speed-analysis.md) updated to note that optimizations have been implemented (and how).
 
 ---
 
