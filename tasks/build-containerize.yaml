@@ -92,12 +92,12 @@ spec:
           local BATCH_FAILED=""
           while IFS= read -r P; do
             [ -z "$P" ] && continue
-            echo "    Waiting: $P"
+            echo "    Waiting: $P" >&2
             while true; do
               PH=$(kubectl get pod "$P" -n "$NS" -o jsonpath='{.status.phase}' 2>/dev/null || echo "Pending")
               case "$PH" in
-                Succeeded) echo "      $P: Succeeded"; break ;;
-                Failed)    echo "      $P: FAILED"; BATCH_FAILED="${BATCH_FAILED} ${P}"; break ;;
+                Succeeded) echo "      $P: Succeeded" >&2; break ;;
+                Failed)    echo "      $P: FAILED" >&2; BATCH_FAILED="${BATCH_FAILED} ${P}"; break ;;
                 *)         sleep 5 ;;
               esac
             done
