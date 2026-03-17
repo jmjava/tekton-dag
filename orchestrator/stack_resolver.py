@@ -52,7 +52,7 @@ class StackResolver:
             try:
                 with open(path) as f:
                     stack = yaml.safe_load(f)
-                if not stack or "apps" not in stack:
+                if not stack or not isinstance(stack.get("apps"), list):
                     continue
                 stack_file = f"stacks/{fname}"
                 self._stacks[stack_file] = stack

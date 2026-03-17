@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tekton-dag-orchestrator
+  namespace: tekton-pipelines
+  labels:
+    app: tekton-dag-orchestrator
+    app.kubernetes.io/part-of: tekton-job-standardization
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tekton-dag-orchestrator
+  template:
+    metadata:
+      labels:
+        app: tekton-dag-orchestrator
+    spec:
+      serviceAccountName: tekton-pr-sa
+      containers:
+        - name: orchestrator
+          image: localhost:5000/tekton-dag-orchestrator:latest
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: NAMESPACE
+              value: tekton-pipelines
+            - name: TEAM_NAME
+              value: default
+            - name: IMAGE_REGISTRY
+              value: localhost:5000
+            - name: CACHE_REPO
+              value: ""
+            - name: INTERCEPT_BACKEND
+              value: telepresence
+            - name: MAX_PARALLEL_BUILDS
+              value: "5"
+            - name: GIT_URL
+              value: https://github.com/jmjava/tekton-dag.git
+            - name: GIT_REVISION
+              value: main
+            - name: STACK_FILE
+              value: stacks/stack-one.yaml
+            - name: STACKS_DIR
+              value: /stacks
+            - name: TEAMS_DIR
+              value: /teams
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          volumeMounts:
+            - name: stacks
+              mountPath: /stacks
+              readOnly: true
+      volumes:
+        - name: stacks
+          configMap:
+            name: tekton-dag-stacks
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tekton-dag-orchestrator
+  namespace: tekton-pipelines
+  labels:
+    app: tekton-dag-orchestrator
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app: tekton-dag-orchestrator

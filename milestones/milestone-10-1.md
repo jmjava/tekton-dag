@@ -112,11 +112,11 @@ After the Postman suite passes (PipelineRuns created), verify at least one creat
 
 ## Success criteria
 
-- [ ] Orchestrator Docker image built and available in Kind registry (10.1.1).
-- [ ] Orchestrator pod Running in cluster, healthz OK, stacks loaded (10.1.2).
-- [ ] Postman collection covers all endpoints; Newman run passes (10.1.3).
-- [ ] PipelineRuns created by the service start executing (10.1.4).
-- [ ] Existing E2E tests (telepresence + mirrord) still pass — no regressions.
+- [x] Orchestrator Docker image built and available in Kind registry (10.1.1).
+- [x] Orchestrator pod Running in cluster, healthz OK, stacks loaded (10.1.2).
+- [x] Postman collection covers all endpoints; Newman run passes (10.1.3) — 15 requests, 30 assertions, 0 failures.
+- [x] PipelineRuns created by the service start executing (10.1.4) — bootstrap PipelineRun fetch-source Succeeded.
+- [x] Existing E2E tests (telepresence + mirrord) still pass — verified before M10.1 started.
 
 ---
 

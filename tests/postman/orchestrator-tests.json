@@ -1,0 +1,438 @@
+{
+  "info": {
+    "name": "Orchestrator Service Tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "M10.1 — Postman/Newman tests for the tekton-dag orchestration service."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "bootstrapRunName",
+      "value": ""
+    },
+    {
+      "key": "prRunName",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Health and Readiness",
+      "item": [
+        {
+          "name": "GET /healthz",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/healthz"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('body has status ok', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status).to.eql('ok');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /readyz",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/readyz"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('stacks_loaded >= 1', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.stacks_loaded).to.be.at.least(1);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Stack and Team Queries",
+      "item": [
+        {
+          "name": "GET /api/stacks",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/stacks"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('at least 1 stack with name and apps', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.be.an('array').with.length.greaterThan(0);",
+                  "  const first = body[0];",
+                  "  pm.expect(first).to.have.property('name');",
+                  "  pm.expect(first).to.have.property('apps').that.is.an('array');",
+                  "  pm.expect(first).to.have.property('stack_file');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/teams",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/teams"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('body is an object', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.be.an('object');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "PipelineRun Listing",
+      "item": [
+        {
+          "name": "GET /api/runs",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/runs"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('body is an array', () => {",
+                  "  pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/runs?limit=5",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/runs?limit=5"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('array length <= 5', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.be.an('array');",
+                  "  pm.expect(body.length).to.be.at.most(5);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Manual Triggers",
+      "item": [
+        {
+          "name": "POST /api/run — bootstrap",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/run",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"mode\": \"bootstrap\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('has pipelinerun name and mode bootstrap', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('pipelinerun');",
+                  "  pm.expect(body.mode).to.eql('bootstrap');",
+                  "  pm.collectionVariables.set('bootstrapRunName', body.pipelinerun);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/run — pr",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/run",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"mode\": \"pr\", \"changed_app\": \"demo-fe\", \"pr_number\": 999}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('has pipelinerun name', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('pipelinerun');",
+                  "  pm.collectionVariables.set('prRunName', body.pipelinerun);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/run — pr missing params",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/run",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"mode\": \"pr\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('body has error', () => {",
+                  "  pm.expect(pm.response.json()).to.have.property('error');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bootstrap Endpoint",
+      "item": [
+        {
+          "name": "POST /api/bootstrap",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/bootstrap",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('has pipelinerun name', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('pipelinerun');",
+                  "  pm.expect(body.mode).to.eql('bootstrap');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Webhook Simulation",
+      "item": [
+        {
+          "name": "POST /webhook/github — PR opened (known repo)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/webhook/github",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-GitHub-Event", "value": "pull_request" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"action\":\"opened\",\"number\":42,\"pull_request\":{\"head\":{\"sha\":\"abc123\"},\"base\":{\"repo\":{\"name\":\"tekton-dag-vue-fe\",\"ssh_url\":\"git@github.com:jmjava/tekton-dag-vue-fe.git\"}},\"merged\":false}}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('mode is pr and has pipelinerun', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.mode).to.eql('pr');",
+                  "  pm.expect(body).to.have.property('pipelinerun');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /webhook/github — PR closed+merged",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/webhook/github",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-GitHub-Event", "value": "pull_request" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"action\":\"closed\",\"number\":42,\"pull_request\":{\"head\":{\"sha\":\"abc123\"},\"base\":{\"repo\":{\"name\":\"tekton-dag-vue-fe\",\"ssh_url\":\"git@github.com:jmjava/tekton-dag-vue-fe.git\"}},\"merged\":true}}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('mode is merge', () => {",
+                  "  pm.expect(pm.response.json().mode).to.eql('merge');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /webhook/github — unknown repo",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/webhook/github",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-GitHub-Event", "value": "pull_request" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"action\":\"opened\",\"number\":1,\"pull_request\":{\"head\":{\"sha\":\"def456\"},\"base\":{\"repo\":{\"name\":\"unknown-repo-xyz\",\"ssh_url\":\"\"}},\"merged\":false}}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('status ignored', () => {",
+                  "  pm.expect(pm.response.json().status).to.eql('ignored');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /webhook/github — non-PR event",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/webhook/github",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-GitHub-Event", "value": "push" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('status ignored', () => {",
+                  "  pm.expect(pm.response.json().status).to.eql('ignored');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Config Reload",
+      "item": [
+        {
+          "name": "POST /api/reload",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/reload"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('stacks >= 1', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.stacks).to.be.at.least(1);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
