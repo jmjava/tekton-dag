@@ -44,6 +44,14 @@ spec:
     - name: default-namespace
       type: string
       default: "staging"
+    - name: tests-to-run
+      type: string
+      default: ""
+      description: "Comma-separated test IDs from query-test-plan. Empty = run all tests."
+    - name: unmapped-area
+      type: string
+      default: ""
+      description: "Service name with no mapped regression tests. Non-empty = report unmapped."
   workspaces:
     - name: test-source
   results:
@@ -76,8 +84,35 @@ spec:
           HEADER_VAL=$(echo "$INTERCEPT" | cut -d: -f2-)
         fi
 
+        TESTS_TO_RUN="$(params.tests-to-run)"
+        UNMAPPED_AREA="$(params.unmapped-area)"
+
         echo '{}' > /tmp/test-summary.json
         OVERALL_PASS=true
+
+        if [ -n "$UNMAPPED_AREA" ] && [ -z "$TESTS_TO_RUN" ]; then
+          echo ""
+          echo "####################################################"
+          echo "  NO MAPPED REGRESSION for area: $UNMAPPED_AREA"
+          echo "  This area needs regression tests to be built."
+          echo "####################################################"
+          echo ""
+          jq --arg area "$UNMAPPED_AREA" \
+            '. + {"unmapped-area": $area, "message": "No mapped regression; area needs tests"}' \
+            /tmp/test-summary.json > /tmp/test-summary-tmp.json
+          mv /tmp/test-summary-tmp.json /tmp/test-summary.json
+          cat /tmp/test-summary.json | tee $(results.test-summary.path)
+          exit 0
+        fi
+
+        if [ -n "$TESTS_TO_RUN" ]; then
+          echo ""
+          echo "####################################################"
+          echo "  FILTERED TEST RUN (from test-plan graph)"
+          echo "  Tests: $TESTS_TO_RUN"
+          echo "####################################################"
+          echo ""
+        fi
 
         # ===========================================================
         # Phase 1: E2E through entry point

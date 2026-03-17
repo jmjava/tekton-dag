@@ -4,10 +4,13 @@
 # Prerequisites:
 #   - orchestrator pod Running in tekton-pipelines namespace
 #   - newman installed (npm install -g newman)
+#   - Neo4j running in cluster (for --graph tests)
 #
 # Usage:
-#   ./scripts/run-orchestrator-tests.sh
-#   ./scripts/run-orchestrator-tests.sh --skip-integration   # skip PipelineRun validation
+#   ./scripts/run-orchestrator-tests.sh                     # M10.1 orchestrator tests
+#   ./scripts/run-orchestrator-tests.sh --graph             # M9 graph + test-plan tests
+#   ./scripts/run-orchestrator-tests.sh --all               # both collections
+#   ./scripts/run-orchestrator-tests.sh --skip-integration  # skip PipelineRun validation
 set -euo pipefail
 [ -z "${BASH_VERSION:-}" ] && exec bash "$0" "$@"
 
@@ -15,14 +18,24 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 NS="tekton-pipelines"
 LOCAL_PORT=9091
-COLLECTION="${REPO_ROOT}/tests/postman/orchestrator-tests.json"
+ORCH_COLLECTION="${REPO_ROOT}/tests/postman/orchestrator-tests.json"
+GRAPH_COLLECTION="${REPO_ROOT}/tests/postman/graph-tests.json"
 SKIP_INTEGRATION=false
+RUN_ORCH=false
+RUN_GRAPH=false
 
 for arg in "$@"; do
   case "$arg" in
     --skip-integration) SKIP_INTEGRATION=true ;;
+    --graph)            RUN_GRAPH=true ;;
+    --all)              RUN_ORCH=true; RUN_GRAPH=true ;;
   esac
 done
+
+# Default: run orchestrator tests if neither --graph nor --all specified
+if [ "$RUN_GRAPH" = "false" ] && [ "$RUN_ORCH" = "false" ]; then
+  RUN_ORCH=true
+fi
 
 cleanup() {
   echo ""
@@ -41,7 +54,9 @@ cleanup() {
 trap cleanup EXIT
 
 echo "=============================================="
-echo "  Orchestrator Service Tests (M10.1)"
+echo "  Orchestrator Service Tests"
+if [ "$RUN_ORCH" = "true" ]; then echo "    [x] M10.1 orchestrator endpoints"; fi
+if [ "$RUN_GRAPH" = "true" ]; then echo "    [x] M9 graph / test-plan endpoints"; fi
 echo "=============================================="
 echo ""
 
@@ -69,20 +84,31 @@ else
 fi
 echo ""
 
-echo "=== Running Newman ==="
-newman run "$COLLECTION" \
-  --env-var "baseUrl=http://localhost:${LOCAL_PORT}" \
-  --reporters cli \
-  --color on
-NEWMAN_EXIT=$?
+NEWMAN_FAILED=false
 
-if [ "$NEWMAN_EXIT" -ne 0 ]; then
+if [ "$RUN_ORCH" = "true" ]; then
+  echo "=== Running Newman: Orchestrator Tests (M10.1) ==="
+  newman run "$ORCH_COLLECTION" \
+    --env-var "baseUrl=http://localhost:${LOCAL_PORT}" \
+    --reporters cli \
+    --color on || NEWMAN_FAILED=true
   echo ""
-  echo "ERROR: Newman tests failed (exit $NEWMAN_EXIT)"
-  exit "$NEWMAN_EXIT"
 fi
 
-echo ""
+if [ "$RUN_GRAPH" = "true" ]; then
+  echo "=== Running Newman: Graph / Test-Plan Tests (M9) ==="
+  newman run "$GRAPH_COLLECTION" \
+    --env-var "baseUrl=http://localhost:${LOCAL_PORT}" \
+    --reporters cli \
+    --color on || NEWMAN_FAILED=true
+  echo ""
+fi
+
+if [ "$NEWMAN_FAILED" = "true" ]; then
+  echo "ERROR: One or more Newman collections failed"
+  exit 1
+fi
+
 echo "=== Newman passed ==="
 
 if [ "$SKIP_INTEGRATION" = "true" ]; then

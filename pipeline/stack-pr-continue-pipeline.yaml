@@ -47,6 +47,10 @@ spec:
     - name: git-revision
       type: string
       description: "Branch, tag, or SHA"
+    - name: changed-app
+      type: string
+      description: "App being tested (for test-plan query)"
+      default: ""
 
   workspaces:
     - name: shared-workspace
@@ -128,6 +132,15 @@ spec:
       runAfter:
         - deploy-intercepts-result
 
+    - name: query-test-plan
+      taskRef:
+        name: query-test-plan
+      params:
+        - name: changed-app
+          value: $(params.changed-app)
+      runAfter:
+        - validate-propagation
+
     - name: run-tests
       taskRef:
         name: run-stack-tests
@@ -144,11 +157,15 @@ spec:
           value: $(params.build-apps)
         - name: intercept-header-value
           value: $(params.intercept-header-value)
+        - name: tests-to-run
+          value: $(tasks.query-test-plan.results.tests-to-run)
+        - name: unmapped-area
+          value: $(tasks.query-test-plan.results.unmapped-area)
       workspaces:
         - name: test-source
           workspace: shared-workspace
       runAfter:
-        - validate-propagation
+        - query-test-plan
 
     - name: push-version-commit
       taskRef:

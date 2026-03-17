@@ -395,6 +395,16 @@ spec:
       runAfter:
         - deploy-intercepts-result
 
+    - name: query-test-plan
+      taskRef:
+        name: query-test-plan
+      params:
+        - name: changed-app
+          value: $(params.changed-app)
+      runAfter:
+        - validate-propagation
+        - validate-original-traffic
+
     - name: run-tests
       taskRef:
         name: run-stack-tests
@@ -411,12 +421,15 @@ spec:
           value: $(tasks.resolve-stack.results.build-apps)
         - name: intercept-header-value
           value: $(tasks.resolve-stack.results.intercept-header-value)
+        - name: tests-to-run
+          value: $(tasks.query-test-plan.results.tests-to-run)
+        - name: unmapped-area
+          value: $(tasks.query-test-plan.results.unmapped-area)
       workspaces:
         - name: test-source
           workspace: shared-workspace
       runAfter:
-        - validate-propagation
-        - validate-original-traffic
+        - query-test-plan
 
   finally:
     - name: cleanup

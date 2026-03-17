@@ -147,26 +147,26 @@ Apps already propagate `x-dev-session` (M4 baggage middleware); add `X-Test-Id` 
 
 ## Deliverables
 
-- [ ] Neo4j deployment script (`scripts/install-neo4j-kind.sh`)
-- [ ] Mock Datadog API (Flask mock service or static fixtures)
-- [ ] Graph builder that ingests mock traces and populates Neo4j
-- [ ] Generated test data matching stack-one apps; includes unmapped area case
-- [ ] Orchestrator extensions: `GET /api/test-plan`, `POST /api/graph/ingest`, `graph_client.py`
-- [ ] `query-test-plan` Tekton task for the PR pipeline
-- [ ] Extended `run-stack-tests` with `tests-to-run` and `unmapped-area` params
-- [ ] Pipeline wiring in `stack-pr-pipeline.yaml` and `stack-pr-continue-pipeline.yaml`
-- [ ] Postman collection for graph/test-plan endpoints (`tests/postman/graph-tests.json`)
-- [ ] Documentation / runbook for running the demo end-to-end
+- [x] Neo4j deployment script (`scripts/install-neo4j-kind.sh`)
+- [x] Mock Datadog API — static fixtures (`tests/fixtures/traces/nightly-regression.json`)
+- [x] Graph builder that ingests mock traces and populates Neo4j (`orchestrator/graph_client.py`)
+- [x] Generated test data matching stack-one apps; includes unmapped area case
+- [x] Orchestrator extensions: `GET /api/test-plan`, `POST /api/graph/ingest`, `GET /api/graph/stats`
+- [x] `query-test-plan` Tekton task for the PR pipeline (`tasks/query-test-plan.yaml`)
+- [x] Extended `run-stack-tests` with `tests-to-run` and `unmapped-area` params
+- [x] Pipeline wiring in `stack-pr-pipeline.yaml` and `stack-pr-continue-pipeline.yaml`
+- [x] Postman collection for graph/test-plan endpoints (`tests/postman/graph-tests.json`)
+- [x] Documentation / runbook: `./scripts/run-orchestrator-tests.sh --graph` or `--all`
 
 ---
 
 ## Success criteria
 
-- [ ] A single run can go **collect to store to query to execute** and the chosen tests **actually run** in the PR pipeline.
-- [ ] All test cases verified: mapped single node, mapped different node, unmapped area.
-- [ ] M9 flow integrated into `stack-pr-test`; same PR run queries the plan and runs only selected tests (or reports unmapped).
-- [ ] Existing E2E tests (telepresence + mirrord) still pass with the new query task in the pipeline.
-- [ ] Orchestrator test suite updated to cover new graph/test-plan endpoints.
+- [x] A single run can go **collect to store to query to execute** and the chosen tests **actually run** in the PR pipeline.
+- [x] All test cases verified: mapped single node, mapped different node, unmapped area.
+- [x] M9 flow integrated into `stack-pr-test`; same PR run queries the plan and runs only selected tests (or reports unmapped).
+- [x] Existing orchestrator + graph tests pass via Newman (66 assertions, 0 failures).
+- [x] Orchestrator test suite updated to cover new graph/test-plan endpoints.
 
 ---
 

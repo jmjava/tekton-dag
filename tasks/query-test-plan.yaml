@@ -1,0 +1,69 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: query-test-plan
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+    app.kubernetes.io/version: "1.0.0"
+spec:
+  description: >
+    Query the orchestrator's test-plan endpoint to get the minimal set
+    of regression tests for the changed app. Outputs a comma-separated
+    list of test IDs (or an unmapped-area flag).
+  params:
+    - name: changed-app
+      type: string
+      description: "The app that changed in this PR"
+    - name: blast-radius
+      type: string
+      default: "1"
+      description: "Graph traversal depth (1=direct, 2+=neighbors)"
+    - name: orchestrator-url
+      type: string
+      default: "http://tekton-dag-orchestrator.tekton-pipelines.svc.cluster.local:8080"
+      description: "Orchestrator service URL"
+  results:
+    - name: tests-to-run
+      description: "Comma-separated test IDs to run, or empty"
+    - name: unmapped-area
+      description: "Service name if no mapped tests, or empty"
+    - name: test-plan-message
+      description: "Human-readable summary of the test plan"
+  steps:
+    - name: query
+      image: curlimages/curl:latest
+      script: |
+        #!/bin/sh
+        set -e
+
+        APP="$(params.changed-app)"
+        RADIUS="$(params.blast-radius)"
+        URL="$(params.orchestrator-url)/api/test-plan?app=${APP}&radius=${RADIUS}"
+
+        echo "Querying test plan: $URL"
+        RESPONSE=$(curl -sf "$URL" 2>/dev/null || echo '{"error":"orchestrator unreachable"}')
+        echo "$RESPONSE" | head -c 2000
+        echo ""
+
+        if echo "$RESPONSE" | grep -q '"error"'; then
+          echo "WARN: test-plan query failed; will run all tests"
+          echo -n "" > $(results.tests-to-run.path)
+          echo -n "" > $(results.unmapped-area.path)
+          echo -n "test-plan query failed; running all tests" > $(results.test-plan-message.path)
+          exit 0
+        fi
+
+        TESTS=$(echo "$RESPONSE" | sed 's/.*"tests":\[//' | sed 's/\].*//' | \
+          sed 's/{"id":"//g' | sed 's/","type":"[^"]*"}//g' | tr ',' '\n' | \
+          paste -sd ',' -)
+        UNMAPPED=$(echo "$RESPONSE" | sed -n 's/.*"unmapped_area":"\([^"]*\)".*/\1/p')
+        MESSAGE=$(echo "$RESPONSE" | sed -n 's/.*"message":"\([^"]*\)".*/\1/p')
+
+        echo ""
+        echo "Tests to run: ${TESTS:-<none>}"
+        echo "Unmapped area: ${UNMAPPED:-<none>}"
+        echo "Message: $MESSAGE"
+
+        echo -n "${TESTS}" > $(results.tests-to-run.path)
+        echo -n "${UNMAPPED}" > $(results.unmapped-area.path)
+        echo -n "${MESSAGE}" > $(results.test-plan-message.path)

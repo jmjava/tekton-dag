@@ -20,6 +20,7 @@ from flask import Flask, request, jsonify, current_app
 
 import k8s_client
 import pipelinerun_builder as builder
+import graph_client
 
 logger = logging.getLogger("orchestrator.routes")
 
@@ -233,3 +234,52 @@ def register_routes(app: Flask):
         resolver = current_app.config["RESOLVER"]
         resolver.reload()
         return jsonify({"status": "reloaded", "stacks": len(resolver.list_stacks())})
+
+    @app.route("/api/test-plan", methods=["GET"])
+    def test_plan():
+        """
+        Query the minimal test set for a changed app.
+        Query params: app (required), radius (optional, default 1).
+        """
+        app_name = request.args.get("app", "")
+        if not app_name:
+            return jsonify({"error": "app parameter required"}), 400
+        radius = request.args.get("radius", 1, type=int)
+        try:
+            plan = graph_client.query_test_plan(app_name, radius=radius)
+            return jsonify(plan)
+        except Exception as e:
+            logger.error("test-plan query failed: %s", e)
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/graph/ingest", methods=["POST"])
+    def graph_ingest():
+        """
+        Ingest trace data into the graph.
+        Body: {"fixture_file": "path/to/file.json"} or {"traces": [...]}.
+        """
+        data = request.get_json(force=True)
+        try:
+            if "fixture_file" in data:
+                count = graph_client.ingest_from_file(data["fixture_file"])
+                return jsonify({"status": "ingested", "traces": count})
+            elif "traces" in data:
+                graph_client.clear_graph()
+                graph_client.create_constraints()
+                graph_client.ingest_traces(data["traces"])
+                return jsonify({"status": "ingested", "traces": len(data["traces"])})
+            else:
+                return jsonify({"error": "provide fixture_file or traces"}), 400
+        except Exception as e:
+            logger.error("graph ingest failed: %s", e)
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/graph/stats", methods=["GET"])
+    def graph_stats():
+        """Return graph statistics (node/edge counts)."""
+        try:
+            stats = graph_client.graph_stats()
+            return jsonify(stats)
+        except Exception as e:
+            logger.error("graph stats failed: %s", e)
+            return jsonify({"error": str(e)}), 500

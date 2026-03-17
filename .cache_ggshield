@@ -1,1 +1,1 @@
-{"last_found_secrets": [{"match": "da620f84f1a909a6c61442f6313a22603b3b530f132e2f9aa5af5ca3847371d5", "name": "Generic CLI Option Secret - commit://staged/scripts/configure-github-webhooks.sh"}]}
+{"last_found_secrets": [{"name": "Generic Password - commit://staged/orchestrator/graph_client.py", "match": "cf1aea8390603598e035fddac5ff7f8148791bdb4f12f968674b6e868a4d182e"}, {"name": "Generic Password - commit://staged/scripts/install-neo4j-kind.sh", "match": "47e8785f0385c458d409b36159e42a4f7abc4f821dae395fe6fdf597fb9827ee"}]}

@@ -1,0 +1,83 @@
+{
+  "description": "Mock nightly regression trace data. Simulates Datadog trace search response shape. Each trace has spans tagged with X-Test-Id showing which test produced the trace and which services/endpoints were hit.",
+  "traces": [
+    {
+      "trace_id": "aaa111",
+      "test_id": "e2e/fe-smoke",
+      "test_type": "e2e",
+      "spans": [
+        {"service": "demo-fe", "resource": "GET /", "span_id": "s1"},
+        {"service": "release-lifecycle-demo", "resource": "GET /api/health", "span_id": "s2"},
+        {"service": "demo-api", "resource": "GET /api/status", "span_id": "s3"}
+      ]
+    },
+    {
+      "trace_id": "aaa222",
+      "test_id": "e2e/fe-checkout-flow",
+      "test_type": "e2e",
+      "spans": [
+        {"service": "demo-fe", "resource": "POST /checkout", "span_id": "s4"},
+        {"service": "release-lifecycle-demo", "resource": "POST /api/orders", "span_id": "s5"},
+        {"service": "demo-api", "resource": "POST /api/orders/create", "span_id": "s6"}
+      ]
+    },
+    {
+      "trace_id": "aaa333",
+      "test_id": "e2e/bff-integration",
+      "test_type": "e2e",
+      "spans": [
+        {"service": "release-lifecycle-demo", "resource": "GET /api/products", "span_id": "s7"},
+        {"service": "demo-api", "resource": "GET /api/products/list", "span_id": "s8"}
+      ]
+    },
+    {
+      "trace_id": "bbb111",
+      "test_id": "individual/fe-unit-api",
+      "test_type": "individual",
+      "spans": [
+        {"service": "demo-fe", "resource": "GET /api/config", "span_id": "s9"}
+      ]
+    },
+    {
+      "trace_id": "bbb222",
+      "test_id": "individual/fe-assets",
+      "test_type": "individual",
+      "spans": [
+        {"service": "demo-fe", "resource": "GET /assets/main.js", "span_id": "s10"}
+      ]
+    },
+    {
+      "trace_id": "bbb333",
+      "test_id": "individual/bff-crud",
+      "test_type": "individual",
+      "spans": [
+        {"service": "release-lifecycle-demo", "resource": "POST /api/items", "span_id": "s11"},
+        {"service": "demo-api", "resource": "POST /api/items/create", "span_id": "s12"}
+      ]
+    },
+    {
+      "trace_id": "bbb444",
+      "test_id": "individual/api-crud",
+      "test_type": "individual",
+      "spans": [
+        {"service": "demo-api", "resource": "GET /api/items", "span_id": "s13"}
+      ]
+    },
+    {
+      "trace_id": "bbb555",
+      "test_id": "individual/api-validation",
+      "test_type": "individual",
+      "spans": [
+        {"service": "demo-api", "resource": "POST /api/items/validate", "span_id": "s14"}
+      ]
+    },
+    {
+      "trace_id": "bbb666",
+      "test_id": "individual/bff-health",
+      "test_type": "individual",
+      "spans": [
+        {"service": "release-lifecycle-demo", "resource": "GET /actuator/health", "span_id": "s15"}
+      ]
+    }
+  ]
+}
