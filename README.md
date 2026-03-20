@@ -2,6 +2,17 @@
 
 Standalone Tekton pipeline system for **local development and proof-of-concept**. Stack-aware CI/CD with header-based traffic interception, multi-framework support, and an in-cluster orchestration service.
 
+## Demo Videos
+
+| Video | Description | Duration |
+|-------|-------------|----------|
+| [📹 Architecture Overview](docs/demos/recordings/01-architecture.mp4) | System architecture, DAG model, polyglot support, pipelines | 2m 40s |
+| [📹 Intercept Routing](docs/demos/recordings/05-intercept-routing.mp4) | PR vs normal traffic routing, header-based interception | 2m 4s |
+| [📹 Local Debugging](docs/demos/recordings/06-local-debug.mp4) | mirrord integration, IDE breakpoints, live cluster debugging | 2m 0s |
+| [📹 Multi-Team Helm](docs/demos/recordings/08-multi-team-helm.mp4) | Helm chart deployment, team isolation, custom hooks | 2m 4s |
+
+*All videos are generated programmatically from source files. See [Milestone 8](milestones/milestone-8.md) for details.*
+
 ---
 
 ## Milestones

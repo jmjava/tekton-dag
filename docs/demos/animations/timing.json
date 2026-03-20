@@ -1,0 +1,386 @@
+{
+  "StackDAGScene": {
+    "scene": "StackDAGScene",
+    "segment": "01-architecture",
+    "total_duration": 160.4600067138672,
+    "paragraph_count": 9,
+    "paragraphs": [
+      {
+        "index": 0,
+        "start": 0.0,
+        "end": 6.8,
+        "duration": 6.8,
+        "preview": "Welcome to tekton-dag \u2014 a stack-aware CI/CD system built on Tekton Pipelines."
+      },
+      {
+        "index": 1,
+        "start": 6.8,
+        "end": 30.5,
+        "duration": 23.7,
+        "preview": "Most CI/CD tools treat each repository in isolation. tekton-dag takes a differen..."
+      },
+      {
+        "index": 2,
+        "start": 30.5,
+        "end": 46.7,
+        "duration": 16.2,
+        "preview": "Here is the architecture. On the left, a webhook from GitHub triggers the orches..."
+      },
+      {
+        "index": 3,
+        "start": 46.7,
+        "end": 70.3,
+        "duration": 23.6,
+        "preview": "In the center, you see the demo stack: three services \u2014 a Vue front-end, a Sprin..."
+      },
+      {
+        "index": 4,
+        "start": 70.3,
+        "end": 92.9,
+        "duration": 22.5,
+        "preview": "The system is polyglot by design. A second stack in the repo demonstrates five s..."
+      },
+      {
+        "index": 5,
+        "start": 92.9,
+        "end": 115.4,
+        "duration": 22.5,
+        "preview": "Below the stack, three pipelines fan out. The bootstrap pipeline builds and depl..."
+      },
+      {
+        "index": 6,
+        "start": 115.4,
+        "end": 137.9,
+        "duration": 22.5,
+        "preview": "Pipelines are also extensible. Teams can inject custom hook tasks \u2014 pre-build, p..."
+      },
+      {
+        "index": 7,
+        "start": 137.9,
+        "end": 160.5,
+        "duration": 22.5,
+        "preview": "A management GUI built with Vue and Flask provides a web interface for team swit..."
+      },
+      {
+        "index": 8,
+        "start": 160.5,
+        "end": 160.5,
+        "duration": -0.0,
+        "preview": "That is the high-level picture. Let's dive in."
+      }
+    ]
+  },
+  "HeaderPropagationScene": {
+    "scene": "HeaderPropagationScene",
+    "segment": "03-bootstrap-dataflow",
+    "total_duration": 108.4000015258789,
+    "paragraph_count": 6,
+    "paragraphs": [
+      {
+        "index": 0,
+        "start": 0.0,
+        "end": 4.7,
+        "duration": 4.7,
+        "preview": "Now let's bootstrap a stack and watch data flow through it."
+      },
+      {
+        "index": 1,
+        "start": 4.7,
+        "end": 30.3,
+        "duration": 25.6,
+        "preview": "When we trigger the bootstrap pipeline, every service in the stack gets built an..."
+      },
+      {
+        "index": 2,
+        "start": 30.3,
+        "end": 56.4,
+        "duration": 26.1,
+        "preview": "Next, the build-select-tool-apps task determines which compile task to invoke fo..."
+      },
+      {
+        "index": 3,
+        "start": 56.4,
+        "end": 63.3,
+        "duration": 6.9,
+        "preview": "Once all services are running, let's trace a request through the stack. A user h..."
+      },
+      {
+        "index": 4,
+        "start": 63.3,
+        "end": 93.4,
+        "duration": 30.0,
+        "preview": "The BFF receives the request. Its role is forwarder \u2014 it reads the incoming head..."
+      },
+      {
+        "index": 5,
+        "start": 93.4,
+        "end": 108.4,
+        "duration": 15.0,
+        "preview": "In normal operation, this header is absent and traffic flows to the standard dep..."
+      }
+    ]
+  },
+  "InterceptRoutingScene": {
+    "scene": "InterceptRoutingScene",
+    "segment": "05-intercept-routing",
+    "total_duration": 123.55000305175781,
+    "paragraph_count": 8,
+    "paragraphs": [
+      {
+        "index": 0,
+        "start": 0.0,
+        "end": 4.9,
+        "duration": 4.9,
+        "preview": "Let's visualize exactly how intercept routing works under the hood."
+      },
+      {
+        "index": 1,
+        "start": 4.9,
+        "end": 15.8,
+        "duration": 11.0,
+        "preview": "On screen you see two request paths \u2014 blue for normal traffic and green for PR t..."
+      },
+      {
+        "index": 2,
+        "start": 15.8,
+        "end": 30.0,
+        "duration": 14.2,
+        "preview": "The blue request has no special headers. It flows straight through the standard ..."
+      },
+      {
+        "index": 3,
+        "start": 30.0,
+        "end": 57.2,
+        "duration": 27.2,
+        "preview": "Now watch the green request. It carries the header x-dev-session with value pr-4..."
+      },
+      {
+        "index": 4,
+        "start": 57.2,
+        "end": 78.6,
+        "duration": 21.4,
+        "preview": "The key insight is that both requests coexist. They share the same cluster, the ..."
+      },
+      {
+        "index": 5,
+        "start": 78.6,
+        "end": 99.7,
+        "duration": 21.0,
+        "preview": "The validate-propagation task in the pipeline verifies this automatically. It se..."
+      },
+      {
+        "index": 6,
+        "start": 99.7,
+        "end": 119.4,
+        "duration": 19.8,
+        "preview": "The intercept mechanism supports multiple concurrent PRs. PR-42 gets its own dep..."
+      },
+      {
+        "index": 7,
+        "start": 119.4,
+        "end": 123.6,
+        "duration": 4.1,
+        "preview": "Same URL, same infrastructure, different backend. That is header-based traffic i..."
+      }
+    ]
+  },
+  "LocalDebugScene": {
+    "scene": "LocalDebugScene",
+    "segment": "06-local-debug",
+    "total_duration": 117.20999908447266,
+    "paragraph_count": 8,
+    "paragraphs": [
+      {
+        "index": 0,
+        "start": 0.0,
+        "end": 16.6,
+        "duration": 16.6,
+        "preview": "What happens when a test fails in the PR pipeline and you need to debug? You do ..."
+      },
+      {
+        "index": 1,
+        "start": 16.6,
+        "end": 33.0,
+        "duration": 16.5,
+        "preview": "tekton-dag includes a mirrord build image specifically for this workflow. On the..."
+      },
+      {
+        "index": 2,
+        "start": 33.0,
+        "end": 48.5,
+        "duration": 15.4,
+        "preview": "When you run mirrord exec, it intercepts network traffic destined for your servi..."
+      },
+      {
+        "index": 3,
+        "start": 48.5,
+        "end": 68.1,
+        "duration": 19.6,
+        "preview": "Watch \u2014 a request enters the cluster through the front-end. The mirrord agent in..."
+      },
+      {
+        "index": 4,
+        "start": 68.1,
+        "end": 86.3,
+        "duration": 18.2,
+        "preview": "This is not a mock environment. The request originated from the Vue front-end in..."
+      },
+      {
+        "index": 5,
+        "start": 86.3,
+        "end": 99.1,
+        "duration": 12.8,
+        "preview": "The pipeline even supports this during PR testing. Because the intercept setup i..."
+      },
+      {
+        "index": 6,
+        "start": 99.1,
+        "end": 108.8,
+        "duration": 9.7,
+        "preview": "When you are done debugging, mirrord disconnects cleanly. Traffic returns to the..."
+      },
+      {
+        "index": 7,
+        "start": 108.8,
+        "end": 117.2,
+        "duration": 8.4,
+        "preview": "Local IDE. Live cluster data. Full breakpoint debugging. That is the developer e..."
+      }
+    ]
+  },
+  "MultiTeamScene": {
+    "scene": "MultiTeamScene",
+    "segment": "08-multi-team-helm",
+    "total_duration": 123.72000122070312,
+    "paragraph_count": 8,
+    "paragraphs": [
+      {
+        "index": 0,
+        "start": 0,
+        "end": 123.7,
+        "duration": 123.7,
+        "preview": "tekton-dag is designed for multi-team operation from the ground up. Let's see ho..."
+      },
+      {
+        "index": 1,
+        "start": 0,
+        "end": 123.7,
+        "duration": 123.7,
+        "preview": "We start with a single team \u2014 team-alpha \u2014 running the three-tier demo stack. Th..."
+      },
+      {
+        "index": 2,
+        "start": 0,
+        "end": 123.7,
+        "duration": 123.7,
+        "preview": "Now imagine three teams need their own CI/CD environments. Each team gets its ow..."
+      },
+      {
+        "index": 3,
+        "start": 0,
+        "end": 123.7,
+        "duration": 123.7,
+        "preview": "The values.yaml exposes the key knobs. imageRegistry sets where container images..."
+      },
+      {
+        "index": 4,
+        "start": 0,
+        "end": 123.7,
+        "duration": 123.7,
+        "preview": "Teams can also inject custom pipeline steps. The pre-build-task and post-build-t..."
+      },
+      {
+        "index": 5,
+        "start": 0,
+        "end": 123.7,
+        "duration": 123.7,
+        "preview": "The management GUI provides a team switcher in the web interface. Each team sees..."
+      },
+      {
+        "index": 6,
+        "start": 0,
+        "end": 123.7,
+        "duration": 123.7,
+        "preview": "Watch as a webhook fires for team-beta's PR. Only team-beta's orchestrator picks..."
+      },
+      {
+        "index": 7,
+        "start": 0,
+        "end": 123.7,
+        "duration": 123.7,
+        "preview": "One chart, multiple releases, full team isolation. That is how tekton-dag scales..."
+      }
+    ]
+  },
+  "BlastRadiusScene": {
+    "scene": "BlastRadiusScene",
+    "segment": "11-test-trace-graph",
+    "total_duration": 123.20999908447266,
+    "paragraph_count": 9,
+    "paragraphs": [
+      {
+        "index": 0,
+        "start": 0.0,
+        "end": 8.3,
+        "duration": 8.3,
+        "preview": "The final piece of the puzzle is intelligent test selection \u2014 knowing which test..."
+      },
+      {
+        "index": 1,
+        "start": 8.3,
+        "end": 30.7,
+        "duration": 22.4,
+        "preview": "tekton-dag maintains a test-trace graph in Neo4j. Service nodes represent your a..."
+      },
+      {
+        "index": 2,
+        "start": 30.7,
+        "end": 49.0,
+        "duration": 18.3,
+        "preview": "Here is how the graph gets populated. During test execution, trace data \u2014 which ..."
+      },
+      {
+        "index": 3,
+        "start": 49.0,
+        "end": 61.9,
+        "duration": 12.9,
+        "preview": "Now watch what happens when a developer changes demo-api. The query-test-plan ta..."
+      },
+      {
+        "index": 4,
+        "start": 61.9,
+        "end": 75.6,
+        "duration": 13.7,
+        "preview": "At radius one, the graph returns every test that directly touches demo-api \u2014 the..."
+      },
+      {
+        "index": 5,
+        "start": 75.6,
+        "end": 92.1,
+        "duration": 16.5,
+        "preview": "At radius two, the graph expands to neighbor services. The BFF calls demo-api, s..."
+      },
+      {
+        "index": 6,
+        "start": 92.1,
+        "end": 104.2,
+        "duration": 12.1,
+        "preview": "The graph also identifies gaps. If a service node has no TOUCHES edges \u2014 no test..."
+      },
+      {
+        "index": 7,
+        "start": 104.2,
+        "end": 118.8,
+        "duration": 14.6,
+        "preview": "The run-tests task receives this focused test plan and executes only the relevan..."
+      },
+      {
+        "index": 8,
+        "start": 118.8,
+        "end": 123.2,
+        "duration": 4.4,
+        "preview": "Stack graph query. Focused test plan. Faster feedback. That is blast-radius-awar..."
+      }
+    ]
+  }
+}
