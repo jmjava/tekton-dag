@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>tekton-dag Demo Videos</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 3rem;
+        }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        .videos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        .video-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .video-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+        .video-card h2 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: #667eea;
+        }
+        .video-card p {
+            color: #666;
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+        .video-card .duration {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+        video {
+            width: 100%;
+            border-radius: 8px;
+            background: #000;
+            margin-top: 1rem;
+        }
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+        .footer a {
+            color: white;
+            text-decoration: underline;
+        }
+        @media (max-width: 768px) {
+            .videos-grid {
+                grid-template-columns: 1fr;
+            }
+            h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📹 tekton-dag Demo Videos</h1>
+            <p class="subtitle">Stack-aware CI/CD with traffic interception</p>
+        </header>
+
+        <div class="videos-grid">
+            <div class="video-card">
+                <h2>Architecture Overview</h2>
+                <span class="duration">2m 40s</span>
+                <p>System architecture, DAG model, polyglot support, pipelines, and extensibility features.</p>
+                <video controls preload="metadata">
+                    <source src="demos/recordings/01-architecture.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+
+            <div class="video-card">
+                <h2>Intercept Routing</h2>
+                <span class="duration">2m 4s</span>
+                <p>PR vs normal traffic routing, header-based interception, and how both traffic paths coexist.</p>
+                <video controls preload="metadata">
+                    <source src="demos/recordings/05-intercept-routing.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+
+            <div class="video-card">
+                <h2>Local Debugging</h2>
+                <span class="duration">2m 0s</span>
+                <p>mirrord integration, IDE breakpoints, and live cluster debugging with real traffic.</p>
+                <video controls preload="metadata">
+                    <source src="demos/recordings/06-local-debug.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+
+            <div class="video-card">
+                <h2>Multi-Team Helm</h2>
+                <span class="duration">2m 4s</span>
+                <p>Helm chart deployment, team isolation, custom hooks, and management GUI.</p>
+                <video controls preload="metadata">
+                    <source src="demos/recordings/08-multi-team-helm.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>All videos are generated programmatically from source files.</p>
+            <p><a href="https://github.com/jmjava/tekton-dag">View on GitHub</a> | <a href="milestones/milestone-8.md">Milestone 8 Details</a></p>
+        </div>
+    </div>
+</body>
+</html>

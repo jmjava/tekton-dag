@@ -4,14 +4,14 @@ Standalone Tekton pipeline system for **local development and proof-of-concept**
 
 ## Demo Videos
 
-> **Note:** GitHub doesn't play MP4 files inline. Click to download, or view in a video player. Videos are stored via Git LFS.
+🎬 **[Watch all videos on GitHub Pages →](https://jmjava.github.io/tekton-dag/)**
 
-| Video | Description | Duration | Download |
-|-------|-------------|----------|----------|
-| 📹 Architecture Overview | System architecture, DAG model, polyglot support, pipelines | 2m 40s | [Download MP4](https://github.com/jmjava/tekton-dag/raw/main/docs/demos/recordings/01-architecture.mp4) |
-| 📹 Intercept Routing | PR vs normal traffic routing, header-based interception | 2m 4s | [Download MP4](https://github.com/jmjava/tekton-dag/raw/main/docs/demos/recordings/05-intercept-routing.mp4) |
-| 📹 Local Debugging | mirrord integration, IDE breakpoints, live cluster debugging | 2m 0s | [Download MP4](https://github.com/jmjava/tekton-dag/raw/main/docs/demos/recordings/06-local-debug.mp4) |
-| 📹 Multi-Team Helm | Helm chart deployment, team isolation, custom hooks | 2m 4s | [Download MP4](https://github.com/jmjava/tekton-dag/raw/main/docs/demos/recordings/08-multi-team-helm.mp4) |
+| Video | Description | Duration |
+|-------|-------------|----------|
+| 📹 Architecture Overview | System architecture, DAG model, polyglot support, pipelines | 2m 40s |
+| 📹 Intercept Routing | PR vs normal traffic routing, header-based interception | 2m 4s |
+| 📹 Local Debugging | mirrord integration, IDE breakpoints, live cluster debugging | 2m 0s |
+| 📹 Multi-Team Helm | Helm chart deployment, team isolation, custom hooks | 2m 4s |
 
 *All videos are generated programmatically from source files. See [Milestone 8](milestones/milestone-8.md) for details.*
 
