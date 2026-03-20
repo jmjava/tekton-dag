@@ -3,12 +3,11 @@
 # Deploys a single-node Neo4j with ephemeral storage (sufficient for dev/PoC).
 #
 # Usage: ./scripts/install-neo4j-kind.sh
-set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/common.sh"
 
-NAMESPACE="${NAMESPACE:-tekton-pipelines}"
 NEO4J_PASSWORD="${NEO4J_PASSWORD:-changeme}"
 
-need() { command -v "$1" >/dev/null 2>&1 || { echo "Required: $1" >&2; exit 1; }; }
 need kubectl
 
 echo "=============================================="

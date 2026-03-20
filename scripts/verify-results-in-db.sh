@@ -5,11 +5,10 @@
 # Usage: ./verify-results-in-db.sh [--min-count N] [--namespace NS]
 #   --min-count  Require at least N results (default: 1)
 #   --namespace  Parent namespace to list (default: tekton-pipelines). Use "-" for all.
-set -euo pipefail
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-NAMESPACE="${NAMESPACE:-tekton-pipelines}"
-PARENT="${PARENT:-tekton-pipelines}"
+source "$SCRIPT_DIR/common.sh"
+
+PARENT="${PARENT:-$NAMESPACE}"
 MIN_COUNT=1
 PORT_FWD_PID=""
 

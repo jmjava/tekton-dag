@@ -2,10 +2,13 @@ teamName: "default"
 namespace: "tekton-pipelines"
 
 imageRegistry: "localhost:5000"
+buildImageTag: "latest"
 cacheRepo: "localhost:5000/kaniko-cache"
 interceptBackend: "telepresence"
 maxParallelBuilds: 5
 
+# Default compile images (used when stack YAML does not specify a version).
+# Override per tool or let compileImageVariants handle version selection.
 compileImages:
   npm: "localhost:5000/tekton-dag-build-node:latest"
   maven: "localhost:5000/tekton-dag-build-maven:latest"
@@ -13,6 +16,26 @@ compileImages:
   pip: "localhost:5000/tekton-dag-build-python:latest"
   php: "localhost:5000/tekton-dag-build-php:latest"
   mirrord: "localhost:5000/tekton-dag-build-mirrord:latest"
+
+# Build image variants keyed by "tool-version".
+# The compile-and-build task resolves an app's build.java-version / node-version
+# to pick the right image; falls back to compileImages.<tool> if no variant matches.
+compileImageVariants:
+  maven-java11: "localhost:5000/tekton-dag-build-maven:java11"
+  maven-java17: "localhost:5000/tekton-dag-build-maven:java17"
+  maven-java21: "localhost:5000/tekton-dag-build-maven:java21"
+  gradle-java11: "localhost:5000/tekton-dag-build-gradle:java11"
+  gradle-java17: "localhost:5000/tekton-dag-build-gradle:java17"
+  gradle-java21: "localhost:5000/tekton-dag-build-gradle:java21"
+  npm-node18: "localhost:5000/tekton-dag-build-node:node18"
+  npm-node20: "localhost:5000/tekton-dag-build-node:node20"
+  npm-node22: "localhost:5000/tekton-dag-build-node:node22"
+  pip-python310: "localhost:5000/tekton-dag-build-python:python310"
+  pip-python311: "localhost:5000/tekton-dag-build-python:python311"
+  pip-python312: "localhost:5000/tekton-dag-build-python:python312"
+  php-php81: "localhost:5000/tekton-dag-build-php:php81"
+  php-php82: "localhost:5000/tekton-dag-build-php:php82"
+  php-php83: "localhost:5000/tekton-dag-build-php:php83"
 
 gitUrl: "https://github.com/jmjava/tekton-dag.git"
 gitRevision: "main"
@@ -29,6 +52,7 @@ workspaces:
     size: "2Gi"
   buildCache:
     enabled: true
+    create: false
     storageClass: ""
     size: "5Gi"
 

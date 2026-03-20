@@ -42,22 +42,22 @@ spec:
       default: "{}"
     - name: compile-image-npm
       description: "Pre-built image for npm compile"
-      default: "localhost:5000/tekton-dag-build-node:latest"
+      default: ""
     - name: compile-image-maven
       description: "Pre-built image for Maven compile"
-      default: "localhost:5000/tekton-dag-build-maven:latest"
+      default: ""
     - name: compile-image-gradle
       description: "Pre-built image for Gradle compile"
-      default: "localhost:5000/tekton-dag-build-gradle:latest"
+      default: ""
     - name: compile-image-pip
       description: "Pre-built image for pip compile"
-      default: "localhost:5000/tekton-dag-build-python:latest"
+      default: ""
     - name: compile-image-php
       description: "Pre-built image for Composer/PHP compile"
-      default: "localhost:5000/tekton-dag-build-php:latest"
+      default: ""
     - name: compile-image-mirrord
       description: "Pre-built image for mirrord proxy pods (M7)"
-      default: "localhost:5000/tekton-dag-build-mirrord:latest"
+      default: ""
     - name: intercept-backend
       description: "Which intercept backend to use: telepresence (default) or mirrord"
       default: "telepresence"
@@ -71,11 +71,23 @@ spec:
       description: "When PR is in the app repo, pass the app repo URL here so the PR comment is posted to the correct repo; empty = use git-url (platform repo)"
       default: ""
     - name: cache-repo
-      description: "Kaniko cache repo (e.g. localhost:5000/kaniko-cache). Empty disables cache."
-      default: "localhost:5000/kaniko-cache"
+      description: "Kaniko cache repo. Empty disables cache."
+      default: ""
     - name: max-parallel-builds
       description: "Max concurrent Kaniko pods for containerize. 0 = unlimited."
       default: "0"
+    - name: pre-build-task
+      description: "Optional Tekton Task name to run after clone, before compile (e.g. code-gen, license-scan). Empty = skip."
+      default: ""
+    - name: post-build-task
+      description: "Optional Tekton Task name to run after containerize, before deploy (e.g. image-scan, SBOM). Empty = skip."
+      default: ""
+    - name: pre-test-task
+      description: "Optional Tekton Task name to run after deploy, before tests (e.g. seed-data). Empty = skip."
+      default: ""
+    - name: post-test-task
+      description: "Optional Tekton Task name to run in finally block after tests (e.g. slack-notify). Empty = skip."
+      default: ""
 
   workspaces:
     - name: shared-workspace
@@ -173,6 +185,27 @@ spec:
       runAfter:
         - clone-app-repos
         - pr-snapshot-tag
+
+    # Hook: pre-build (after clone, before compile). Skipped when param is empty.
+    - name: hook-pre-build
+      when:
+        - input: $(params.pre-build-task)
+          operator: notin
+          values: [""]
+      taskRef:
+        name: $(params.pre-build-task)
+      params:
+        - name: stack-json
+          value: $(tasks.resolve-stack.results.stack-json)
+        - name: build-apps
+          value: $(tasks.resolve-stack.results.build-apps)
+        - name: image-registry
+          value: $(params.image-registry)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      runAfter:
+        - build-select-tool-apps
 
     # Only the compile step for the app's tool runs (e.g. npm for demo-fe)
     - name: build-compile-npm
@@ -304,6 +337,29 @@ spec:
         - build-compile-pip
         - build-compile-composer
 
+    # Hook: post-build (after containerize, before deploy). Skipped when param is empty.
+    - name: hook-post-build
+      when:
+        - input: $(params.post-build-task)
+          operator: notin
+          values: [""]
+      taskRef:
+        name: $(params.post-build-task)
+      params:
+        - name: stack-json
+          value: $(tasks.resolve-stack.results.stack-json)
+        - name: build-apps
+          value: $(tasks.resolve-stack.results.build-apps)
+        - name: built-images
+          value: $(tasks.build-containerize.results.built-images)
+        - name: image-registry
+          value: $(params.image-registry)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      runAfter:
+        - build-containerize
+
     - name: deploy-intercepts-telepresence
       when:
         - input: $(params.intercept-backend)
@@ -395,6 +451,28 @@ spec:
       runAfter:
         - deploy-intercepts-result
 
+    # Hook: pre-test (after deploy + validate, before test-plan query). Skipped when param is empty.
+    - name: hook-pre-test
+      when:
+        - input: $(params.pre-test-task)
+          operator: notin
+          values: [""]
+      taskRef:
+        name: $(params.pre-test-task)
+      params:
+        - name: stack-json
+          value: $(tasks.resolve-stack.results.stack-json)
+        - name: build-apps
+          value: $(tasks.resolve-stack.results.build-apps)
+        - name: image-registry
+          value: $(params.image-registry)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      runAfter:
+        - validate-propagation
+        - validate-original-traffic
+
     - name: query-test-plan
       taskRef:
         name: query-test-plan
@@ -402,8 +480,7 @@ spec:
         - name: changed-app
           value: $(params.changed-app)
       runAfter:
-        - validate-propagation
-        - validate-original-traffic
+        - hook-pre-test
 
     - name: run-tests
       taskRef:
@@ -434,6 +511,22 @@ spec:
         - query-test-plan
 
   finally:
+    # Hook: post-test (in finally, before cleanup). Skipped when param is empty.
+    - name: hook-post-test
+      when:
+        - input: $(params.post-test-task)
+          operator: notin
+          values: [""]
+      taskRef:
+        name: $(params.post-test-task)
+      params:
+        - name: stack-json
+          value: $(tasks.resolve-stack.results.stack-json)
+        - name: build-apps
+          value: $(tasks.resolve-stack.results.build-apps)
+        - name: image-registry
+          value: $(params.image-registry)
+
     - name: cleanup
       taskRef:
         name: cleanup-stack-pods

@@ -9,10 +9,8 @@
 #   --skip-postgres   Do not install Postgres (use if already running or not needed)
 #   --skip-results    Do not install Tekton Results (skip DB verification)
 #   --no-verify-db    Run test but skip the Results DB verification step
-set -euo pipefail
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$SCRIPT_DIR/common.sh"
 cd "$REPO_ROOT"
 
 # Run a step and exit 1 with a clear message if it fails (so we never ignore a failed step).

@@ -11,12 +11,12 @@
 #   ./scripts/run-orchestrator-tests.sh --graph             # M9 graph + test-plan tests
 #   ./scripts/run-orchestrator-tests.sh --all               # both collections
 #   ./scripts/run-orchestrator-tests.sh --skip-integration  # skip PipelineRun validation
-set -euo pipefail
 [ -z "${BASH_VERSION:-}" ] && exec bash "$0" "$@"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-NS="tekton-pipelines"
+source "$SCRIPT_DIR/common.sh"
+
+NS="$NAMESPACE"
 LOCAL_PORT=9091
 ORCH_COLLECTION="${REPO_ROOT}/tests/postman/orchestrator-tests.json"
 GRAPH_COLLECTION="${REPO_ROOT}/tests/postman/graph-tests.json"

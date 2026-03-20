@@ -17,12 +17,8 @@
 #   2. Finds the workspace PVC name from the failed run
 #   3. Creates a new PipelineRun using stack-pr-continue, which starts
 #      from deploy-intercepts → validate → test → push → cleanup
-set -euo pipefail
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-
-die() { echo "ERROR: $*" >&2; exit 1; }
+source "$SCRIPT_DIR/common.sh"
 need() { command -v "$1" >/dev/null 2>&1 || die "$1 is required"; }
 need kubectl
 need jq

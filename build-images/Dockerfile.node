@@ -1,5 +1,9 @@
 # Node build image. Task script only needs jq to parse JSON; Node/npm already in image.
-FROM node:22-slim
+# Build variants:
+#   docker build --build-arg NODE_VERSION=18 -t ...:node18 -f Dockerfile.node .
+#   docker build --build-arg NODE_VERSION=20 -t ...:node20 -f Dockerfile.node .
+ARG NODE_VERSION=22
+FROM node:${NODE_VERSION}-slim
 RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends jq \
     && rm -rf /var/lib/apt/lists/*
 RUN node -v && npm -v

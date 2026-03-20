@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tekton-dag-common"
+version = "0.1.0"
+description = "Shared utilities for tekton-dag orchestrator and management GUI"
+requires-python = ">=3.10"
+dependencies = ["pyyaml>=6.0,<7.0"]
+
+[project.optional-dependencies]
+test = ["pytest>=7.0"]
+
+[tool.setuptools.packages.find]
+include = ["tekton_dag_common*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

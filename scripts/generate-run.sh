@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/common.sh"
 
 # generate-run.sh — Generate and optionally apply a PipelineRun for
 # a given stack, triggered either as a PR test or a merge release.
@@ -18,24 +19,20 @@ set -euo pipefail
 #   --pr                 PR number (required for pr mode)
 #   --version-overrides  JSON map of app → version overrides
 #   --git-url            Override git URL
-#   --git-revision       Override git revision (platform repo; for PR mode, use --app-revision so the changed app repo is checked out at its PR branch)
-#   --app-revision       For PR mode: app:revision (e.g. demo-fe:my-pr-branch). Can be repeated. Builds app-revisions JSON for the pipeline.
-#   --app-revisions-json Internal: full JSON for app-revisions (used when re-invoking with --apply so revisions are preserved).
-#   --registry           Override image registry (use any: Docker Hub, GCR, local)
-#   --build-images       Use dedicated build images (default: true when registry set). Run build-images/build-and-push.sh once.
-#   --no-build-images    Use bare ubuntu:22.04 and install Node/Maven/etc. in-pod each run (slower).
-#   --namespace           Target namespace (default: tekton-pipelines)
-#   --storage-class      PVC storage class (default: gp3 for AWS; use standard or omit for kind/minikube)
+#   --git-revision       Override git revision
+#   --app-revision       For PR mode: app:revision (e.g. demo-fe:my-pr-branch)
+#   --app-revisions-json Internal: full JSON for app-revisions
+#   --registry           Override image registry
+#   --build-images       Use dedicated build images (default: true)
+#   --no-build-images    Use bare ubuntu:22.04
+#   --namespace          Target namespace (default: tekton-pipelines)
+#   --storage-class      PVC storage class
 #   --intercept-backend  telepresence (default) | mirrord (M7)
 #   --apply              kubectl create the PipelineRun immediately
 #   --dry-run            Print the YAML without applying
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-STACKS_DIR="$SCRIPT_DIR/../stacks"
 REGISTRY_FILE="$STACKS_DIR/registry.yaml"
 
-die()  { echo "ERROR: $*" >&2; exit 1; }
-need() { command -v "$1" >/dev/null 2>&1 || die "$1 is required"; }
 need yq
 need jq
 
@@ -47,14 +44,10 @@ PR=""
 GIT_URL=""
 GIT_REV=""
 APP_REVISIONS="{}"
-IMAGE_REGISTRY=""
-# Empty = use cluster default (Kind, minikube). Set to gp3 (or other) for AWS.
+_IMAGE_REGISTRY=""
 STORAGE_CLASS="${STORAGE_CLASS:-}"
 VERSION_OVERRIDES="{}"
-GIT_SSH_SECRET_NAME="${GIT_SSH_SECRET_NAME:-git-ssh-key}"
-NAMESPACE="${NAMESPACE:-tekton-pipelines}"
 APPLY=false
-# Default: use pre-built build images (Node/Maven/etc.) so compile steps load quickly. Use --no-build-images for bare ubuntu:22.04.
 BUILD_IMAGES="${BUILD_IMAGES:-true}"
 BUILD_IMAGE_TAG="${BUILD_IMAGE_TAG:-latest}"
 INTERCEPT_BACKEND="${INTERCEPT_BACKEND:-telepresence}"
@@ -71,7 +64,7 @@ while [[ $# -gt 0 ]]; do
     --git-revision)       GIT_REV="$2"; shift 2 ;;
     --app-revision)       _app="${2%%:*}"; _rev="${2#*:}"; [[ "$_app" != "$2" && -n "$_rev" ]] || die "--app-revision must be app:revision (e.g. demo-fe:my-branch)"; APP_REVISIONS=$(echo "$APP_REVISIONS" | jq -c --arg a "$_app" --arg r "$_rev" '. + {($a): $r}'); shift 2 ;;
     --app-revisions-json) APP_REVISIONS="$2"; shift 2 ;;
-    --registry)           IMAGE_REGISTRY="$2"; shift 2 ;;
+    --registry)           _IMAGE_REGISTRY="$2"; shift 2 ;;
     --build-images)       BUILD_IMAGES=true; shift ;;
     --no-build-images)    BUILD_IMAGES=false; shift ;;
     --storage-class)      STORAGE_CLASS="$2"; shift 2 ;;
@@ -99,11 +92,9 @@ fi
 STACK_PATH="stacks/$STACK"
 [[ -f "$STACKS_DIR/$STACK" ]] || die "Stack file not found: $STACKS_DIR/$STACK"
 
-# Defaults: git-url is the platform repo (tekton-dag) with stacks/ and versions; app repos are cloned separately from stack .apps[].repo (e.g. jmjava/tekton-dag-vue-fe)
-# Use main for platform repo so the pipeline can always fetch from remote; local SHA may not exist on origin and causes "couldn't find remote ref"
-GIT_URL="${GIT_URL:-https://github.com/jmjava/tekton-dag.git}"
-GIT_REV="${GIT_REV:-main}"
-IMAGE_REGISTRY="${IMAGE_REGISTRY:-localhost:5001}"
+GIT_URL="${GIT_URL:-$GIT_URL}"
+GIT_REV="${GIT_REV:-$GIT_REVISION}"
+[[ -n "$_IMAGE_REGISTRY" ]] && IMAGE_REGISTRY="$_IMAGE_REGISTRY"
 # Defensive: strip stray trailing '}' (e.g. from env or template copy-paste) so Kaniko destination is valid
 while [[ "${IMAGE_REGISTRY: -1}" == "}" ]]; do IMAGE_REGISTRY="${IMAGE_REGISTRY%?}"; done
 # Containerd certs.d maps localhost:5000 -> kind-registry:5000 internally; use localhost:5000 for all image refs

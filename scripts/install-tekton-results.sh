@@ -4,15 +4,12 @@
 #
 # Creates the TLS secret expected by the API, then applies the official release.
 # Usage: ./install-tekton-results.sh
-set -euo pipefail
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-NAMESPACE="${NAMESPACE:-tekton-pipelines}"
-RESULTS_RELEASE="${RESULTS_RELEASE:-https://storage.googleapis.com/tekton-releases/results/latest/release.yaml}"
-API_CN="tekton-results-api-service.tekton-pipelines.svc.cluster.local"
+source "$SCRIPT_DIR/common.sh"
 
-need() { command -v "$1" >/dev/null 2>&1 || { echo "Required: $1" >&2; exit 1; }; }
+RESULTS_RELEASE="${RESULTS_RELEASE:-https://storage.googleapis.com/tekton-releases/results/latest/release.yaml}"
+API_CN="tekton-results-api-service.${NAMESPACE}.svc.cluster.local"
+
 need kubectl
 need openssl
 need yq

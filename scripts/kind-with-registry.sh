@@ -3,9 +3,9 @@
 # Registry is available as localhost:5000 on the host and to the cluster.
 # Usage: ./kind-with-registry.sh [--name CLUSTER_NAME] [--port REGISTRY_PORT]
 # Example: ./kind-with-registry.sh --name tekton-stack
-set -euo pipefail
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/common.sh"
+
 KIND_CLUSTER_NAME="${KIND_CLUSTER_NAME:-tekton-stack}"
 REG_PORT="${REG_PORT:-5000}"
 reg_name="kind-registry"

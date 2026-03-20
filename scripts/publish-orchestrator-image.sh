@@ -5,11 +5,10 @@
 #   ./scripts/publish-orchestrator-image.sh              # defaults: localhost:5001, tag latest
 #   ./scripts/publish-orchestrator-image.sh myreg:5000   # override registry
 #   ./scripts/publish-orchestrator-image.sh myreg:5000 v2 # registry and tag
-set -euo pipefail
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-REGISTRY="${1:-localhost:5001}"
+source "$SCRIPT_DIR/common.sh"
+
+REGISTRY="${1:-$IMAGE_REGISTRY}"
 TAG="${2:-latest}"
 IMAGE="${REGISTRY}/tekton-dag-orchestrator:${TAG}"
 

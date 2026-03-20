@@ -11,15 +11,13 @@
 # Override name with GIT_SSH_SECRET_NAME.
 #
 # Usage: ./run-e2e-with-intercepts.sh [--stack STACK] [--changed-app APP] [--pr N] [--registry URL] [--namespace NS] [--intercept-backend telepresence|mirrord] [--skip-bootstrap] [--skip-install-check] [--no-verify-db]
-set -euo pipefail
-
 # Require bash (script uses [[ ]], etc.); re-exec if run with sh
 if [ -z "${BASH_VERSION:-}" ]; then
   exec bash "$0" "$@"
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$SCRIPT_DIR/common.sh"
 cd "$REPO_ROOT"
 
 STACK_FILE="stack-one.yaml"
@@ -27,7 +25,6 @@ STACK_PATH="stacks/$STACK_FILE"
 CHANGED_APP="demo-fe"
 PR_NUMBER="1"
 INTERCEPT_BACKEND="${INTERCEPT_BACKEND:-telepresence}"
-IMAGE_REGISTRY="${IMAGE_REGISTRY:-localhost:5000}"
 GIT_URL="${GIT_URL:-https://github.com/jmjava/tekton-dag.git}"
 GIT_REV="${GIT_REV:-main}"
 GIT_SSH_SECRET_NAME="${GIT_SSH_SECRET_NAME:-git-ssh-key}"

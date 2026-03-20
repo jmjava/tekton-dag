@@ -6,12 +6,10 @@
 # Usage: ./install-postgres-kind.sh [--storage-class CLASS] [--ephemeral]
 #   --storage-class  PVC storage class (default: "" for Kind's default; use "standard" for some clusters)
 #   --ephemeral      Use emptyDir instead of PVC (Kind with no StorageClass; data not persistent)
-set -euo pipefail
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$SCRIPT_DIR/common.sh"
+
 CONFIG_DIR="$REPO_ROOT/config/postgres"
-NAMESPACE="${NAMESPACE:-tekton-pipelines}"
 STORAGE_CLASS=""
 EPHEMERAL=false
 

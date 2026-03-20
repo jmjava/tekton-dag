@@ -1,0 +1,48 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: example-image-scan
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+  annotations:
+    tekton-dag/hook-type: "post-build"
+    tekton-dag/description: >
+      Example post-build hook task. Scans built images for vulnerabilities.
+      Replace the script with your actual scanner (Trivy, Grype, Snyk, etc.).
+      Deploy this Task to your namespace and set post-build-task: example-image-scan
+      in your pipeline params or Helm values.
+spec:
+  description: >
+    Example post-build hook: scan container images for vulnerabilities.
+    This is a template — replace the echo with your real scanning tool.
+
+  params:
+    - name: stack-json
+      description: "Resolved stack JSON from resolve-stack"
+    - name: build-apps
+      description: "Space-separated list of app names that were built"
+    - name: built-images
+      description: "JSON map of app → image:tag from build-containerize"
+    - name: image-registry
+      description: "Container registry base URL"
+
+  workspaces:
+    - name: source
+      description: "Shared workspace with cloned source"
+
+  steps:
+    - name: scan
+      image: alpine:3
+      script: |
+        #!/bin/sh
+        set -e
+        echo "=== Post-build hook: Image scan ==="
+        echo "  Registry:   $(params.image-registry)"
+        echo "  Build apps: $(params.build-apps)"
+        echo "  Images:     $(params.built-images)"
+        echo ""
+        echo "  [placeholder] Replace this with your scanner, e.g.:"
+        echo "    trivy image --exit-code 1 --severity HIGH,CRITICAL <image>"
+        echo "    grype <image> --fail-on high"
+        echo ""
+        echo "  All images passed (placeholder)."

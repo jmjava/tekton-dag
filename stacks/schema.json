@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jmjava/tekton-dag/stacks/schema.json",
+  "title": "Tekton DAG stack definition",
+  "description": "JSON Schema for stack YAML consumed by the tekton-dag system (validate YAML as JSON after parsing).",
+  "type": "object",
+  "required": ["name", "apps"],
+  "additionalProperties": true,
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "propagation": {
+      "type": "object",
+      "properties": {
+        "header-name": {
+          "type": "string"
+        },
+        "baggage-key": {
+          "type": "string"
+        },
+        "strategy": {
+          "type": "string",
+          "enum": ["w3c-baggage", "custom"]
+        }
+      }
+    },
+    "defaults": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "type": "string"
+        },
+        "image-registry": {
+          "type": "string"
+        },
+        "service-port": {
+          "type": "string"
+        },
+        "container-port": {
+          "type": "string"
+        }
+      }
+    },
+    "apps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "repo", "role", "build"],
+        "additionalProperties": true,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "repo": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["frontend", "middleware", "persistence", "standalone"]
+          },
+          "propagation-role": {
+            "type": "string",
+            "enum": ["originator", "forwarder", "terminal"]
+          },
+          "container-port": {
+            "type": "string"
+          },
+          "context-dir": {
+            "type": "string"
+          },
+          "dockerfile": {
+            "type": "string"
+          },
+          "build": {
+            "type": "object",
+            "required": ["tool", "build-command"],
+            "properties": {
+              "tool": {
+                "type": "string",
+                "enum": ["npm", "maven", "gradle", "pip", "composer"]
+              },
+              "build-command": {
+                "type": "string"
+              },
+              "runtime": {
+                "type": "string"
+              },
+              "java-version": {
+                "type": "string"
+              },
+              "node-version": {
+                "type": "string"
+              },
+              "python-version": {
+                "type": "string"
+              },
+              "php-version": {
+                "type": "string"
+              }
+            }
+          },
+          "downstream": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tests": {
+            "type": "object",
+            "properties": {
+              "postman": {
+                "type": "string"
+              },
+              "playwright": {
+                "type": "string"
+              },
+              "artillery": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

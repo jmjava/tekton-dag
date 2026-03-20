@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/common.sh"
 
 # verify-dag-phase2.sh — Phase 2 of local DAG verification (cluster + Tekton).
 # Runs the stack-dag-verify pipeline (fetch + resolve only), then compares
@@ -11,8 +12,7 @@ set -euo pipefail
 #
 # Example: ./verify-dag-phase2.sh --stack stack-one.yaml
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MILESTONE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+MILESTONE_DIR="$REPO_ROOT"
 cd "$MILESTONE_DIR"
 
 STACK_FILE="stack-one.yaml"

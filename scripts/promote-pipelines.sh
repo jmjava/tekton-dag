@@ -7,10 +7,8 @@
 # Usage:
 #   ./promote-pipelines.sh --from tekton-test --to tekton-pipelines
 #   ./promote-pipelines.sh --from tekton-test --to tekton-pipelines --dry-run
-set -euo pipefail
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$SCRIPT_DIR/common.sh"
 
 FROM_NS=""
 TO_NS=""

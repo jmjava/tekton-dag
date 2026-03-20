@@ -1,0 +1,18 @@
+{{- if .Values.orchestrationService.enabled }}
+{{- range $path, $_ := .Files.Glob "raw/teams/**/team.yaml" }}
+{{- $parts := splitList "/" $path }}
+{{- $teamName := index $parts (sub (len $parts) 2) }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tekton-dag-teams-{{ $teamName }}
+  namespace: {{ $.Values.namespace }}
+  labels:
+    {{- include "tekton-dag.labels" $ | nindent 4 }}
+    tekton-dag/team: {{ $teamName }}
+data:
+  team.yaml: |
+    {{- $.Files.Get $path | nindent 4 }}
+{{- end }}
+{{- end }}

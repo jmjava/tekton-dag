@@ -11,10 +11,8 @@
 # the Results API to confirm at least one result was stored.
 #
 # Usage: ./run-full-test-and-verify-results.sh [--stack STACK] [--skip-install-check] [--no-verify-db]
-set -euo pipefail
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$SCRIPT_DIR/common.sh"
 cd "$REPO_ROOT"
 
 STACK_FILE="stack-one.yaml"

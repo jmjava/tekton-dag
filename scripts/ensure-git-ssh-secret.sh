@@ -3,11 +3,10 @@
 # Required for clone-app-repos (SSH pull). Idempotent: skips if secret exists.
 #
 # Usage: ./ensure-git-ssh-secret.sh [--secret-name NAME] [--namespace NS]
-set -euo pipefail
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-NAMESPACE="${NAMESPACE:-tekton-pipelines}"
-SECRET_NAME="${GIT_SSH_SECRET_NAME:-git-ssh-key}"
+source "$SCRIPT_DIR/common.sh"
+
+SECRET_NAME="${GIT_SSH_SECRET_NAME}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -17,7 +16,6 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-need() { command -v "$1" >/dev/null 2>&1 || { echo "Required: $1" >&2; exit 1; }; }
 need kubectl
 
 if kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" &>/dev/null; then

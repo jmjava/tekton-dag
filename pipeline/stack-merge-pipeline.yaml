@@ -37,19 +37,25 @@ spec:
       default: "{}"
     - name: compile-image-npm
       description: "Image for npm compile step"
-      default: "localhost:5000/tekton-dag-build-node:latest"
+      default: ""
     - name: compile-image-maven
       description: "Image for Maven compile step"
-      default: "localhost:5000/tekton-dag-build-maven:latest"
+      default: ""
     - name: compile-image-gradle
       description: "Image for Gradle compile step"
-      default: "localhost:5000/tekton-dag-build-gradle:latest"
+      default: ""
     - name: compile-image-pip
       description: "Image for pip compile step"
-      default: "localhost:5000/tekton-dag-build-python:latest"
+      default: ""
     - name: compile-image-php
       description: "Image for Composer/PHP compile step"
-      default: "localhost:5000/tekton-dag-build-php:latest"
+      default: ""
+    - name: pre-build-task
+      description: "Optional Tekton Task to run after clone, before compile. Empty = skip."
+      default: ""
+    - name: post-build-task
+      description: "Optional Tekton Task to run after containerize, before tag-release. Empty = skip."
+      default: ""
 
   workspaces:
     - name: shared-workspace
@@ -144,6 +150,27 @@ spec:
           workspace: shared-workspace
       runAfter:
         - release-version
+
+    # Hook: pre-build (after clone, before compile). Skipped when param is empty.
+    - name: hook-pre-build
+      when:
+        - input: $(params.pre-build-task)
+          operator: notin
+          values: [""]
+      taskRef:
+        name: $(params.pre-build-task)
+      params:
+        - name: stack-json
+          value: $(tasks.resolve-stack.results.stack-json)
+        - name: build-apps
+          value: $(tasks.resolve-stack.results.build-apps)
+        - name: image-registry
+          value: $(params.image-registry)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      runAfter:
+        - build-select-tool-apps
 
     - name: build-compile-npm
       when:
@@ -268,6 +295,29 @@ spec:
         - build-compile-gradle
         - build-compile-pip
         - build-compile-composer
+
+    # Hook: post-build (after containerize, before release tagging). Skipped when param is empty.
+    - name: hook-post-build
+      when:
+        - input: $(params.post-build-task)
+          operator: notin
+          values: [""]
+      taskRef:
+        name: $(params.post-build-task)
+      params:
+        - name: stack-json
+          value: $(tasks.resolve-stack.results.stack-json)
+        - name: build-apps
+          value: $(tasks.resolve-stack.results.build-apps)
+        - name: built-images
+          value: $(tasks.build-containerize.results.built-images)
+        - name: image-registry
+          value: $(params.image-registry)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      runAfter:
+        - build-containerize
 
     # Re-tag the merge image with the clean semver (e.g. v0.1.0)
     - name: tag-release

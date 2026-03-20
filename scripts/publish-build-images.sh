@@ -11,20 +11,12 @@
 #   ./scripts/publish-build-images.sh              # use .env IMAGE_REGISTRY or localhost:5001, tag latest
 #   ./scripts/publish-build-images.sh myreg:5000  # override registry
 #   ./scripts/publish-build-images.sh myreg:5000 v1 # registry and tag
-set -euo pipefail
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-REGISTRY="${1:-}"
-TAG="${2:-latest}"
+source "$SCRIPT_DIR/common.sh"
+load_env
 
-# Default: Kind test env — registry on kind network (host port 5001). Override with .env IMAGE_REGISTRY or first arg.
-if [[ -z "$REGISTRY" ]]; then
-  set -a
-  source "$REPO_ROOT/.env" 2>/dev/null || true
-  set +a
-  REGISTRY="${IMAGE_REGISTRY:-localhost:5001}"
-fi
+REGISTRY="${1:-$IMAGE_REGISTRY}"
+TAG="${2:-latest}"
 
 echo "Publishing build images to registry: $REGISTRY (tag: $TAG)"
 echo ""

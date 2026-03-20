@@ -1,0 +1,40 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: example-slack-notify
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+  annotations:
+    tekton-dag/hook-type: "post-test"
+    tekton-dag/description: >
+      Example post-test hook task. Sends a Slack notification with pipeline results.
+      Deploy this Task to your namespace and set post-test-task: example-slack-notify
+      in your pipeline params or Helm values.
+spec:
+  description: >
+    Example post-test hook: send a Slack notification.
+    Replace the placeholder with your actual Slack webhook call.
+
+  params:
+    - name: stack-json
+      description: "Resolved stack JSON"
+    - name: build-apps
+      description: "Space-separated list of app names"
+    - name: image-registry
+      description: "Container registry base URL"
+
+  steps:
+    - name: notify
+      image: alpine:3
+      script: |
+        #!/bin/sh
+        set -e
+        echo "=== Post-test hook: Slack notify ==="
+        echo "  Build apps: $(params.build-apps)"
+        echo ""
+        echo "  [placeholder] Replace this with your Slack webhook call, e.g.:"
+        echo '    curl -X POST -H "Content-type: application/json" \'
+        echo '      --data "{\"text\":\"Pipeline completed for $(params.build-apps)\"}" \'
+        echo '      "$SLACK_WEBHOOK_URL"'
+        echo ""
+        echo "  Notification sent (placeholder)."

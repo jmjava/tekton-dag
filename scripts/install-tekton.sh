@@ -2,19 +2,17 @@
 # Install Tekton Pipelines and the git-clone task, then apply this repo's tasks and pipelines.
 # Run after kind-with-registry.sh (or any cluster). Requires kubectl context set.
 # Usage: ./install-tekton.sh
-set -euo pipefail
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MILESTONE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$SCRIPT_DIR/common.sh"
+
+MILESTONE_DIR="$REPO_ROOT"
 cd "$MILESTONE_DIR"
 
 TEKTON_PIPELINE_URL="${TEKTON_PIPELINE_URL:-https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml}"
 TEKTON_TRIGGERS_URL="${TEKTON_TRIGGERS_URL:-https://storage.googleapis.com/tekton-releases/triggers/latest/release.yaml}"
 TEKTON_TRIGGERS_INTERCEPTORS_URL="${TEKTON_TRIGGERS_INTERCEPTORS_URL:-https://storage.googleapis.com/tekton-releases/triggers/latest/interceptors.yaml}"
 TEKTON_GIT_CLONE_URL="${TEKTON_GIT_CLONE_URL:-https://raw.githubusercontent.com/tektoncd/catalog/main/task/git-clone/0.9/git-clone.yaml}"
-NAMESPACE="${NAMESPACE:-tekton-pipelines}"
 
-need() { command -v "$1" >/dev/null 2>&1 || { echo "Required: $1" >&2; exit 1; }; }
 need kubectl
 
 echo "=============================================="

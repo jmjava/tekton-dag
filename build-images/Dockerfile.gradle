@@ -1,5 +1,9 @@
 # Gradle build image. Task script only needs jq to parse JSON; JDK already in image (apps use ./gradlew).
-FROM eclipse-temurin:21-jdk
+# Build variants:
+#   docker build --build-arg JAVA_VERSION=17 -t ...:java17 -f Dockerfile.gradle .
+#   docker build --build-arg JAVA_VERSION=21 -t ...:java21 -f Dockerfile.gradle .
+ARG JAVA_VERSION=21
+FROM eclipse-temurin:${JAVA_VERSION}-jdk
 RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends jq \
     && rm -rf /var/lib/apt/lists/*
 RUN java -version 2>&1 | head -1

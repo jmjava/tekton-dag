@@ -8,12 +8,10 @@
 #   ./bootstrap-namespace.sh tekton-test --ssh-key ~/.ssh/id_ed25519 --github-token ghp_xxx
 #
 # Defaults to tekton-pipelines if no namespace is given.
-set -euo pipefail
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$SCRIPT_DIR/common.sh"
 
-NAMESPACE="${1:-tekton-pipelines}"
+NAMESPACE="${1:-$NAMESPACE}"
 shift 2>/dev/null || true
 
 SSH_KEY_PATH="${SSH_KEY_PATH:-$HOME/.ssh/id_ed25519}"
@@ -30,7 +28,6 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-need() { command -v "$1" >/dev/null 2>&1 || { echo "Required: $1" >&2; exit 1; }; }
 need kubectl
 
 echo "=============================================="

@@ -18,12 +18,12 @@ Standalone Tekton pipeline system for **local development and proof-of-concept**
 | [M10.1](milestones/milestone-10-1.md) | **Completed** | Orchestration service testing: Postman/Newman (15 requests, 30 assertions), integration validation |
 | [M11](milestones/milestone-11.md) | **Completed** | Vue 3 Management GUI + Python/Flask backend (replaces `reporting-gui/`). Multi-team, multi-cluster, DAG visualization. 69 Playwright E2E tests, 56 pytest unit tests, Postman collection. |
 | [M9](milestones/milestone-9.md) | **Completed** | Test-trace regression graph + minimal test selection (Neo4j, mock Datadog). 10 Newman requests, 36 assertions. Test filtering in PR pipeline. |
-| [M12](milestones/milestone-12.md) | **Planned** | Architecture customization and maintainability: shared Python package, Helm completeness, script consolidation, documentation, stack schema validation |
+| [M12](milestones/milestone-12.md) | **Completed** | Architecture customization: shared Python package, Helm ConfigMap/PVC templates, parameterized pipelines (no hardcoded `localhost:5000`), `scripts/common.sh`, build image variants (Java 11/17/21, Node 18/20/22, Python 3.10–3.12, PHP 8.1–8.3), custom pipeline hook tasks (pre/post build/test), stack JSON schema, 62 orchestrator pytest tests, 14 shared-package tests. Full docs: CUSTOMIZATION.md, MAINTENANCE.md, Helm README. |
 | [M8](milestones/milestone-8.md) | **Planned** | Demo assets: recordings, slide deck, demo playbook |
 
 Older milestones (M2, M3) are in [milestones/completed/](milestones/completed/).
 
-**Next up:** M12 (architecture customization), then M8 (demo assets).
+**Next up:** M8 (demo assets).
 
 ---
 

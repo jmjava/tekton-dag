@@ -15,20 +15,17 @@
 #   --storage-class    Passed to generate-run (default: "" for Kind; set for AWS)
 #   --poll-interval    Seconds between status checks (default: 30)
 #   --timeout          Max seconds to wait for PR pipeline (default: 900)
-set -euo pipefail
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TEKTON_DAG_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-STACKS_DIR="$TEKTON_DAG_ROOT/stacks"
+source "$SCRIPT_DIR/common.sh"
 
-need() { command -v "$1" >/dev/null 2>&1 || { echo "ERROR: $1 is required" >&2; exit 1; }; }
+TEKTON_DAG_ROOT="$REPO_ROOT"
+
 need kubectl
 need yq
 
 APP=""
 STACK="stack-one.yaml"
 STORAGE_CLASS=""
-NAMESPACE="${NAMESPACE:-tekton-pipelines}"
 POLL_INTERVAL="${POLL_INTERVAL:-30}"
 TIMEOUT="${TIMEOUT:-900}"
 

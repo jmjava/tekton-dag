@@ -1,5 +1,9 @@
 # Maven build image. Task script only needs jq to parse JSON; Java/Maven already in image.
-FROM maven:3.9-eclipse-temurin-21
+# Build variants:
+#   docker build --build-arg JAVA_VERSION=17 -t ...:java17 -f Dockerfile.maven .
+#   docker build --build-arg JAVA_VERSION=21 -t ...:java21 -f Dockerfile.maven .
+ARG JAVA_VERSION=21
+FROM maven:3.9-eclipse-temurin-${JAVA_VERSION}
 RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends jq \
     && rm -rf /var/lib/apt/lists/*
 RUN java -version 2>&1 | head -1 && mvn -v 2>&1 | head -1
