@@ -196,10 +196,22 @@ def query_test_plan(changed_app, radius=1):
                 "message": f"No mapped regression; area '{changed_app}' needs tests",
             }
 
+        services_result = session.run(
+            """
+            MATCH (t:Test)-[:TOUCHES]->(s:Service)
+            WHERE t.id IN $ids
+            RETURN DISTINCT s.name AS name
+            ORDER BY s.name
+            """,
+            ids=[t["id"] for t in tests],
+        )
+        services = [r["name"] for r in services_result]
+
         e2e_count = sum(1 for t in tests if t["type"] == "e2e")
         ind_count = len(tests) - e2e_count
         return {
             "tests": tests,
+            "services": services,
             "unmapped_area": "",
             "message": f"{len(tests)} tests selected ({e2e_count} e2e, {ind_count} individual)",
         }

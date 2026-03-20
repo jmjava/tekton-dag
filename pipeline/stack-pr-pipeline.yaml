@@ -425,6 +425,8 @@ spec:
           value: $(tasks.query-test-plan.results.tests-to-run)
         - name: unmapped-area
           value: $(tasks.query-test-plan.results.unmapped-area)
+        - name: apps-to-test
+          value: $(tasks.query-test-plan.results.apps-to-test)
       workspaces:
         - name: test-source
           workspace: shared-workspace

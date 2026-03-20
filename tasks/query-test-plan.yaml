@@ -27,6 +27,8 @@ spec:
       description: "Comma-separated test IDs to run, or empty"
     - name: unmapped-area
       description: "Service name if no mapped tests, or empty"
+    - name: apps-to-test
+      description: "Comma-separated service/app names whose tests should run, or empty"
     - name: test-plan-message
       description: "Human-readable summary of the test plan"
   steps:
@@ -49,6 +51,7 @@ spec:
           echo "WARN: test-plan query failed; will run all tests"
           echo -n "" > $(results.tests-to-run.path)
           echo -n "" > $(results.unmapped-area.path)
+          echo -n "" > $(results.apps-to-test.path)
           echo -n "test-plan query failed; running all tests" > $(results.test-plan-message.path)
           exit 0
         fi
@@ -58,12 +61,16 @@ spec:
           paste -sd ',' -)
         UNMAPPED=$(echo "$RESPONSE" | sed -n 's/.*"unmapped_area":"\([^"]*\)".*/\1/p')
         MESSAGE=$(echo "$RESPONSE" | sed -n 's/.*"message":"\([^"]*\)".*/\1/p')
+        SERVICES=$(echo "$RESPONSE" | sed -n 's/.*"services":\[\([^]]*\)\].*/\1/p' | \
+          sed 's/"//g')
 
         echo ""
         echo "Tests to run: ${TESTS:-<none>}"
+        echo "Apps to test: ${SERVICES:-<none>}"
         echo "Unmapped area: ${UNMAPPED:-<none>}"
         echo "Message: $MESSAGE"
 
         echo -n "${TESTS}" > $(results.tests-to-run.path)
         echo -n "${UNMAPPED}" > $(results.unmapped-area.path)
+        echo -n "${SERVICES}" > $(results.apps-to-test.path)
         echo -n "${MESSAGE}" > $(results.test-plan-message.path)

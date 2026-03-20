@@ -52,6 +52,10 @@ spec:
       type: string
       default: ""
       description: "Service name with no mapped regression tests. Non-empty = report unmapped."
+    - name: apps-to-test
+      type: string
+      default: ""
+      description: "Comma-separated service/app names whose tests should run. Empty = run all."
   workspaces:
     - name: test-source
   results:
@@ -86,6 +90,7 @@ spec:
 
         TESTS_TO_RUN="$(params.tests-to-run)"
         UNMAPPED_AREA="$(params.unmapped-area)"
+        APPS_TO_TEST="$(params.apps-to-test)"
 
         echo '{}' > /tmp/test-summary.json
         OVERALL_PASS=true
@@ -105,18 +110,40 @@ spec:
           exit 0
         fi
 
+        FILTERED=false
+        HAS_E2E=false
         if [ -n "$TESTS_TO_RUN" ]; then
+          FILTERED=true
           echo ""
           echo "####################################################"
           echo "  FILTERED TEST RUN (from test-plan graph)"
           echo "  Tests: $TESTS_TO_RUN"
+          echo "  Apps:  $APPS_TO_TEST"
           echo "####################################################"
           echo ""
+          if echo "$TESTS_TO_RUN" | grep -q "e2e/"; then
+            HAS_E2E=true
+          fi
         fi
+
+        app_in_test_plan() {
+          [ "$FILTERED" = "false" ] && return 0
+          [ -z "$APPS_TO_TEST" ] && return 0
+          echo ",$APPS_TO_TEST," | grep -q ",$1,"
+        }
 
         # ===========================================================
         # Phase 1: E2E through entry point
         # ===========================================================
+        if [ "$FILTERED" = "true" ] && [ "$HAS_E2E" = "false" ]; then
+          echo ""
+          echo "####################################################"
+          echo "  PHASE 1: SKIPPED (no e2e tests in test plan)"
+          echo "####################################################"
+          jq '. + {"e2e-entry-point": "skipped (no e2e in plan)"}' \
+            /tmp/test-summary.json > /tmp/test-summary-tmp.json
+          mv /tmp/test-summary-tmp.json /tmp/test-summary.json
+        else
         echo ""
         echo "####################################################"
         echo "  PHASE 1: E2E test through entry point ($ENTRY_APP)"
@@ -230,6 +257,8 @@ spec:
           fi
         fi
 
+        fi
+
         # ===========================================================
         # Phase 2: Per-app tests
         # ===========================================================
@@ -239,10 +268,18 @@ spec:
         echo "####################################################"
 
         for APP in $APP_LIST; do
-          # Skip the entry app — already tested in Phase 1
           if [ "$APP" = "$ENTRY_APP" ]; then
             echo ""
             echo "  Skipping $APP (already tested in e2e phase)"
+            continue
+          fi
+
+          if ! app_in_test_plan "$APP"; then
+            echo ""
+            echo "  Skipping $APP (not in test plan)"
+            jq --arg a "$APP" '. + {($a): "skipped (not in plan)"}' \
+              /tmp/test-summary.json > /tmp/test-summary-tmp.json
+            mv /tmp/test-summary-tmp.json /tmp/test-summary.json
             continue
           fi
 
