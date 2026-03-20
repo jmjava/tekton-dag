@@ -48,10 +48,19 @@ def _diamond(label, color, size=0.55, font_size=13):
     return VGroup(sq, txt)
 
 
-def _arrow(start, end, color=WHITE, buff=0.3):
+def _arrow_lr(start, end, color=WHITE):
+    """Horizontal arrow from right edge of start to left edge of end."""
     return Arrow(
-        start.get_center(), end.get_center(),
-        buff=buff, color=color, stroke_width=2, max_tip_length_to_length_ratio=0.12,
+        start.get_right(), end.get_left(),
+        buff=0.15, color=color, stroke_width=2, max_tip_length_to_length_ratio=0.1,
+    )
+
+
+def _arrow_tb(start, end, color=WHITE):
+    """Vertical arrow from bottom of start to top of end."""
+    return Arrow(
+        start.get_bottom(), end.get_top(),
+        buff=0.15, color=color, stroke_width=2, max_tip_length_to_length_ratio=0.1,
     )
 
 
@@ -99,8 +108,8 @@ class StackDAGScene(Scene):
         self.wait(2)
         self.play(FadeIn(api), run_time=1.5)
 
-        e1 = _arrow(fe, bff, C_VUE)
-        e2 = _arrow(bff, api, C_SPRING)
+        e1 = _arrow_lr(fe, bff, C_VUE)
+        e2 = _arrow_lr(bff, api, C_SPRING)
         dep1 = Text("downstream", font_size=11, color=GREY_B).next_to(e1, UP, buff=0.08)
         dep2 = Text("downstream", font_size=11, color=GREY_B).next_to(e2, UP, buff=0.08)
         self.play(Create(e1), FadeIn(dep1), run_time=1.2)
@@ -118,19 +127,19 @@ class StackDAGScene(Scene):
         orch = _box("Orchestrator\n(Flask :8080)", C_ORCH, width=2.6, height=1.0, font_size=17)
         orch.move_to(LEFT * 5 + DOWN * 1.5)
 
-        wh_start = LEFT * 6.8 + DOWN * 1.5
-        wh_arrow = Arrow(wh_start, orch.get_left(), buff=0.15,
-                         color=C_ORCH, stroke_width=2.5)
         wh_label = Text("GitHub\nwebhook", font_size=12, color=C_ORCH)
-        wh_label.next_to(wh_arrow, UP, buff=0.1)
+        wh_label.next_to(orch, LEFT, buff=1.2)
+        wh_arrow = Arrow(wh_label.get_right(), orch.get_left(),
+                         buff=0.15, color=C_ORCH, stroke_width=2.5)
 
         self.play(FadeIn(orch), run_time=1.5)
-        self.play(Create(wh_arrow), FadeIn(wh_label), run_time=1.2)
+        self.play(FadeIn(wh_label), Create(wh_arrow), run_time=1.2)
         self.wait(3)
 
         run_label = Text("PipelineRun", font_size=12, color=C_ORCH)
-        run_arrow = Arrow(orch.get_right() + RIGHT * 0.1, ORIGIN + DOWN * 1.5,
-                          buff=0.3, color=C_ORCH, stroke_width=2)
+        run_target = DOWN * 1.5
+        run_arrow = Arrow(orch.get_right(), run_target + LEFT * 1.5,
+                          buff=0.15, color=C_ORCH, stroke_width=2)
         run_label.next_to(run_arrow, UP, buff=0.08)
         self.play(Create(run_arrow), FadeIn(run_label), run_time=1.2)
         self.wait(10)
@@ -236,8 +245,8 @@ class HeaderPropagationScene(Scene):
         bff.move_to(ORIGIN + UP * 0.5)
         api.move_to(RIGHT * 4.5 + UP * 0.5)
 
-        e1 = _arrow(fe, bff, GREY_B)
-        e2 = _arrow(bff, api, GREY_B)
+        e1 = _arrow_lr(fe, bff, GREY_B)
+        e2 = _arrow_lr(bff, api, GREY_B)
 
         # ── P1 (0–4s): Intro ───────────────────────────────────────
         intro = Text("Bootstrap & Data Flow", font_size=28, color=WHITE)
@@ -372,8 +381,8 @@ class InterceptRoutingScene(Scene):
         bff.move_to(ORIGIN + UP * 2)
         api.move_to(RIGHT * 4 + UP * 2)
 
-        e1 = _arrow(fe, bff, GREY_B, buff=0.25)
-        e2 = _arrow(bff, api, GREY_B, buff=0.25)
+        e1 = _arrow_lr(fe, bff, GREY_B)
+        e2 = _arrow_lr(bff, api, GREY_B)
 
         pr_pod = _box("demo-api\n(PR-42 build)", C_PR, width=2.2, height=0.9, font_size=16)
         pr_pod.move_to(RIGHT * 4 + DOWN * 1)
@@ -433,8 +442,8 @@ class InterceptRoutingScene(Scene):
         self.wait(2)
 
         # Intercept branch
-        branch = Arrow(bff.get_center() + DOWN * 0.4, pr_pod.get_left(),
-                       buff=0.25, color=C_PR, stroke_width=3)
+        branch = Arrow(bff.get_bottom(), pr_pod.get_left(),
+                       buff=0.15, color=C_PR, stroke_width=3)
         intercept_lbl = Text("header match →\nredirect to PR pod", font_size=13, color=C_PR)
         intercept_lbl.next_to(branch, LEFT, buff=0.15)
 
@@ -806,10 +815,10 @@ class BlastRadiusScene(Scene):
         self.play(FadeIn(svc_fe), FadeIn(svc_bff), FadeIn(svc_api), run_time=1.5)
 
         # CALLS edges
-        call1 = Arrow(svc_fe.get_right(), svc_bff.get_left(), buff=0.35,
-                      color=GREY_B, stroke_width=2)
-        call2 = Arrow(svc_bff.get_right(), svc_api.get_left(), buff=0.35,
-                      color=GREY_B, stroke_width=2)
+        call1 = Arrow(svc_fe.get_right(), svc_bff.get_left(), buff=0.15,
+                      color=GREY_B, stroke_width=2, max_tip_length_to_length_ratio=0.1)
+        call2 = Arrow(svc_bff.get_right(), svc_api.get_left(), buff=0.15,
+                      color=GREY_B, stroke_width=2, max_tip_length_to_length_ratio=0.1)
         call_lbl1 = Text("CALLS", font_size=10, color=GREY_B).next_to(call1, UP, buff=0.05)
         call_lbl2 = Text("CALLS", font_size=10, color=GREY_B).next_to(call2, UP, buff=0.05)
         self.play(Create(call1), Create(call2), FadeIn(call_lbl1), FadeIn(call_lbl2),
