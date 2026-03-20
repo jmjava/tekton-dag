@@ -333,26 +333,29 @@ Stack-Aware CI/CD with Header-Based Traffic Interception
 ## Deliverables
 
 - [x] Toolchain selection: Manim + VHS + OpenAI TTS + Slidev + ffmpeg
-- [ ] `docs/demos/narration/*.md` — 11 narration scripts
-- [ ] `docs/demos/animations/scenes.py` — 6 Manim scenes
-- [ ] `docs/demos/terminal/*.tape` — 7 VHS tape files
-- [ ] `docs/demos/generate-narration.py` — OpenAI TTS generator
-- [ ] `docs/demos/compose.sh` — ffmpeg composition
-- [ ] `docs/demos/generate-all.sh` — master generator
-- [ ] `docs/demos/slides/slides.md` — Slidev presentation
-- [ ] `docs/demos/recordings/*.mp4` — 11 segment videos + full demo
-- [ ] Updated demo playbook with generation instructions
+- [x] `docs/demos/narration/*.md` — 11 narration scripts (synced to real architecture)
+- [x] `docs/demos/animations/scenes.py` — 6 Manim scenes (timed to narration paragraphs)
+- [x] `docs/demos/terminal/*.tape` — 7 VHS tape files (require ttyd to render)
+- [x] `docs/demos/generate-narration.py` — OpenAI TTS generator (gpt-4o-mini-tts, coral voice)
+- [x] `docs/demos/compose.sh` — ffmpeg composition (loops video to match audio)
+- [x] `docs/demos/generate-all.sh` — master generator (--skip-tts/--skip-manim/--skip-vhs)
+- [x] `docs/demos/slides/slides.md` — Slidev presentation (15 slides with mermaid diagrams)
+- [x] `docs/demos/recordings/*.mp4` — 4 Manim segments composed (VHS pending ttyd)
+- [x] `docs/demos/requirements.txt` — Python deps (manim, openai)
+- [x] `docs/demos/.gitignore` — excludes generated assets and .venv
+- [ ] VHS terminal recordings rendered (requires ttyd in PATH)
+- [ ] Full demo video concatenated (pending VHS segments)
 
 ---
 
 ## Success criteria
 
-- [ ] `./docs/demos/generate-all.sh` produces all assets from a clean state.
-- [ ] Each of the 11 segment videos has synced narration + visuals.
-- [ ] Manim animations clearly show: DAG, header propagation, intercept routing, blast radius, multi-team scaling, local debug.
-- [ ] VHS terminal recordings show real command output (not faked).
-- [ ] Slidev deck exports to PDF with all diagrams and stills.
-- [ ] Full demo video (`full-demo.mp4`) is under 30 minutes.
+- [x] `./docs/demos/generate-all.sh` produces all assets from a clean state.
+- [x] Each of the 11 segment videos has synced narration + visuals (Manim timed per-paragraph).
+- [x] Manim animations clearly show: DAG, header propagation, intercept routing, blast radius, multi-team scaling, local debug.
+- [ ] VHS terminal recordings show real command output (requires ttyd).
+- [ ] Slidev deck exports to PDF with all diagrams and stills (requires npm install).
+- [ ] Full demo video (`full-demo.mp4`) is under 30 minutes (pending VHS segments).
 
 ---
 

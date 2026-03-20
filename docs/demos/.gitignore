@@ -1,0 +1,10 @@
+# Virtual environment
+.venv/
+
+# Generated assets (regenerate with ./generate-all.sh)
+audio/*.mp3
+animations/media/
+terminal/rendered/
+recordings/*.mp4
+slides/node_modules/
+slides/dist/
