@@ -1,0 +1,475 @@
+{
+  "info": {
+    "name": "Management GUI Backend Tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "M11 — Postman/Newman tests for the management GUI Flask backend. Run with: newman run tests/postman/management-gui-tests.json --env-var baseUrl=http://localhost:5000"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "team", "value": "default" },
+    { "key": "stackFile", "value": "" },
+    { "key": "createdRunName", "value": "" },
+    { "key": "repoOwner", "value": "" },
+    { "key": "repoName", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Health",
+      "item": [
+        {
+          "name": "GET /api/health",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/health" },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('status 200', () => pm.response.to.have.status(200));",
+                "pm.test('ok is true', () => pm.expect(pm.response.json().ok).to.be.true);"
+              ]
+            }
+          }]
+        }
+      ]
+    },
+    {
+      "name": "2. Teams",
+      "item": [
+        {
+          "name": "GET /api/teams — list all teams",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/teams" },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('status 200', () => pm.response.to.have.status(200));",
+                "pm.test('is array with at least 1 team', () => {",
+                "  const body = pm.response.json();",
+                "  pm.expect(body).to.be.an('array').with.length.greaterThan(0);",
+                "});",
+                "pm.test('each team has name, namespace, cluster, stacks', () => {",
+                "  const teams = pm.response.json();",
+                "  teams.forEach(t => {",
+                "    pm.expect(t).to.have.property('name');",
+                "    pm.expect(t).to.have.property('namespace');",
+                "    pm.expect(t).to.have.property('cluster');",
+                "    pm.expect(t).to.have.property('stacks').that.is.an('array');",
+                "  });",
+                "  pm.collectionVariables.set('team', teams[0].name);",
+                "});"
+              ]
+            }
+          }]
+        }
+      ]
+    },
+    {
+      "name": "3. Stacks (team-scoped)",
+      "item": [
+        {
+          "name": "GET /api/teams/:team/stacks — list stacks",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/teams/{{team}}/stacks" },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('status 200', () => pm.response.to.have.status(200));",
+                "pm.test('is array with at least 1 stack', () => {",
+                "  const body = pm.response.json();",
+                "  pm.expect(body).to.be.an('array').with.length.greaterThan(0);",
+                "});",
+                "pm.test('each stack has name, stack_file, apps array', () => {",
+                "  const stacks = pm.response.json();",
+                "  stacks.forEach(s => {",
+                "    pm.expect(s).to.have.property('stack_file');",
+                "    pm.expect(s).to.have.property('name');",
+                "    pm.expect(s).to.have.property('apps').that.is.an('array');",
+                "    s.apps.forEach(a => {",
+                "      pm.expect(a).to.have.property('name');",
+                "      pm.expect(a).to.have.property('repo');",
+                "      pm.expect(a).to.have.property('role');",
+                "      pm.expect(a).to.have.property('propagationRole');",
+                "    });",
+                "  });",
+                "  pm.collectionVariables.set('stackFile', stacks[0].stack_file);",
+                "});"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "GET /api/teams/:team/stacks — unknown team returns 404",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/teams/nonexistent-team-xyz/stacks" },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('status 404', () => pm.response.to.have.status(404));",
+                "pm.test('error message mentions team', () => {",
+                "  pm.expect(pm.response.json().error).to.include('nonexistent-team-xyz');",
+                "});"
+              ]
+            }
+          }]
+        }
+      ]
+    },
+    {
+      "name": "4. DAG (team-scoped)",
+      "item": [
+        {
+          "name": "GET /api/teams/:team/stacks/:stack/dag — get DAG",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/teams/{{team}}/stacks/{{stackFile}}/dag" },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('status 200', () => pm.response.to.have.status(200));",
+                "pm.test('has nodes and edges arrays', () => {",
+                "  const body = pm.response.json();",
+                "  pm.expect(body).to.have.property('nodes').that.is.an('array');",
+                "  pm.expect(body).to.have.property('edges').that.is.an('array');",
+                "});",
+                "pm.test('nodes have id, role, propagationRole', () => {",
+                "  const nodes = pm.response.json().nodes;",
+                "  pm.expect(nodes.length).to.be.greaterThan(0);",
+                "  nodes.forEach(n => {",
+                "    pm.expect(n).to.have.property('id');",
+                "    pm.expect(n).to.have.property('role');",
+                "    pm.expect(n).to.have.property('propagationRole');",
+                "    pm.expect(n).to.have.property('repo');",
+                "  });",
+                "});",
+                "pm.test('edges have source and target', () => {",
+                "  const edges = pm.response.json().edges;",
+                "  edges.forEach(e => {",
+                "    pm.expect(e).to.have.property('source');",
+                "    pm.expect(e).to.have.property('target');",
+                "  });",
+                "});",
+                "pm.test('edge targets exist as node ids', () => {",
+                "  const body = pm.response.json();",
+                "  const nodeIds = body.nodes.map(n => n.id);",
+                "  body.edges.forEach(e => {",
+                "    pm.expect(nodeIds).to.include(e.source);",
+                "    pm.expect(nodeIds).to.include(e.target);",
+                "  });",
+                "});"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "GET /api/teams/:team/stacks/bad-stack/dag — unknown stack returns 404",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/teams/{{team}}/stacks/stacks/nonexistent.yaml/dag" },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('status 404', () => pm.response.to.have.status(404));",
+                "pm.test('has error', () => pm.expect(pm.response.json()).to.have.property('error'));"
+              ]
+            }
+          }]
+        }
+      ]
+    },
+    {
+      "name": "5. PipelineRuns (team-scoped)",
+      "item": [
+        {
+          "name": "GET /api/teams/:team/pipelineruns — list runs",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/teams/{{team}}/pipelineruns" },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('status 200', () => pm.response.to.have.status(200));",
+                "pm.test('has items array', () => {",
+                "  const body = pm.response.json();",
+                "  pm.expect(body).to.have.property('items').that.is.an('array');",
+                "});",
+                "pm.test('each run has name, pipeline, status, startTime', () => {",
+                "  const items = pm.response.json().items;",
+                "  if (items.length > 0) {",
+                "    items.forEach(r => {",
+                "      pm.expect(r).to.have.property('name');",
+                "      pm.expect(r).to.have.property('pipeline');",
+                "      pm.expect(r).to.have.property('status');",
+                "    });",
+                "  }",
+                "});"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "GET /api/teams/:team/pipelineruns?limit=3 — respects limit",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/teams/{{team}}/pipelineruns?limit=3" },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('status 200', () => pm.response.to.have.status(200));",
+                "pm.test('items <= 3', () => {",
+                "  pm.expect(pm.response.json().items.length).to.be.at.most(3);",
+                "});"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "GET /api/teams/:team/pipelineruns — unknown team returns 404",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/teams/nonexistent/pipelineruns" },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('status 404', () => pm.response.to.have.status(404));"
+              ]
+            }
+          }]
+        }
+      ]
+    },
+    {
+      "name": "6. Trigger (team-scoped)",
+      "item": [
+        {
+          "name": "POST /api/teams/:team/trigger — missing pipelineType returns 400",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/teams/{{team}}/trigger",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" }
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('status 400', () => pm.response.to.have.status(400));",
+                "pm.test('error mentions pipelineType', () => {",
+                "  pm.expect(pm.response.json().error).to.include('pipelineType');",
+                "});"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "POST /api/teams/:team/trigger — missing stack returns 400",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/teams/{{team}}/trigger",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"pipelineType\": \"pr\"}" }
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('status 400', () => pm.response.to.have.status(400));",
+                "pm.test('error mentions stack', () => {",
+                "  pm.expect(pm.response.json().error).to.include('stack');",
+                "});"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "POST /api/teams/:team/trigger — PR missing prNumber returns 400",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/teams/{{team}}/trigger",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"pipelineType\": \"pr\", \"stack\": \"stacks/stack-one.yaml\", \"app\": \"demo-fe\"}" }
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('status 400', () => pm.response.to.have.status(400));",
+                "pm.test('error mentions prNumber', () => {",
+                "  pm.expect(pm.response.json().error).to.include('prNumber');",
+                "});"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "POST /api/teams/:team/trigger — unknown team returns 404",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/teams/nonexistent/trigger",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"pipelineType\": \"bootstrap\", \"stack\": \"stacks/stack-one.yaml\"}" }
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('status 404', () => pm.response.to.have.status(404));"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "POST /api/teams/:team/trigger — invalid pipelineType returns 400",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/teams/{{team}}/trigger",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"pipelineType\": \"invalid\", \"stack\": \"stacks/stack-one.yaml\", \"app\": \"demo-fe\"}" }
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('status 400', () => pm.response.to.have.status(400));",
+                "pm.test('error mentions pipelineType', () => {",
+                "  pm.expect(pm.response.json().error).to.include('pipelineType');",
+                "});"
+              ]
+            }
+          }]
+        }
+      ]
+    },
+    {
+      "name": "7. Repos (global)",
+      "item": [
+        {
+          "name": "GET /api/repos — list repos",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/repos" },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('status 200', () => pm.response.to.have.status(200));",
+                "pm.test('has items array with repos', () => {",
+                "  const body = pm.response.json();",
+                "  pm.expect(body).to.have.property('items').that.is.an('array');",
+                "  pm.expect(body.items.length).to.be.greaterThan(0);",
+                "});",
+                "pm.test('each repo has id, owner, repo, apps, stacks', () => {",
+                "  const items = pm.response.json().items;",
+                "  items.forEach(r => {",
+                "    pm.expect(r).to.have.property('id');",
+                "    pm.expect(r).to.have.property('owner');",
+                "    pm.expect(r).to.have.property('repo');",
+                "    pm.expect(r).to.have.property('apps').that.is.an('array');",
+                "    pm.expect(r).to.have.property('stacks').that.is.an('array');",
+                "  });",
+                "  pm.collectionVariables.set('repoOwner', items[0].owner);",
+                "  pm.collectionVariables.set('repoName', items[0].repo);",
+                "});"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "GET /api/repos/:owner/:repo/branches",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/repos/{{repoOwner}}/{{repoName}}/branches" },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('status 200', () => pm.response.to.have.status(200));",
+                "pm.test('has items array', () => {",
+                "  pm.expect(pm.response.json()).to.have.property('items').that.is.an('array');",
+                "});",
+                "pm.test('branches have name and sha', () => {",
+                "  const items = pm.response.json().items;",
+                "  if (items.length > 0) {",
+                "    pm.expect(items[0]).to.have.property('name');",
+                "    pm.expect(items[0]).to.have.property('sha');",
+                "  }",
+                "});"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "GET /api/repos/:owner/:repo/tags",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/repos/{{repoOwner}}/{{repoName}}/tags" },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('status 200', () => pm.response.to.have.status(200));",
+                "pm.test('has items array', () => {",
+                "  pm.expect(pm.response.json()).to.have.property('items').that.is.an('array');",
+                "});"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "GET /api/repos/:owner/:repo/commits",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/repos/{{repoOwner}}/{{repoName}}/commits" },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('status 200', () => pm.response.to.have.status(200));",
+                "pm.test('commits have sha, message, date', () => {",
+                "  const items = pm.response.json().items;",
+                "  if (items.length > 0) {",
+                "    pm.expect(items[0]).to.have.property('sha');",
+                "    pm.expect(items[0]).to.have.property('message');",
+                "  }",
+                "});"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "GET /api/repos/:owner/:repo/prs?state=open",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/repos/{{repoOwner}}/{{repoName}}/prs?state=open" },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('status 200', () => pm.response.to.have.status(200));",
+                "pm.test('has items array', () => {",
+                "  pm.expect(pm.response.json()).to.have.property('items').that.is.an('array');",
+                "});",
+                "pm.test('PRs have number, title, state', () => {",
+                "  const items = pm.response.json().items;",
+                "  if (items.length > 0) {",
+                "    pm.expect(items[0]).to.have.property('number');",
+                "    pm.expect(items[0]).to.have.property('title');",
+                "    pm.expect(items[0]).to.have.property('state');",
+                "  }",
+                "});"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "GET /api/prs — cross-repo PRs",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/prs?state=open" },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('status 200', () => pm.response.to.have.status(200));",
+                "pm.test('has items, reposQueried, reposSkipped', () => {",
+                "  const body = pm.response.json();",
+                "  pm.expect(body).to.have.property('items').that.is.an('array');",
+                "  pm.expect(body).to.have.property('reposQueried').that.is.an('array');",
+                "  pm.expect(body).to.have.property('reposSkipped').that.is.an('array');",
+                "});",
+                "pm.test('PRs include repoId and pr object', () => {",
+                "  const items = pm.response.json().items;",
+                "  if (items.length > 0) {",
+                "    pm.expect(items[0]).to.have.property('repoId');",
+                "    pm.expect(items[0]).to.have.property('pr').that.has.property('number');",
+                "  }",
+                "});"
+              ]
+            }
+          }]
+        }
+      ]
+    }
+  ]
+}

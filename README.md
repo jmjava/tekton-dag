@@ -16,6 +16,7 @@ Standalone Tekton pipeline system for **local development and proof-of-concept**
 | [M7.1](milestones/milestone-7-1.md) | **Completed** | Pipeline speed: parallel containerize, Kaniko cache, parallel clone |
 | [M10](milestones/milestone-10.md) | **Completed** | Multi-team scaling: orchestration service, Helm chart, ArgoCD, batched builds |
 | [M10.1](milestones/milestone-10-1.md) | **Completed** | Orchestration service testing: Postman/Newman (15 requests, 30 assertions), integration validation |
+| [M11](milestones/milestone-11.md) | **Completed** | Vue 3 Management GUI + Python/Flask backend (replaces `reporting-gui/`). Multi-team, multi-cluster, DAG visualization. 69 Playwright E2E tests, 20 pytest unit tests, Postman collection. |
 | [M9](milestones/milestone-9.md) | **Planned** | Test-trace regression graph + minimal test selection (Neo4j, mock Datadog) |
 | [M8](milestones/milestone-8.md) | **Planned** | Demo assets: recordings, slide deck, demo playbook |
 
@@ -278,6 +279,49 @@ See [docs/m10-multi-team-architecture.md](docs/m10-multi-team-architecture.md).
 
 ---
 
+## Management GUI (M11)
+
+Vue 3 + Python/Flask management GUI that replaces the legacy `reporting-gui/`. Located in `management-gui/`.
+
+| Component | Stack | Location |
+|-----------|-------|----------|
+| Frontend | Vue 3, Vite, Pinia, Vue Router, Vue Flow | `management-gui/frontend/` |
+| Backend | Python 3, Flask, Kubernetes Python client | `management-gui/backend/` |
+
+**Features:** Trigger pipeline runs (PR/bootstrap/merge), monitor runs with status polling, drill into run detail with TaskRuns, filter test results, interactive DAG visualization of stack dependencies, browse Git repos (branches/tags/commits/PRs across all stack repos), embedded Tekton Dashboard, multi-team switcher with per-cluster context resolution.
+
+**Deploy modes:** Centralized (all teams visible, team switcher) or per-team (`TEAM_NAME=alpha`, switcher hidden). Same codebase and image for both.
+
+```bash
+# Backend
+cd management-gui/backend
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+flask run  # http://localhost:5000
+
+# Frontend
+cd management-gui/frontend
+npm install
+npm run dev  # http://localhost:3000 (proxies /api to Flask)
+```
+
+**Testing:**
+
+```bash
+# Backend unit tests (20 tests)
+cd management-gui/backend && source .venv/bin/activate
+pytest
+
+# Frontend E2E tests (69 Playwright tests)
+cd management-gui/frontend
+npm run test:e2e
+
+# Backend API tests (Postman/Newman)
+newman run tests/postman/management-gui-tests.json --env-var baseUrl=http://localhost:5000
+```
+
+---
+
 ## Local development and debugging
 
 Run the **full** pipeline locally — no Jenkins, no shared CI queue.
@@ -362,7 +406,8 @@ Pre-commit hook runs GitGuardian ggshield: `pip install pre-commit && pre-commit
 | `build-images/` | Dockerfiles and build script for pre-built compile images |
 | `libs/` | Standalone baggage middleware libraries (Spring Boot, Node, Flask, PHP) |
 | `scripts/` | CLI scripts: generate-run, publish-build-images, publish-orchestrator-image, run-e2e-with-intercepts, run-orchestrator-tests, run-valid-pr-flow, kind-with-registry, install-tekton, install-tekton-results, and more |
-| `tests/postman/` | Postman/Newman collections (orchestrator-tests.json) |
+| `management-gui/` | Vue 3 + Flask management GUI (frontend + backend). See [Management GUI](#management-gui-m11) |
+| `tests/postman/` | Postman/Newman collections (orchestrator-tests.json, management-gui-tests.json) |
 | `docs/` | Architecture docs, diagrams, guides. See [docs/README.md](docs/README.md) |
 | `milestones/` | Milestone planning and status docs |
 | `session-notes/` | Session notes and debugging logs |
