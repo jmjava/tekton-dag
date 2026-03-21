@@ -4,7 +4,8 @@ Standalone Tekton pipeline system for **local development and proof-of-concept**
 
 ## Demo Videos
 
-🎬 **[Watch all videos on GitHub Pages →](https://jmjava.github.io/tekton-dag/)**
+🎬 **[Watch all videos on GitHub Pages →](https://jmjava.github.io/tekton-dag/)**  
+*Publishing & 404 troubleshooting: [docs/GITHUB-PAGES.md](docs/GITHUB-PAGES.md).*
 
 | Video | Description | Duration |
 |-------|-------------|----------|

@@ -11,6 +11,7 @@ This folder contains design, operations, and verification docs for the tekton-da
 | **Archive (not maintained)** | [archive/](archive/) — obsolete session plans and similar |
 | **Customization & ops** | [CUSTOMIZATION.md](CUSTOMIZATION.md), [MAINTENANCE.md](MAINTENANCE.md) |
 | **Demo toolchain (M8)** | [demos/](demos/) — regenerate with `docs/demos/generate-all.sh`; see [milestones/milestone-8.md](../milestones/milestone-8.md) |
+| **GitHub Pages** | [GITHUB-PAGES.md](GITHUB-PAGES.md) — how the demo site is deployed; fix 404 |
 
 ## Active documents
 
@@ -35,6 +36,7 @@ This folder contains design, operations, and verification docs for the tekton-da
 
 | Document | Description |
 |----------|-------------|
+| [REGRESSION.md](REGRESSION.md) | **Run full regression before updating testing/demo docs** — `scripts/run-regression.sh` and phases (pytest, Playwright, Newman, Kind) |
 | [local-dag-verification-plan.md](local-dag-verification-plan.md) | Plan and scripts for verifying DAG structure locally (Phase 1/2) |
 | [mirrord-poc-results.md](mirrord-poc-results.md) | Milestone 5: MetalBear mirrord PoC — install, header filter, security/mitigations, recommendation |
 | [mirrord-m6-test-scenarios.md](mirrord-m6-test-scenarios.md) | Milestone 6: Full mirrord test scenarios, procedures and pass criteria |
