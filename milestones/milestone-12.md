@@ -72,8 +72,8 @@ Remove hardcoded `localhost:5000` and build image refs from pipeline YAML:
 - [x] `helm/tekton-dag/README.md` (see Helm section)
 - [x] `orchestrator/README.md` — endpoints, env vars, deployment, development
 - [x] `management-gui/README.md` — setup, architecture, testing, deployment
-- [ ] Update `docs/README.md` with M11, M12 links and current milestone status (deferred)
-- [ ] Archive or update `docs/next-session-plan.md` (deferred)
+- [x] Update `docs/README.md` with M11, M12 links and current milestone status — done in [milestone-12.2.md](milestone-12.2.md)
+- [x] Archive or update `docs/next-session-plan.md` — moved to [docs/archive/next-session-plan.md](../docs/archive/next-session-plan.md) (M12.2)
 
 ### 6. Stack schema validation
 

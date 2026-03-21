@@ -27,16 +27,17 @@ Standalone Tekton pipeline system for **local development and proof-of-concept**
 | [M6](milestones/milestone-6.md) | **Completed** | Full MetalBear testing (all intercept scenarios) |
 | [M7](milestones/milestone-7.md) | **Completed** | Dual intercept backend: Telepresence or mirrord via `intercept-backend` param |
 | [M7.1](milestones/milestone-7-1.md) | **Completed** | Pipeline speed: parallel containerize, Kaniko cache, parallel clone |
+| [M8](milestones/milestone-8.md) | **Partial** | Demo assets: Manim + TTS + composed segments + [GitHub Pages](https://jmjava.github.io/tekton-dag/); VHS terminal recordings, Slidev PDF, full concat still open |
+| [M9](milestones/milestone-9.md) | **Completed** | Test-trace regression graph + minimal test selection (Neo4j, mock Datadog). 10 Newman requests, 36 assertions. Test filtering in PR pipeline. |
 | [M10](milestones/milestone-10.md) | **Completed** | Multi-team scaling: orchestration service, Helm chart, ArgoCD, batched builds |
 | [M10.1](milestones/milestone-10-1.md) | **Completed** | Orchestration service testing: Postman/Newman (15 requests, 30 assertions), integration validation |
 | [M11](milestones/milestone-11.md) | **Completed** | Vue 3 Management GUI + Python/Flask backend (replaces `reporting-gui/`). Multi-team, multi-cluster, DAG visualization. 69 Playwright E2E tests, 56 pytest unit tests, Postman collection. |
-| [M9](milestones/milestone-9.md) | **Completed** | Test-trace regression graph + minimal test selection (Neo4j, mock Datadog). 10 Newman requests, 36 assertions. Test filtering in PR pipeline. |
 | [M12](milestones/milestone-12.md) | **Completed** | Architecture customization: shared Python package, Helm ConfigMap/PVC templates, parameterized pipelines (no hardcoded `localhost:5000`), `scripts/common.sh`, build image variants (Java 11/17/21, Node 18/20/22, Python 3.10–3.12, PHP 8.1–8.3), custom pipeline hook tasks (pre/post build/test), stack JSON schema, 62 orchestrator pytest tests, 14 shared-package tests. Full docs: CUSTOMIZATION.md, MAINTENANCE.md, Helm README. |
-| [M8](milestones/milestone-8.md) | **Planned** | Demo assets: recordings, slide deck, demo playbook |
+| [M12.2](milestones/milestone-12.2.md) | **Completed** | Documentation sync and archive: README + docs index, obsolete session plan archived |
 
 Older milestones (M2, M3) are in [milestones/completed/](milestones/completed/).
 
-**Next up:** M8 (demo assets).
+**Next up:** Finish remaining [M8](milestones/milestone-8.md) items (VHS recordings, Slidev export, full demo concat) as needed; ongoing maintenance via [CUSTOMIZATION.md](docs/CUSTOMIZATION.md) and [MAINTENANCE.md](docs/MAINTENANCE.md).
 
 ---
 

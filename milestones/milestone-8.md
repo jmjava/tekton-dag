@@ -1,12 +1,12 @@
 # Milestone 8: Demo assets — programmatic recordings, animations, narrated presentations
 
-> **In progress.** Produces polished demo materials using code-driven tooling — no manual screen recording. Every asset is generated from source files in the repo and can be regenerated at any time.
+> **Partial.** Manim animations, OpenAI TTS narration, ffmpeg composition, and four composed segment videos are in place; [GitHub Pages](https://jmjava.github.io/tekton-dag/) hosts playable demos. VHS terminal recordings, Slidev PDF export, and full `full-demo.mp4` concat remain open (see success criteria below). Every asset is generated from source under `docs/demos/` and can be regenerated.
 
 ## Goal
 
 Create **narrated demo videos, animated architecture diagrams, terminal recordings, and a slide deck** — all generated programmatically from scripts, Manim scenes, VHS tape files, and narration text.
 
-Success = a single `make demos` (or `./docs/demos/generate-all.sh`) produces every asset from scratch.
+Success = run `./docs/demos/generate-all.sh` from a configured environment (see toolchain below). A root `make demos` target may be added later as a thin wrapper.
 
 ---
 

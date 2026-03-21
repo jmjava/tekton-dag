@@ -1,4 +1,6 @@
-# Plan for next working session
+# Plan for next working session (archived)
+
+> **Archived (M12.2).** Historical scratchpad only. Current branch references and task lists are obsolete. See [m7-mirrord-intercept-task.md](../m7-mirrord-intercept-task.md) and [milestones/milestone-7.md](../../milestones/milestone-7.md) for the delivered design.
 
 Quick reference for what to do when you return. Current branch: **milestone-7**. Last updated: session that added M8/M9 docs, milestone status table, and "run either" (Telepresence/mirrord) to M7.
 
@@ -49,7 +51,7 @@ Quick reference for what to do when you return. Current branch: **milestone-7**.
 ## 2. After M7 — optional same session or next
 
 - **Milestone 9:** Start implementation (mock Datadog API, graph storage, query task, extend run-stack-tests) or continue planning.
-- **Milestone 8:** Demo assets / playbook — already have [docs/demo-playbook.md](demo-playbook.md); recording can wait.
+- **Milestone 8:** Demo assets / playbook — already have [docs/demo-playbook.md](../demo-playbook.md); recording can wait.
 
 ---
 

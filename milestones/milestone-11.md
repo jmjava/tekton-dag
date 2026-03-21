@@ -1,6 +1,6 @@
 # Milestone 11: Vue 3 Management GUI with Python Backend
 
-> **Planned.** Replaces `reporting-gui/` with a production-quality management GUI: Vue 3 frontend (`tekton-dag-vue-fe`) + Python/Flask backend (`tekton-dag-flask`). Uses the Kubernetes Python client directly (no kubectl dependency), supports multi-team and multi-cluster operation, and can be deployed centrally or per-team from the same codebase and Docker image.
+> **Completed.** Replaced `reporting-gui/` with a production-quality management GUI: Vue 3 frontend (`tekton-dag-vue-fe`) + Python/Flask backend (`tekton-dag-flask`). Uses the Kubernetes Python client directly (no kubectl dependency), supports multi-team and multi-cluster operation, and can be deployed centrally or per-team from the same codebase and Docker image. Live code under `management-gui/`.
 
 ## Goal
 
