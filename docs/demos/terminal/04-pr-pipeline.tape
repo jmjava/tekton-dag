@@ -1,5 +1,5 @@
-Output docs/demos/terminal/rendered/04-pr-pipeline.mp4
-Output docs/demos/terminal/rendered/04-pr-pipeline.gif
+Output terminal/rendered/04-pr-pipeline.mp4
+Output terminal/rendered/04-pr-pipeline.gif
 Set FontSize 14
 Set Width 1400
 Set Height 800
@@ -49,7 +49,7 @@ Sleep 500ms
 Type "[containerize]       ✓ Pushed"
 Enter
 
-Type "[deploy-intercepts]  Deploying PR pod alongside production..."
+Type "[deploy-intercepts]  Deploying PR pod alongside baseline (validation cluster)..."
 Enter
 Type "[deploy-intercepts]  Intercept backend: telepresence"
 Enter

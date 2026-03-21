@@ -11,13 +11,18 @@
 #   ./scripts/run-orchestrator-tests.sh --graph             # M9 graph + test-plan tests
 #   ./scripts/run-orchestrator-tests.sh --all               # both collections
 #   ./scripts/run-orchestrator-tests.sh --skip-integration  # skip PipelineRun validation
+#
+# Env:
+#   ORCHESTRATOR_TEST_PORT  Local port for kubectl port-forward (default 9091).
+#   ORCHESTRATOR_FREE_PORT  If 0, do not kill listeners on that port first (default: free it).
 [ -z "${BASH_VERSION:-}" ] && exec bash "$0" "$@"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
 NS="$NAMESPACE"
-LOCAL_PORT=9091
+# Avoid clashes with stale port-forwards (e.g. 9091 already in use).
+LOCAL_PORT="${ORCHESTRATOR_TEST_PORT:-9091}"
 ORCH_COLLECTION="${REPO_ROOT}/tests/postman/orchestrator-tests.json"
 GRAPH_COLLECTION="${REPO_ROOT}/tests/postman/graph-tests.json"
 SKIP_INTEGRATION=false
@@ -65,6 +70,7 @@ kubectl wait --for=condition=ready pod -l app=tekton-dag-orchestrator -n "$NS" -
 echo ""
 
 echo "=== Starting port-forward (localhost:${LOCAL_PORT} -> 8080) ==="
+free_tcp_port "$LOCAL_PORT" "${ORCHESTRATOR_FREE_PORT:-1}"
 kubectl port-forward svc/tekton-dag-orchestrator "${LOCAL_PORT}:8080" -n "$NS" &
 PF_PID=$!
 sleep 3

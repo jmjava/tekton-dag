@@ -1,5 +1,5 @@
-Output docs/demos/terminal/rendered/02-quickstart.mp4
-Output docs/demos/terminal/rendered/02-quickstart.gif
+Output terminal/rendered/02-quickstart.mp4
+Output terminal/rendered/02-quickstart.gif
 Set FontSize 14
 Set Width 1400
 Set Height 800

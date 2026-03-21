@@ -1,5 +1,5 @@
-Output docs/demos/terminal/rendered/11-graph-tests.mp4
-Output docs/demos/terminal/rendered/11-graph-tests.gif
+Output terminal/rendered/11-graph-tests.mp4
+Output terminal/rendered/11-graph-tests.gif
 Set FontSize 14
 Set Width 1400
 Set Height 800

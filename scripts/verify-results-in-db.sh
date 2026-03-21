@@ -5,12 +5,17 @@
 # Usage: ./verify-results-in-db.sh [--min-count N] [--namespace NS]
 #   --min-count  Require at least N results (default: 1)
 #   --namespace  Parent namespace to list (default: tekton-pipelines). Use "-" for all.
+#
+# Env:
+#   RESULTS_API_LOCAL_PORT  Host port for kubectl port-forward (default 8080). Frees this port before forward.
+#   RESULTS_API_FREE_PORT   Set to 0 to skip freeing the local port first (default 1).
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
 PARENT="${PARENT:-$NAMESPACE}"
 MIN_COUNT=1
 PORT_FWD_PID=""
+RESULTS_LOCAL="${RESULTS_API_LOCAL_PORT:-8080}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -44,10 +49,16 @@ if ! kubectl get deployment tekton-results-api -n "$NAMESPACE" &>/dev/null; then
 fi
 
 # Port-forward API to localhost so we can curl (avoids in-cluster cert issues)
-echo "  Port-forwarding Results API to localhost:8080..."
-kubectl port-forward -n "$NAMESPACE" svc/tekton-results-api-service 8080:8080 &
+echo "  Prep: freeing localhost:${RESULTS_LOCAL} if occupied (stale port-forward / other listeners)..."
+free_tcp_port "$RESULTS_LOCAL" "${RESULTS_API_FREE_PORT:-1}"
+echo "  Port-forwarding Results API to localhost:${RESULTS_LOCAL} -> svc:8080..."
+kubectl port-forward -n "$NAMESPACE" svc/tekton-results-api-service "${RESULTS_LOCAL}:8080" &
 PORT_FWD_PID=$!
 sleep 3
+if ! kill -0 "$PORT_FWD_PID" 2>/dev/null; then
+  echo "  FAIL: port-forward to Results API did not start (check port ${RESULTS_LOCAL})." >&2
+  exit 1
+fi
 
 # Use default SA token (install-tekton-results.sh grants default tekton-results-readonly for list/get)
 TOKEN=$(kubectl create token default -n "$NAMESPACE" 2>/dev/null || true)
@@ -57,9 +68,9 @@ fi
 
 # List results (REST: parents/-/results lists all; use -k for self-signed cert)
 # https://tekton.dev/docs/results/api/ - parent "-" = across all parents
-URL="https://127.0.0.1:8080/apis/results.tekton.dev/v1alpha2/parents/${PARENT}/results"
+URL="https://127.0.0.1:${RESULTS_LOCAL}/apis/results.tekton.dev/v1alpha2/parents/${PARENT}/results"
 if [[ "$PARENT" == "-" ]]; then
-  URL="https://127.0.0.1:8080/apis/results.tekton.dev/v1alpha2/parents/-/results"
+  URL="https://127.0.0.1:${RESULTS_LOCAL}/apis/results.tekton.dev/v1alpha2/parents/-/results"
 fi
 
 echo "  Querying: $URL"

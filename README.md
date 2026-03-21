@@ -4,17 +4,31 @@ Standalone Tekton pipeline system for **local development and proof-of-concept**
 
 ## Demo Videos
 
-🎬 **[Watch all videos on GitHub Pages →](https://jmjava.github.io/tekton-dag/)**  
+🎬 **GitHub Pages (all segments + players):** [jmjava.github.io/tekton-dag/](https://jmjava.github.io/tekton-dag/)  
 *Publishing & 404 troubleshooting: [docs/GITHUB-PAGES.md](docs/GITHUB-PAGES.md).*
 
-| Video | Description | Duration |
-|-------|-------------|----------|
-| 📹 Architecture Overview | System architecture, DAG model, polyglot support, pipelines | 2m 40s |
-| 📹 Intercept Routing | PR vs normal traffic routing, header-based interception | 2m 4s |
-| 📹 Local Debugging | mirrord integration, IDE breakpoints, live cluster debugging | 2m 0s |
-| 📹 Multi-Team Helm | Helm chart deployment, team isolation, custom hooks | 2m 4s |
+Each row links to the **in-browser player** on Pages (`#seg-…`) and to the **composed MP4** in the repo. Anchors match [docs/index.html](docs/index.html).
 
-*All videos are generated programmatically from source files. See [Milestone 8](milestones/milestone-8.md) for details.*
+| # | Video | Description | Duration | Watch (Pages) | MP4 in repo |
+|---|-------|-------------|----------|---------------|-------------|
+| 01 | Architecture overview | System architecture, DAG model, polyglot support, pipelines | ~2m 46s | [▶ Pages](https://jmjava.github.io/tekton-dag/#seg-01) | [`01-architecture.mp4`](docs/demos/recordings/01-architecture.mp4) |
+| 02 | Quick start | Kind, Tekton, images, tasks (VHS) | ~1m 50s | [▶ Pages](https://jmjava.github.io/tekton-dag/#seg-02) | [`02-quickstart.mp4`](docs/demos/recordings/02-quickstart.mp4) |
+| 03 | Bootstrap dataflow | Stack bootstrap PipelineRun walkthrough | ~2m 30s | [▶ Pages](https://jmjava.github.io/tekton-dag/#seg-03) | [`03-bootstrap-dataflow.mp4`](docs/demos/recordings/03-bootstrap-dataflow.mp4) |
+| 04 | PR pipeline | PR flow, intercepts, tests (VHS) | ~2m 30s | [▶ Pages](https://jmjava.github.io/tekton-dag/#seg-04) | [`04-pr-pipeline.mp4`](docs/demos/recordings/04-pr-pipeline.mp4) |
+| 05 | Intercept routing | PR vs normal traffic routing, header-based interception | ~2m 6s | [▶ Pages](https://jmjava.github.io/tekton-dag/#seg-05) | [`05-intercept-routing.mp4`](docs/demos/recordings/05-intercept-routing.mp4) |
+| 06 | Local debugging | mirrord integration, IDE breakpoints, live cluster debugging | ~1m 57s | [▶ Pages](https://jmjava.github.io/tekton-dag/#seg-06) | [`06-local-debug.mp4`](docs/demos/recordings/06-local-debug.mp4) |
+| 07 | Orchestrator API | REST API, stacks, test plan, graph (VHS) | ~2m 14s | [▶ Pages](https://jmjava.github.io/tekton-dag/#seg-07) | [`07-orchestrator.mp4`](docs/demos/recordings/07-orchestrator.mp4) |
+| 08 | Multi-team Helm | Helm chart deployment, team isolation, custom hooks | ~1m 59s | [▶ Pages](https://jmjava.github.io/tekton-dag/#seg-08) | [`08-multi-team-helm.mp4`](docs/demos/recordings/08-multi-team-helm.mp4) |
+| 09 | Tekton Results | Results API and persisted history (VHS) | ~1m 40s | [▶ Pages](https://jmjava.github.io/tekton-dag/#seg-09) | [`09-results-db.mp4`](docs/demos/recordings/09-results-db.mp4) |
+| 10 | Newman / regression | API tests and local test tiers (VHS) | ~2m 0s | [▶ Pages](https://jmjava.github.io/tekton-dag/#seg-10) | [`10-newman-tests.mp4`](docs/demos/recordings/10-newman-tests.mp4) |
+| 11 | Test-trace graph | Blast radius, graph query, focused tests (mixed) | ~2m 0s | [▶ Pages](https://jmjava.github.io/tekton-dag/#seg-11) | [`11-test-trace-graph.mp4`](docs/demos/recordings/11-test-trace-graph.mp4) |
+| 12 | Regression suite (M12.2) | Full regression story + agent workflows | varies | [▶ Pages](https://jmjava.github.io/tekton-dag/#seg-12) | [`12-regression-suite.mp4`](docs/demos/recordings/12-regression-suite.mp4) |
+| 13 | Management GUI architecture (M12.2) | Vue, Flask, orchestrator | varies | [▶ Pages](https://jmjava.github.io/tekton-dag/#seg-13) | [`13-management-gui-architecture.mp4`](docs/demos/recordings/13-management-gui-architecture.mp4) |
+| 14 | GUI Tekton extension (M12.2) | Extending the GUI for Tekton | varies | [▶ Pages](https://jmjava.github.io/tekton-dag/#seg-14) | [`14-gui-tekton-extension.mp4`](docs/demos/recordings/14-gui-tekton-extension.mp4) |
+
+**Full concat files:** [01–11 on Pages](https://jmjava.github.io/tekton-dag/#full-demo) → [`full-demo.mp4`](docs/demos/recordings/full-demo.mp4) · [01–14 on Pages](https://jmjava.github.io/tekton-dag/#full-demo-m12-2) → [`full-demo-with-m12-2.mp4`](docs/demos/recordings/full-demo-with-m12-2.mp4)
+
+*All videos are generated programmatically — run [`docs/demos/generate-all.sh`](docs/demos/generate-all.sh). See [Milestone 8](milestones/milestone-8.md), [M12.2](milestones/milestone-12.2.md), and [docs/demos/README.md](docs/demos/README.md).*
 
 ---
 
@@ -33,12 +47,14 @@ Standalone Tekton pipeline system for **local development and proof-of-concept**
 | [M10](milestones/milestone-10.md) | **Completed** | Multi-team scaling: orchestration service, Helm chart, ArgoCD, batched builds |
 | [M10.1](milestones/milestone-10-1.md) | **Completed** | Orchestration service testing: Postman/Newman (15 requests, 30 assertions), integration validation |
 | [M11](milestones/milestone-11.md) | **Completed** | Vue 3 Management GUI + Python/Flask backend (replaces `reporting-gui/`). Multi-team, multi-cluster, DAG visualization. 69 Playwright E2E tests, 56 pytest unit tests, Postman collection. |
-| [M12](milestones/milestone-12.md) | **Completed** | Architecture customization: shared Python package, Helm ConfigMap/PVC templates, parameterized pipelines (no hardcoded `localhost:5000`), `scripts/common.sh`, build image variants (Java 11/17/21, Node 18/20/22, Python 3.10–3.12, PHP 8.1–8.3), custom pipeline hook tasks (pre/post build/test), stack JSON schema, 62 orchestrator pytest tests, 14 shared-package tests. Full docs: CUSTOMIZATION.md, MAINTENANCE.md, Helm README. |
-| [M12.2](milestones/milestone-12.2.md) | **Completed** | Documentation sync and archive: README + docs index, obsolete session plan archived |
+| [M12](milestones/milestone-12.md) | **Completed** | Architecture customization: shared Python package, Helm ConfigMap/PVC templates, parameterized pipelines (no hardcoded `localhost:5000`), `scripts/common.sh`, build image variants (Java 11/17/21, Node 18/20/22, Python 3.10–3.12, PHP 8.1–8.3), custom pipeline hook tasks (pre/post build/test), stack JSON schema, 62 orchestrator pytest tests, 14 shared-package tests. Full docs: [CUSTOMIZATION.md](docs/CUSTOMIZATION.md), [TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md](docs/TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md), MAINTENANCE.md, Helm README. |
+| [M12.2](milestones/milestone-12.2.md) | **Partial** | **Part A done:** doc sync + archive. **Part B open:** regression + Management GUI [docs & demo plan](docs/TESTING-AND-REGRESSION-OVERVIEW.md) / [GUI extension](docs/MANAGEMENT-GUI-EXTENSION.md) / [video segments](docs/demos/segments-m12-2-regression-gui.md) |
 
 Older milestones (M2, M3) are in [milestones/completed/](milestones/completed/).
 
-**Next up:** Finish remaining [M8](milestones/milestone-8.md) items (VHS recordings, Slidev export, full demo concat) as needed; ongoing maintenance via [CUSTOMIZATION.md](docs/CUSTOMIZATION.md) and [MAINTENANCE.md](docs/MAINTENANCE.md).
+**Next up:** Finish remaining [M8](milestones/milestone-8.md) items (VHS recordings, Slidev export, full demo concat) as needed; **[M12.2 Part B](milestones/milestone-12.2.md)** regression + GUI [docs](docs/TESTING-AND-REGRESSION-OVERVIEW.md) and [demo segments](docs/demos/segments-m12-2-regression-gui.md); ongoing maintenance via [CUSTOMIZATION.md](docs/CUSTOMIZATION.md) and [MAINTENANCE.md](docs/MAINTENANCE.md).
+
+**Regression (humans & Cursor agents):** run **`scripts/run-regression-agent.sh`** and iterate with fixes until green — see [AGENTS.md](AGENTS.md) and [docs/AGENT-REGRESSION.md](docs/AGENT-REGRESSION.md). Full tier list: [docs/REGRESSION.md](docs/REGRESSION.md).
 
 ---
 
@@ -218,7 +234,7 @@ C4Container
 
 Full diagram set: [docs/c4-diagrams.md](docs/c4-diagrams.md).
 
-> **ArgoCD** is optional for local dev. In production, ArgoCD syncs the Helm chart per team via ApplicationSet. See [ArgoCD + Tekton architecture guide](docs/argocd-architecture-guide.md) and [argocd/applicationset.yaml](argocd/applicationset.yaml).
+> **ArgoCD** is optional for local dev. In a **production deployment**, ArgoCD syncs the Helm chart per team via ApplicationSet (separate from the validation cluster where pipelines run). See [ArgoCD + Tekton architecture guide](docs/argocd-architecture-guide.md), [Environments and clusters](docs/ENVIRONMENTS-AND-CLUSTERS.md), and [argocd/applicationset.yaml](argocd/applicationset.yaml).
 
 ---
 

@@ -1,5 +1,5 @@
-Output docs/demos/terminal/rendered/07-orchestrator-api.mp4
-Output docs/demos/terminal/rendered/07-orchestrator-api.gif
+Output terminal/rendered/07-orchestrator-api.mp4
+Output terminal/rendered/07-orchestrator-api.gif
 Set FontSize 14
 Set Width 1400
 Set Height 800

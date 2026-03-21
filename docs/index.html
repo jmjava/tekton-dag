@@ -35,9 +35,15 @@
             font-size: 1.1rem;
             opacity: 0.9;
         }
+        .section-title {
+            color: white;
+            font-size: 1.35rem;
+            margin: 2rem 0 1rem;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.15);
+        }
         .videos-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
             gap: 2rem;
             margin-bottom: 2rem;
         }
@@ -47,15 +53,22 @@
             padding: 1.5rem;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
+            scroll-margin-top: 1.5rem;
         }
         .video-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 15px 40px rgba(0,0,0,0.3);
         }
         .video-card h2 {
-            font-size: 1.5rem;
+            font-size: 1.35rem;
             margin-bottom: 0.5rem;
             color: #667eea;
+        }
+        .video-card .seg-id {
+            font-size: 0.8rem;
+            color: #999;
+            font-family: ui-monospace, monospace;
+            margin-bottom: 0.35rem;
         }
         .video-card p {
             color: #666;
@@ -89,9 +102,6 @@
             text-decoration: underline;
         }
         @media (max-width: 768px) {
-            .videos-grid {
-                grid-template-columns: 1fr;
-            }
             h1 {
                 font-size: 2rem;
             }
@@ -102,13 +112,15 @@
     <div class="container">
         <header>
             <h1>📹 tekton-dag Demo Videos</h1>
-            <p class="subtitle">Stack-aware CI/CD with traffic interception</p>
+            <p class="subtitle">Stack-aware CI/CD with traffic interception — 14 segments + full concat demos</p>
         </header>
 
+        <h2 class="section-title">Segments (01–14)</h2>
         <div class="videos-grid">
-            <div class="video-card">
-                <h2>Architecture Overview</h2>
-                <span class="duration">2m 40s</span>
+            <div class="video-card" id="seg-01">
+                <p class="seg-id">#seg-01</p>
+                <h2>01 — Architecture overview</h2>
+                <span class="duration">~2m 46s</span>
                 <p>System architecture, DAG model, polyglot support, pipelines, and extensibility features.</p>
                 <video controls preload="metadata">
                     <source src="demos/recordings/01-architecture.mp4" type="video/mp4">
@@ -116,9 +128,43 @@
                 </video>
             </div>
 
-            <div class="video-card">
-                <h2>Intercept Routing</h2>
-                <span class="duration">2m 4s</span>
+            <div class="video-card" id="seg-02">
+                <p class="seg-id">#seg-02</p>
+                <h2>02 — Quick start</h2>
+                <span class="duration">~1m 50s</span>
+                <p>Kind, Tekton, images, tasks (VHS terminal demo).</p>
+                <video controls preload="metadata">
+                    <source src="demos/recordings/02-quickstart.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+
+            <div class="video-card" id="seg-03">
+                <p class="seg-id">#seg-03</p>
+                <h2>03 — Bootstrap dataflow</h2>
+                <span class="duration">~2m 30s</span>
+                <p>Stack bootstrap PipelineRun walkthrough.</p>
+                <video controls preload="metadata">
+                    <source src="demos/recordings/03-bootstrap-dataflow.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+
+            <div class="video-card" id="seg-04">
+                <p class="seg-id">#seg-04</p>
+                <h2>04 — PR pipeline</h2>
+                <span class="duration">~2m 30s</span>
+                <p>PR flow, intercepts, tests (VHS).</p>
+                <video controls preload="metadata">
+                    <source src="demos/recordings/04-pr-pipeline.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+
+            <div class="video-card" id="seg-05">
+                <p class="seg-id">#seg-05</p>
+                <h2>05 — Intercept routing</h2>
+                <span class="duration">~2m 6s</span>
                 <p>PR vs normal traffic routing, header-based interception, and how both traffic paths coexist.</p>
                 <video controls preload="metadata">
                     <source src="demos/recordings/05-intercept-routing.mp4" type="video/mp4">
@@ -126,9 +172,10 @@
                 </video>
             </div>
 
-            <div class="video-card">
-                <h2>Local Debugging</h2>
-                <span class="duration">2m 0s</span>
+            <div class="video-card" id="seg-06">
+                <p class="seg-id">#seg-06</p>
+                <h2>06 — Local debugging</h2>
+                <span class="duration">~1m 57s</span>
                 <p>mirrord integration, IDE breakpoints, and live cluster debugging with real traffic.</p>
                 <video controls preload="metadata">
                     <source src="demos/recordings/06-local-debug.mp4" type="video/mp4">
@@ -136,12 +183,115 @@
                 </video>
             </div>
 
-            <div class="video-card">
-                <h2>Multi-Team Helm</h2>
-                <span class="duration">2m 4s</span>
+            <div class="video-card" id="seg-07">
+                <p class="seg-id">#seg-07</p>
+                <h2>07 — Orchestrator API</h2>
+                <span class="duration">~2m 14s</span>
+                <p>REST API, stacks, test plan, graph (VHS).</p>
+                <video controls preload="metadata">
+                    <source src="demos/recordings/07-orchestrator.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+
+            <div class="video-card" id="seg-08">
+                <p class="seg-id">#seg-08</p>
+                <h2>08 — Multi-team Helm</h2>
+                <span class="duration">~1m 59s</span>
                 <p>Helm chart deployment, team isolation, custom hooks, and management GUI.</p>
                 <video controls preload="metadata">
                     <source src="demos/recordings/08-multi-team-helm.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+
+            <div class="video-card" id="seg-09">
+                <p class="seg-id">#seg-09</p>
+                <h2>09 — Tekton Results</h2>
+                <span class="duration">~1m 40s</span>
+                <p>Results API and persisted history (VHS).</p>
+                <video controls preload="metadata">
+                    <source src="demos/recordings/09-results-db.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+
+            <div class="video-card" id="seg-10">
+                <p class="seg-id">#seg-10</p>
+                <h2>10 — Newman / regression</h2>
+                <span class="duration">~2m 0s</span>
+                <p>API tests and local test tiers (VHS).</p>
+                <video controls preload="metadata">
+                    <source src="demos/recordings/10-newman-tests.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+
+            <div class="video-card" id="seg-11">
+                <p class="seg-id">#seg-11</p>
+                <h2>11 — Test-trace graph</h2>
+                <span class="duration">~2m 0s</span>
+                <p>Blast radius, graph query, focused tests (mixed).</p>
+                <video controls preload="metadata">
+                    <source src="demos/recordings/11-test-trace-graph.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+
+            <div class="video-card" id="seg-12">
+                <p class="seg-id">#seg-12</p>
+                <h2>12 — Regression suite (M12.2)</h2>
+                <span class="duration">varies</span>
+                <p>What full regression covers: local tiers, cluster checks, and agent-oriented workflows.</p>
+                <video controls preload="metadata">
+                    <source src="demos/recordings/12-regression-suite.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+
+            <div class="video-card" id="seg-13">
+                <p class="seg-id">#seg-13</p>
+                <h2>13 — Management GUI architecture (M12.2)</h2>
+                <span class="duration">varies</span>
+                <p>Vue frontend, Flask API, and how they relate to the orchestrator and Tekton.</p>
+                <video controls preload="metadata">
+                    <source src="demos/recordings/13-management-gui-architecture.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+
+            <div class="video-card" id="seg-14">
+                <p class="seg-id">#seg-14</p>
+                <h2>14 — Extending the GUI for Tekton (M12.2)</h2>
+                <span class="duration">varies</span>
+                <p>Pattern for adding Tekton-backed screens and API routes safely.</p>
+                <video controls preload="metadata">
+                    <source src="demos/recordings/14-gui-tekton-extension.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+        </div>
+
+        <h2 class="section-title">Full concat demos</h2>
+        <div class="videos-grid">
+            <div class="video-card" id="full-demo">
+                <p class="seg-id">#full-demo</p>
+                <h2>Full demo (segments 01–11)</h2>
+                <span class="duration">concat</span>
+                <p>Single file concatenating the core M8 segment videos.</p>
+                <video controls preload="metadata">
+                    <source src="demos/recordings/full-demo.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+
+            <div class="video-card" id="full-demo-m12-2">
+                <p class="seg-id">#full-demo-m12-2</p>
+                <h2>Full demo + M12.2 (segments 01–14)</h2>
+                <span class="duration">concat</span>
+                <p>Extended concat including regression + GUI segments.</p>
+                <video controls preload="metadata">
+                    <source src="demos/recordings/full-demo-with-m12-2.mp4" type="video/mp4">
                     Your browser does not support the video tag.
                 </video>
             </div>
@@ -149,7 +299,8 @@
 
         <div class="footer">
             <p>All videos are generated programmatically from source files.</p>
-            <p><a href="https://github.com/jmjava/tekton-dag">View on GitHub</a> | <a href="milestones/milestone-8.md">Milestone 8 Details</a></p>
+            <p>Link to a segment: add <code style="background:rgba(0,0,0,0.2);padding:0.1rem 0.35rem;border-radius:4px;">#seg-01</code> … <code style="background:rgba(0,0,0,0.2);padding:0.1rem 0.35rem;border-radius:4px;">#seg-14</code> to this page URL.</p>
+            <p><a href="https://github.com/jmjava/tekton-dag">View on GitHub</a> | <a href="milestones/milestone-8.md">Milestone 8</a> | <a href="milestones/milestone-12.2.md">Milestone 12.2</a></p>
         </div>
     </div>
 </body>

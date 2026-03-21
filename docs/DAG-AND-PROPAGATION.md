@@ -94,3 +94,5 @@ So:
 | **“Which app has changes”** | The app whose PR triggered the run = the single **changed-app** (and thus in **build-apps**); that’s the app being intercepted for that run. |
 
 For sequence diagrams that show intercept scenarios (originator only, forwarder only, terminal only, or multiple intercepted), see [docs/c4-diagrams.md](c4-diagrams.md) (“Dynamic Diagram: PR Intercept Scenarios”).
+
+To implement propagation in application code and onboard a new stack, see [TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md](TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md).

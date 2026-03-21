@@ -1,5 +1,7 @@
 # M4 §1: Baggage middleware libraries (overview)
 
+> **Current guide:** For the catalog of standalone `libs/*` packages and a **team checklist** for new stacks, see [TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md](TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md).
+
 Each supported framework has **embedded** baggage middleware (W3C `x-dev-session` / baggage propagation) with all three roles (originator, forwarder, terminal) and production guards. Standalone, publishable libraries are planned in **Milestone 4.1**.
 
 ## Current state (embedded in app repos)

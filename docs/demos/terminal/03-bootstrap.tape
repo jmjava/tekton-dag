@@ -1,5 +1,5 @@
-Output docs/demos/terminal/rendered/03-bootstrap.mp4
-Output docs/demos/terminal/rendered/03-bootstrap.gif
+Output terminal/rendered/03-bootstrap.mp4
+Output terminal/rendered/03-bootstrap.gif
 Set FontSize 14
 Set Width 1400
 Set Height 800

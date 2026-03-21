@@ -1,5 +1,5 @@
-Output docs/demos/terminal/rendered/09-results-db.mp4
-Output docs/demos/terminal/rendered/09-results-db.gif
+Output terminal/rendered/09-results-db.mp4
+Output terminal/rendered/09-results-db.gif
 Set FontSize 14
 Set Width 1400
 Set Height 800

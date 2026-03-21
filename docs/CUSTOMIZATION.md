@@ -2,6 +2,8 @@
 
 Practical recipes for extending teams, stacks, build images, registries, pipelines, and intercept behavior. Examples use paths from the main **tekton-dag** platform repository.
 
+**New team or new stack from scratch?** See [TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md](TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md) for which **baggage / header-forwarding library** to use per language and an end-to-end **stack creation checklist** (YAML, Helm, orchestrator).
+
 ---
 
 ## 1. Add a new team
@@ -57,7 +59,8 @@ cp teams/squad-b/team.yaml helm/tekton-dag/raw/teams/squad-b/
 
 ## 2. Add an app to a stack
 
-**Goal:** Register another service in the DAG (build, image, tests, downstream edges).
+**Goal:** Register another service in the DAG (build, image, tests, downstream edges).  
+**Baggage:** add the matching library from `libs/` and set `propagation-role`—see [TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md](TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md).
 
 Edit or create a stack file under `stacks/`. Each entry under `apps` needs a unique `name`, `repo`, `role`, `build` tool settings, and optional `downstream` / `tests`:
 

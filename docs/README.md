@@ -10,8 +10,15 @@ This folder contains design, operations, and verification docs for the tekton-da
 | **Milestones (historical)** | [../milestones/completed/](../milestones/completed/) — M2, M3 |
 | **Archive (not maintained)** | [archive/](archive/) — obsolete session plans and similar |
 | **Customization & ops** | [CUSTOMIZATION.md](CUSTOMIZATION.md), [MAINTENANCE.md](MAINTENANCE.md) |
-| **Demo toolchain (M8)** | [demos/](demos/) — regenerate with `docs/demos/generate-all.sh`; see [milestones/milestone-8.md](../milestones/milestone-8.md) |
+| **Teams: stacks + baggage libs** | [TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md](TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md) — header libraries per runtime, new stack checklist |
+| **Demo toolchain (M8)** | [demos/](demos/) — [demos/README.md](demos/README.md), `generate-all.sh`; [milestones/milestone-8.md](../milestones/milestone-8.md) |
 | **GitHub Pages** | [GITHUB-PAGES.md](GITHUB-PAGES.md) — how the demo site is deployed; fix 404 |
+| **Illustrations & logo** | [assets/README.md](assets/README.md) — composite PNGs + **split panels** in `assets/panels/` for READMEs and demos |
+| **Agents / regression loop** | [AGENT-REGRESSION.md](AGENT-REGRESSION.md) — iterate until full regression green; [../AGENTS.md](../AGENTS.md) |
+| **Testing story (M12.2 B)** | [TESTING-AND-REGRESSION-OVERVIEW.md](TESTING-AND-REGRESSION-OVERVIEW.md) — layers, demo narration; [REGRESSION.md](REGRESSION.md) — commands |
+| **Shell scripts index** | [SCRIPTS.md](SCRIPTS.md) — every `scripts/*.sh` entrypoint; [../scripts/README.md](../scripts/README.md) — quick links |
+| **Management GUI extension** | [MANAGEMENT-GUI-EXTENSION.md](MANAGEMENT-GUI-EXTENSION.md) — Vue/Flask/Tekton pattern; [demos/segments-m12-2-regression-gui.md](demos/segments-m12-2-regression-gui.md) — video shot list |
+| **Clusters vs production** | [ENVIRONMENTS-AND-CLUSTERS.md](ENVIRONMENTS-AND-CLUSTERS.md) — validation / baseline vs production cluster wording |
 
 ## Active documents
 
@@ -20,6 +27,7 @@ This folder contains design, operations, and verification docs for the tekton-da
 | Document | Description |
 |----------|-------------|
 | [DAG-AND-PROPAGATION.md](DAG-AND-PROPAGATION.md) | Stack DAG model, propagation roles (originator, forwarder, terminal), intercept behavior |
+| [TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md](TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md) | Baggage libraries (`libs/*`) by framework; checklist for new stacks and team wiring |
 | [c4-diagrams.md](c4-diagrams.md) | C4 context/container diagrams: PR/merge flow, intercept scenarios, version lifecycle |
 | [PR-TEST-FLOW.md](PR-TEST-FLOW.md) | Valid PR test flow: create PR, run pipeline, merge |
 | [PR-WEBHOOK-TEST-FLOW.md](PR-WEBHOOK-TEST-FLOW.md) | Webhook-driven PR and merge trigger flow |

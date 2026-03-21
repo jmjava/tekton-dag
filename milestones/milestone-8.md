@@ -1,6 +1,6 @@
 # Milestone 8: Demo assets — programmatic recordings, animations, narrated presentations
 
-> **Partial.** Manim animations, OpenAI TTS narration, ffmpeg composition, and four composed segment videos are in place; [GitHub Pages](https://jmjava.github.io/tekton-dag/) hosts playable demos. VHS terminal recordings, Slidev PDF export, and full `full-demo.mp4` concat remain open (see success criteria below). Every asset is generated from source under `docs/demos/` and can be regenerated.
+> **Partial.** Manim animations, OpenAI TTS narration, ffmpeg composition, and four composed segment videos are in place; [GitHub Pages](https://jmjava.github.io/tekton-dag/) hosts playable demos. VHS terminal recordings, Slidev PDF export, and full `full-demo.mp4` concat remain open (see success criteria below). Every asset is generated from source under `docs/demos/` and can be regenerated. **Additional segments** (full regression walkthrough, Management GUI architecture/extension) are specified under [M12.2 Part B](milestone-12.2.md) — shot list: [demos/segments-m12-2-regression-gui.md](../docs/demos/segments-m12-2-regression-gui.md).
 
 ## Goal
 

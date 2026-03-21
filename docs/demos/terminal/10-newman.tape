@@ -1,5 +1,5 @@
-Output docs/demos/terminal/rendered/10-newman.mp4
-Output docs/demos/terminal/rendered/10-newman.gif
+Output terminal/rendered/10-newman.mp4
+Output terminal/rendered/10-newman.gif
 Set FontSize 14
 Set Width 1400
 Set Height 800

@@ -9,6 +9,13 @@ credentials.json
 
 # IDE
 .idea/
+.cursor/
+
+# Demo toolchain — regenerable outputs (Manim, VHS, local test runs)
+docs/demos/.venv/
+docs/demos/animations/media/
+docs/demos/terminal/rendered/
+docs/demos/test-results/
 # .vscode/ checked in for launch configs (intercept step-debug)
 *.swp
 *.swo

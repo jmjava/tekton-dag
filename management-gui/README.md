@@ -59,3 +59,5 @@ python3 -m pytest tests/ -v
 - **Tekton Dashboard embed** — quick deep-link / embed to the dashboard where configured.
 
 For deployment with the rest of the platform, use the **`helm/tekton-dag`** chart and its management-GUI values.
+
+**Extending the UI** (new Tekton-backed screens, API pattern): [docs/MANAGEMENT-GUI-EXTENSION.md](../docs/MANAGEMENT-GUI-EXTENSION.md).

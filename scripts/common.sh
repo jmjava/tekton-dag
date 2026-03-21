@@ -49,6 +49,37 @@ cleanup_port_forward() {
   fi
 }
 
+# ── TCP port prep (stale kubectl port-forward, dev servers, etc.) ─────
+# Usage: free_tcp_port <port> [<do_free>: 1=kill listeners (default), 0=skip]
+free_tcp_port() {
+  local port="$1"
+  local do_free="${2:-1}"
+  [[ "$do_free" == "0" ]] && return 0
+  local killed=false
+  if command -v fuser >/dev/null 2>&1; then
+    if fuser "${port}/tcp" >/dev/null 2>&1; then
+      echo "  [free_tcp_port] ${port}/tcp in use — fuser -k..."
+      fuser -k "${port}/tcp" >/dev/null 2>&1 || true
+      killed=true
+    fi
+  fi
+  if command -v lsof >/dev/null 2>&1; then
+    local pids
+    pids=$(lsof -ti ":${port}" -sTCP:LISTEN 2>/dev/null || true)
+    if [[ -n "$pids" ]]; then
+      echo "  [free_tcp_port] ${port}/tcp listener PIDs: $(echo "$pids" | tr '\n' ' ') — killing..."
+      while IFS= read -r pid; do
+        [[ "$pid" =~ ^[0-9]+$ ]] || continue
+        kill "$pid" 2>/dev/null || true
+      done <<< "$pids"
+      killed=true
+    fi
+  fi
+  if [[ "$killed" == "true" ]]; then
+    sleep 1
+  fi
+}
+
 # ── Registry helpers ─────────────────────────────────────────────────
 # Kind maps localhost:5001 (host) -> localhost:5000 (in-cluster).
 # Compile/pipeline image refs always use the in-cluster address.

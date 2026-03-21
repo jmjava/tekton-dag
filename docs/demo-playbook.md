@@ -16,6 +16,11 @@ Use this as a scene list. Each segment can be one short clip or part of a longer
 | 4 | **Local run + step-debug** | Run one app locally with mirrord (or Telepresence), attach IDE debugger, set breakpoint, send request with intercept header, step through code. | Develop and debug locally with real cluster traffic. |
 | 5 | **Tekton Results DB** | Install Results (or show already installed), run a pipeline, query the Results API (script or API call), show run history and status. | Pipeline history is stored and queryable. |
 | 6 | **End-to-end PR flow (optional)** | Open PR → pipeline runs → intercept deploys → tests pass → comment on PR; or use `run-valid-pr-flow.sh` and show key steps. | Full automation: PR → test → feedback. |
+| 7 | **Full regression (M12.2)** | Terminal: `run-regression-agent.sh` or `run-regression-stream.sh`; highlight Phase 2 PipelineRun + Newman + exit 0. | Scripted bar: unit + real Tekton + API tests. |
+| 8 | **Management GUI architecture** | Vue views, team-scoped `/api`, Flask → K8s; quick tour Trigger / Monitor / DAG. | Browser never holds cluster creds. |
+| 9 | **Extending GUI for Tekton** | Slide or split editor: `pipelines.py` + Pinia store pattern; checklist backend → store → view → E2E. | Repeatable pattern for new CRDs / logs / Results. |
+
+**M12.2 segment detail and asset names:** [demos/segments-m12-2-regression-gui.md](demos/segments-m12-2-regression-gui.md). **Narrative:** [TESTING-AND-REGRESSION-OVERVIEW.md](TESTING-AND-REGRESSION-OVERVIEW.md).
 
 ---
 

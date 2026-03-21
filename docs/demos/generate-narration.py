@@ -9,6 +9,10 @@ Usage:
     python generate-narration.py --dry-run       # show what would be generated
 
 Requires OPENAI_API_KEY in environment or ../.env file.
+
+Narration wording aligns with docs/ENVIRONMENTS-AND-CLUSTERS.md (baseline / validation
+cluster vs customer-facing production). After editing narration/*.md, re-run this script
+so audio/*.mp3 stays in sync, then re-compose affected segments.
 """
 
 import argparse

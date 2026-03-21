@@ -8,7 +8,7 @@ In the center, you see the demo stack: three services — a Vue front-end, a Spr
 
 The system is polyglot by design. A second stack in the repo demonstrates five services spanning npm, Maven, Gradle, Composer, and pip — all sharing the same pipeline infrastructure. Parameterized build images support Java 11, 17, and 21, Node 18, 20, and 22, Python 3.10 through 3.12, and PHP 8.1 through 8.3.
 
-Below the stack, three pipelines fan out. The bootstrap pipeline builds and deploys every service in the stack from scratch. The PR pipeline builds only the changed service, deploys it alongside production, and wires up traffic interception using either Telepresence or mirrord so the pull request build receives only tagged requests. The merge pipeline promotes the tested image to the main deployment with semantic version tagging.
+Below the stack, three pipelines fan out. The bootstrap pipeline builds and deploys every service in the stack from scratch. The PR pipeline builds only the changed service, deploys it alongside the existing baseline deployment in your validation cluster, and wires up traffic interception using either Telepresence or mirrord so the pull request build receives only tagged requests. The merge pipeline promotes the tested image to the mainline deployment with semantic version tagging — separate from shipping to a customer-facing production cluster, if that is another environment.
 
 Pipelines are also extensible. Teams can inject custom hook tasks — pre-build, post-build, pre-test, post-test — for things like image scanning, SBOM generation, or Slack notifications, without modifying the core pipeline definitions.
 

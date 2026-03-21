@@ -1,0 +1,420 @@
+{
+  "version": 1,
+  "description": "Cross-reference of split panel PNGs under docs/assets/panels/ to visual content and suggested documentation placement. Paths are relative to docs/assets/ (use as assets/panels/... from Markdown under docs/).",
+  "pathPrefix": "panels/",
+  "panels": [
+    {
+      "file": "tekton-dag-logo-2d.png",
+      "sourceComposite": "a_logo_for_tekton_dag_is_displayed_in_a_2d_digit.png",
+      "id": "logo-full-2d",
+      "content": {
+        "title": "Tekton-DAG (full logo)",
+        "summary": "Mascot (red ninja, yellow hard hat, wrench) behind a colored DAG diagram, framed by a gear; wordmark Tekton-DAG below.",
+        "keywords": ["logo", "branding", "DAG", "mascot", "wordmark", "gear"]
+      },
+      "suggestedPlacement": [
+        {
+          "relativeDoc": "README.md",
+          "section": "Top of root README or docs hero",
+          "rationale": "Primary project identity; use anywhere a full logo is appropriate."
+        },
+        {
+          "relativeDoc": "index.html",
+          "section": "GitHub Pages header / favicon-adjacent marketing",
+          "rationale": "High-recognition brand lockup."
+        }
+      ]
+    },
+    {
+      "file": "related-illustrations-four-01-tl.png",
+      "sourceComposite": "a_collection_of_four_digital_illustrations_related.png",
+      "gridPosition": "top-left",
+      "id": "related-robot-start-dag",
+      "content": {
+        "title": "Robot operator + pipeline from START to success",
+        "summary": "Robot at laptop; flowchart from green START through colored task blocks (gears) to checkmark finish; city/cloud background.",
+        "keywords": ["pipeline", "DAG", "START", "workflow", "CI/CD", "robot", "success"]
+      },
+      "suggestedPlacement": [
+        {
+          "relativeDoc": "PR-TEST-FLOW.md",
+          "section": "Intro or overview",
+          "rationale": "Shows end-to-end flow from trigger to completion."
+        },
+        {
+          "relativeDoc": "demo-playbook.md",
+          "section": "Narrative / demo story",
+          "rationale": "Friendly overview of running a pipeline."
+        }
+      ]
+    },
+    {
+      "file": "related-illustrations-four-02-tr.png",
+      "sourceComposite": "a_collection_of_four_digital_illustrations_related.png",
+      "gridPosition": "top-right",
+      "id": "related-dag-status-progress",
+      "content": {
+        "title": "Multi-level DAG + segmented progress bar",
+        "summary": "Hierarchical colored nodes (gear= icons) with dependencies; multi-color progress bar; robot points at status.",
+        "keywords": ["DAG", "dependencies", "status", "progress", "tasks", "orchestration"]
+      },
+      "suggestedPlacement": [
+        {
+          "relativeDoc": "DAG-AND-PROPAGATION.md",
+          "section": "Conceptual intro",
+          "rationale": "Visual for stacked tasks and dependency flow."
+        },
+        {
+          "relativeDoc": "TESTING-AND-REGRESSION-OVERVIEW.md",
+          "section": "Layers / execution overview",
+          "rationale": "Relates run status to graph shape."
+        }
+      ]
+    },
+    {
+      "file": "related-illustrations-four-03-bl.png",
+      "sourceComposite": "a_collection_of_four_digital_illustrations_related.png",
+      "gridPosition": "bottom-left",
+      "id": "related-terminal-and-dag",
+      "content": {
+        "title": "Terminal run status + background DAG",
+        "summary": "Foreground terminal with checkmarks and in-progress spinner; background workflow graph (gear nodes, colored states).",
+        "keywords": ["terminal", "execution", "live status", "DAG", "tasks", "checks"]
+      },
+      "suggestedPlacement": [
+        {
+          "relativeDoc": "REGRESSION.md",
+          "section": "What full regression shows",
+          "rationale": "Links concrete CLI/run output to logical pipeline graph."
+        },
+        {
+          "relativeDoc": "demos/README.md",
+          "section": "Toolchain overview",
+          "rationale": "Demos and recordings mirror 'definition vs run'."
+        }
+      ]
+    },
+    {
+      "file": "related-illustrations-four-04-br.png",
+      "sourceComposite": "a_collection_of_four_digital_illustrations_related.png",
+      "gridPosition": "bottom-right",
+      "id": "related-task-status-dashboard",
+      "content": {
+        "title": "Task status dashboard (A–E)",
+        "summary": "Robot points at UI with Task A Running, B Success, C Failed, D Completed, E Pending.",
+        "keywords": ["TaskRun", "status", "failed", "success", "pending", "running", "dashboard"]
+      },
+      "suggestedPlacement": [
+        {
+          "relativeDoc": "MANAGEMENT-GUI-EXTENSION.md",
+          "section": "UI patterns for run status",
+          "rationale": "Illustrates per-task states operators see in a GUI."
+        },
+        {
+          "relativeDoc": "milestone-8.md",
+          "section": "Demo / results storytelling",
+          "rationale": "Visual for pipeline outcome vocabulary."
+        }
+      ]
+    },
+    {
+      "file": "tekton-concepts-four-01-tl.png",
+      "sourceComposite": "a_set_of_four_digital_illustrations_related_to_te.png",
+      "gridPosition": "top-left",
+      "id": "concepts-getting-started-hero",
+      "content": {
+        "title": "Getting Started (ninja + laptop DAG)",
+        "summary": "Ninja engineer at desk with laptop showing DAG, manual with gears, tools; banner text 'Getting Started'.",
+        "keywords": ["getting started", "onboarding", "DAG", "laptop", "tutorial"]
+      },
+      "suggestedPlacement": [
+        {
+          "relativeDoc": "../README.md",
+          "section": "Quick start / first-time setup (repo root)",
+          "rationale": "Explicit 'Getting Started' label matches section intent."
+        },
+        {
+          "relativeDoc": "README.md",
+          "section": "Documentation index intro",
+          "rationale": "Sets tone for docs landing."
+        }
+      ]
+    },
+    {
+      "file": "tekton-concepts-four-02-tr.png",
+      "sourceComposite": "a_set_of_four_digital_illustrations_related_to_te.png",
+      "gridPosition": "top-right",
+      "id": "concepts-installation-hero",
+      "content": {
+        "title": "Installation",
+        "summary": "Ninja with servers, USB drives, download folder, progress arrows; banner 'Installation'.",
+        "keywords": ["installation", "setup", "servers", "download", "prerequisites"]
+      },
+      "suggestedPlacement": [
+        {
+          "relativeDoc": "CUSTOMIZATION.md",
+          "section": "Environment setup (if install-heavy)",
+          "rationale": "Visual for install/bootstrap topics."
+        },
+        {
+          "relativeDoc": "../README.md",
+          "section": "Installation / prerequisites",
+          "rationale": "Matches labeled section."
+        }
+      ]
+    },
+    {
+      "file": "tekton-concepts-four-03-bl.png",
+      "sourceComposite": "a_set_of_four_digital_illustrations_related_to_te.png",
+      "gridPosition": "bottom-left",
+      "id": "concepts-user-guide-hero",
+      "content": {
+        "title": "User Guide",
+        "summary": "Ninja behind open book: checklist page, DAG page, tools; banner 'User Guide'.",
+        "keywords": ["user guide", "checklist", "DAG", "documentation", "verification"]
+      },
+      "suggestedPlacement": [
+        {
+          "relativeDoc": "README.md",
+          "section": "Documentation map / how to read docs",
+          "rationale": "Meta illustration for 'using the docs'."
+        },
+        {
+          "relativeDoc": "TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md",
+          "section": "Checklists for new stacks",
+          "rationale": "Checklist + DAG matches onboarding narrative."
+        }
+      ]
+    },
+    {
+      "file": "tekton-concepts-four-04-br.png",
+      "sourceComposite": "a_set_of_four_digital_illustrations_related_to_te.png",
+      "gridPosition": "bottom-right",
+      "id": "concepts-api-documentation-hero",
+      "content": {
+        "title": "API Documentation",
+        "summary": "Ninja at laptop with DAG on screen, books, coffee, binary motif; banner 'API Documentation'.",
+        "keywords": ["API", "REST", "reference", "DAG", "developer docs"]
+      },
+      "suggestedPlacement": [
+        {
+          "relativeDoc": "MANAGEMENT-GUI-EXTENSION.md",
+          "section": "Backend routes / API surface",
+          "rationale": "Extension and API topics."
+        },
+        {
+          "relativeDoc": "README-FULL.md",
+          "section": "Deep-dive / integration APIs (if you add API sections there)",
+          "rationale": "API / reference tone; pair with real endpoint docs when they exist."
+        }
+      ]
+    },
+    {
+      "file": "infographic-nine-01-r1c1.png",
+      "sourceComposite": "a_set_of_nine_informational_and_illustrative_graph.png",
+      "gridPosition": "row1-col1",
+      "id": "info-getting-started-clean",
+      "content": {
+        "title": "Getting Started (light banner)",
+        "summary": "Title 'Getting Started'; small ninja with hard hat and wrench beside laptop showing code; gear silhouettes.",
+        "keywords": ["getting started", "quickstart", "code", "laptop", "onboarding"]
+      },
+      "suggestedPlacement": [
+        {
+          "relativeDoc": "README.md",
+          "section": "First steps / quick links",
+          "rationale": "Cleaner variant than four-panel 'Getting Started' for inline docs."
+        }
+      ]
+    },
+    {
+      "file": "infographic-nine-02-r1c2.png",
+      "sourceComposite": "a_set_of_nine_informational_and_illustrative_graph.png",
+      "gridPosition": "row1-col2",
+      "id": "info-installation-pip",
+      "content": {
+        "title": "Installation — pip install tekton-dag",
+        "summary": "Title 'Installation'; terminal window with command `$ pip install tekton-dag`.",
+        "keywords": ["pip", "install", "Python", "terminal", "setup"]
+      },
+      "suggestedPlacement": [
+        {
+          "relativeDoc": "README-FULL.md",
+          "section": "Python client / library install (if applicable)",
+          "rationale": "Exact command shown in art; only use if doc matches (adjust caption if package name differs)."
+        },
+        {
+          "relativeDoc": "../README.md",
+          "section": "Install subsection where pip is accurate",
+          "rationale": "Pair image with same command in text."
+        }
+      ]
+    },
+    {
+      "file": "infographic-nine-03-r1c3.png",
+      "sourceComposite": "a_set_of_nine_informational_and_illustrative_graph.png",
+      "gridPosition": "row1-col3",
+      "id": "info-user-guide-checklist-dag",
+      "content": {
+        "title": "User Guide (checklist + DAG board)",
+        "summary": "Title 'User Guide'; ninja reading book; clipboard checklist; five-node DAG diagram.",
+        "keywords": ["user guide", "checklist", "DAG", "procedures"]
+      },
+      "suggestedPlacement": [
+        {
+          "relativeDoc": "REGRESSION.md",
+          "section": "Before changing testing docs",
+          "rationale": "Checklist + graph fits verification discipline."
+        },
+        {
+          "relativeDoc": "PR-TEST-FLOW.md",
+          "section": "Step-by-step flow",
+          "rationale": "Procedure-oriented illustration."
+        }
+      ]
+    },
+    {
+      "file": "infographic-nine-04-r2c1.png",
+      "sourceComposite": "a_set_of_nine_informational_and_illustrative_graph.png",
+      "gridPosition": "row2-col1",
+      "id": "info-architecture-boxes",
+      "content": {
+        "title": "Architecture",
+        "summary": "Labeled boxes: Tekton-DAG → DAG Engine → Tekton Pipelines, Tasks, Local Runner; solid and dashed feedback arrows.",
+        "keywords": ["architecture", "DAG Engine", "Tekton Pipelines", "Tasks", "Local Runner", "orchestration"]
+      },
+      "suggestedPlacement": [
+        {
+          "relativeDoc": "c4-diagrams.md",
+          "section": "Container/context narrative",
+          "rationale": "Complements C4 text with stylized component view."
+        },
+        {
+          "relativeDoc": "m10-multi-team-architecture.md",
+          "section": "High-level overview",
+          "rationale": "Multi-component system story."
+        },
+        {
+          "relativeDoc": "DAG-AND-PROPAGATION.md",
+          "section": "System role of DAG vs runners",
+          "rationale": "Shows engine vs pipelines vs local execution."
+        }
+      ]
+    },
+    {
+      "file": "infographic-nine-05-r2c2.png",
+      "sourceComposite": "a_set_of_nine_informational_and_illustrative_graph.png",
+      "gridPosition": "row2-col2",
+      "id": "info-pipeline-flow",
+      "content": {
+        "title": "Pipeline Flow",
+        "summary": "Start → three parallel Task nodes → Merge → End; gear motif.",
+        "keywords": ["pipeline", "parallel", "merge", "synchronize", "DAG", "Tekton tasks"]
+      },
+      "suggestedPlacement": [
+        {
+          "relativeDoc": "PR-TEST-FLOW.md",
+          "section": "PR pipeline stages",
+          "rationale": "Classic fork/join pipeline story."
+        },
+        {
+          "relativeDoc": "demo-playbook.md",
+          "section": "Segment outlines for pipeline demos",
+          "rationale": "Matches narration about linear + parallel steps."
+        }
+      ]
+    },
+    {
+      "file": "infographic-nine-06-r2c3.png",
+      "sourceComposite": "a_set_of_nine_informational_and_illustrative_graph.png",
+      "gridPosition": "row2-col3",
+      "id": "info-local-execution",
+      "content": {
+        "title": "Local Execution",
+        "summary": "Title 'Local Execution'; ninja at laptop with server racks and gears.",
+        "keywords": ["local", "developer machine", "Kind", "debug", "run locally"]
+      },
+      "suggestedPlacement": [
+        {
+          "relativeDoc": "local-dag-verification-plan.md",
+          "section": "Local verification",
+          "rationale": "Emphasizes on-machine runs."
+        },
+        {
+          "relativeDoc": "ENVIRONMENTS-AND-CLUSTERS.md",
+          "section": "Local vs cluster",
+          "rationale": "Distinguishes local execution from production cluster."
+        }
+      ]
+    },
+    {
+      "file": "infographic-nine-07-r3c1.png",
+      "sourceComposite": "a_set_of_nine_informational_and_illustrative_graph.png",
+      "gridPosition": "row3-col1",
+      "id": "info-examples-build-test",
+      "content": {
+        "title": "Examples (Build / Test)",
+        "summary": "Ninja at whiteboard: Build Python + green bar; Test list with status squares.",
+        "keywords": ["examples", "build", "test", "Python", "CI"]
+      },
+      "suggestedPlacement": [
+        {
+          "relativeDoc": "demo-playbook.md",
+          "section": "Example repos / stacks",
+          "rationale": "Build+test examples narrative."
+        },
+        {
+          "relativeDoc": "TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md",
+          "section": "Per-stack build/test expectations",
+          "rationale": "Concrete workflow examples."
+        }
+      ]
+    },
+    {
+      "file": "infographic-nine-08-r3c2.png",
+      "sourceComposite": "a_set_of_nine_informational_and_illustrative_graph.png",
+      "gridPosition": "row3-col2",
+      "id": "info-cicd-integration",
+      "content": {
+        "title": "CI/CD Integration",
+        "summary": "GitHub → Docker ← layered stack icon; ninja at laptop; gears.",
+        "keywords": ["GitHub", "Docker", "CI/CD", "integration", "automation"]
+      },
+      "suggestedPlacement": [
+        {
+          "relativeDoc": "argocd-architecture-guide.md",
+          "section": "GitOps / delivery path",
+          "rationale": "Source + image + deploy stack story."
+        },
+        {
+          "relativeDoc": "PR-WEBHOOK-TEST-FLOW.md",
+          "section": "Webhook and external systems",
+          "rationale": "External tool integration."
+        }
+      ]
+    },
+    {
+      "file": "infographic-nine-09-r3c3.png",
+      "sourceComposite": "a_set_of_nine_informational_and_illustrative_graph.png",
+      "gridPosition": "row3-col3",
+      "id": "info-horizontal-wordmark-banner",
+      "content": {
+        "title": "Tekton-DAG horizontal banner",
+        "summary": "Chibi ninja + wrench; wordmark Tekton-DAG; small three-node DAG icon.",
+        "keywords": ["logo", "banner", "wordmark", "compact branding"]
+      },
+      "suggestedPlacement": [
+        {
+          "relativeDoc": "index.html",
+          "section": "Footer or compact header strip",
+          "rationale": "Wide aspect fits horizontal slots; smaller than full 1024 logo."
+        },
+        {
+          "relativeDoc": "GITHUB-PAGES.md",
+          "section": "Site branding note",
+          "rationale": "Optional illustration for Pages doc."
+        }
+      ]
+    }
+  ]
+}

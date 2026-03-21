@@ -2,7 +2,8 @@
 # Promote pipeline/task/trigger YAML from one namespace to another.
 #
 # This is a manual, deliberate step — the operator decides when a pipeline
-# version is ready for production.
+# version is ready to promote (e.g. from a validation namespace to a
+# production-facing Tekton namespace or another cluster).
 #
 # Usage:
 #   ./promote-pipelines.sh --from tekton-test --to tekton-pipelines

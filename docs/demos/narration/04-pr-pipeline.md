@@ -8,10 +8,10 @@ The pipeline starts with fetch-source — cloning the platform repo to get the s
 
 The pr-snapshot-tag task generates a unique image tag for this PR build so it never collides with real releases. Then build-select-tool-apps routes the changed app to the correct compile task — Maven, Gradle, npm, pip, or Composer — running inside the appropriate build image. Kaniko containerizes the result and pushes it to the registry, with optional cache-repo support for faster rebuilds.
 
-Now the interesting part. The pipeline deploys a parallel instance of the changed service — the PR build runs alongside the existing production deployment. It then configures traffic interception using Telepresence or mirrord so that any request carrying the header x-dev-session equal to this PR number gets routed to the new build.
+Now the interesting part. The pipeline deploys a parallel instance of the changed service — the PR build runs alongside the existing baseline deployment in the cluster where you validate changes, not in your separate production cluster. It then configures traffic interception using Telepresence or mirrord so that any request carrying the header x-dev-session equal to this PR number gets routed to the new build.
 
-The validate-propagation task confirms the header travels correctly through the entire chain. Validate-original-traffic confirms that requests without the header still reach production pods. Then query-test-plan calls the orchestrator to ask the Neo4j graph which tests are relevant for the changed app. Run-tests executes only those tests, with the PR header injected.
+The validate-propagation task confirms the header travels correctly through the entire chain. Validate-original-traffic confirms that requests without the header still reach the baseline pods. Then query-test-plan calls the orchestrator to ask the Neo4j graph which tests are relevant for the changed app. Run-tests executes only those tests, with the PR header injected.
 
 In the finally block, the pipeline cleans up PR pods and posts a comment to the GitHub PR with the test summary and a link to the Tekton Dashboard run. If tests passed, a version-bump task records the release candidate.
 
-If tests pass, the PR is safe to merge. If they fail, only the PR traffic was affected — production remains untouched.
+If tests pass, the PR is safe to merge. If they fail, only the PR traffic was affected — baseline traffic and your production cluster stay out of the blast radius.

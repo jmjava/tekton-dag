@@ -6,7 +6,7 @@ GET /api/stacks returns every stack the system knows about — stack-one with it
 
 Now the interesting part. POST /api/run accepts a mode — pr, bootstrap, or merge — along with the stack name, changed app, and PR number. The orchestrator resolves the stack YAML, builds a complete PipelineRun manifest with all the correct parameters — image registry, compile images, intercept backend, version overrides — and submits it to the Kubernetes API.
 
-POST /webhook/github is the production entry point. When GitHub sends a pull request event, the orchestrator extracts the repo name, looks it up in the registry mapping to find the containing stack, determines the changed app, and triggers the appropriate pipeline. All automatic, no manual intervention.
+POST /webhook/github is the webhook URL GitHub calls — the orchestrator endpoint exposed on whichever cluster hosts your automation, typically validation or CI, not your separate production cluster. When GitHub sends a pull request event, the orchestrator extracts the repo name, looks it up in the registry mapping to find the containing stack, determines the changed app, and triggers the appropriate pipeline. All automatic, no manual intervention.
 
 The orchestrator also bridges to the test-trace graph. GET /api/test-plan takes a changed app name and a blast radius, queries Neo4j for the relevant tests, and returns the test plan. POST /api/graph/ingest loads trace data — which services called which during a test run — into the Neo4j graph. GET /api/graph/stats returns the current node and edge counts.
 
