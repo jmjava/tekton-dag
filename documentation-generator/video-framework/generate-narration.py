@@ -11,12 +11,16 @@ Usage:
 Requires OPENAI_API_KEY (environment or .env — see load_env).
 
 Portable copy (tekton-dag documentation-generator). Lives beside narration/ and audio/.
+
+Markdown may include titles and editor notes; only speakable body is sent to TTS (see
+markdown_to_tts_plain).
 """
 
 from __future__ import annotations
 
 import argparse
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -59,13 +63,74 @@ def get_narration_files(segment_filter: str | None = None):
     return files
 
 
+def _extract_script_section(markdown: str) -> str:
+    text = markdown.strip()
+    match = re.search(r"^##\s+Script[^\n]*\n", text, flags=re.MULTILINE | re.IGNORECASE)
+    if not match:
+        return text
+    rest = text[match.end() :]
+    next_heading = re.search(r"^##\s+\S", rest, flags=re.MULTILINE)
+    if next_heading:
+        rest = rest[: next_heading.start()]
+    return rest.strip()
+
+
+def _inline_markdown_to_plain(line: str) -> str:
+    line = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", line)
+    line = re.sub(r"`([^`]+)`", r"\1", line)
+    line = re.sub(r"\*\*([^*]+)\*\*", r"\1", line)
+    line = re.sub(r"(?<!\*)\*([^*]+)\*(?!\*)", r"\1", line)
+    return line.strip()
+
+
+def markdown_to_tts_plain(markdown: str) -> str:
+    """Strip markdown and optional '## Script' wrapper so TTS only speaks the script."""
+    body = _extract_script_section(markdown)
+    out_lines: list[str] = []
+    for raw_line in body.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        if re.match(r"^#{1,6}\s", line):
+            continue
+        if re.search(r"(?i)target duration", line) and "**" in line:
+            continue
+        if re.search(r"(?i)\*\*visual\*\*\s*:", line) or re.search(
+            r"(?i)^\*\*visual\*\*", line
+        ):
+            continue
+        if line.startswith("*(") or line.startswith("(*"):
+            continue
+        if re.match(r"^\*\([^)]+\)\*$", line):
+            continue
+        if line in ("---", "***", "- - -"):
+            continue
+        line = re.sub(r"^\d+\.\s+", "", line)
+        line = re.sub(r"^[-*]\s+", "", line)
+        line = _inline_markdown_to_plain(line)
+        if not line:
+            continue
+        out_lines.append(line)
+    text = "\n\n".join(out_lines)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
 def generate_audio(narration_file: Path, output_path: Path, dry_run: bool = False) -> bool:
-    text = narration_file.read_text().strip()
-    if not text:
+    raw = narration_file.read_text().strip()
+    if not raw:
         print(f"  SKIP {narration_file.name} (empty)")
         return False
 
-    print(f"  {narration_file.name} → {output_path.name} ({len(text)} chars)")
+    text = markdown_to_tts_plain(raw)
+    if not text:
+        print(f"  SKIP {narration_file.name} (no speakable text after markdown strip)")
+        return False
+
+    print(
+        f"  {narration_file.name} → {output_path.name} "
+        f"({len(text)} chars TTS, {len(raw)} raw)"
+    )
     if dry_run:
         return True
 

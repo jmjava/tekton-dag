@@ -9,13 +9,15 @@ cd docs/demos
 ./generate-all.sh
 ```
 
+**M12.2 only (new TTS for 12–14, re-compose, rebuild `full-demo-with-m12-2.mp4`):** [`./regenerate-m12-2.sh`](regenerate-m12-2.sh) — one command, no copy-paste.
+
 **Prerequisites:** see header comments in [`generate-all.sh`](generate-all.sh) (Python venv + Manim, **VHS + ttyd**, ffmpeg, `OPENAI_API_KEY` for TTS).
 
 Terminology for **which cluster is “production”** vs **validation / baseline** is documented in [`../ENVIRONMENTS-AND-CLUSTERS.md`](../ENVIRONMENTS-AND-CLUSTERS.md); narration in `narration/*.md` follows that model.
 
 ## Narration → TTS audio
 
-Spoken audio is generated from `narration/*.md` by [`generate-narration.py`](generate-narration.py). **Editing those Markdown files does not change existing MP3s** until you re-run TTS, for example:
+Spoken audio is generated from `narration/*.md` by [`generate-narration.py`](generate-narration.py). The script **strips Markdown** (headings, bold, backticks, links) and, if the file has a `## Script` section (M12.2 segments 12–14), sends **only that section** to TTS — not the title line or “Target duration / Visual” notes. **Editing those Markdown files does not change existing MP3s** until you re-run TTS, for example:
 
 ```bash
 cd docs/demos && source .venv/bin/activate

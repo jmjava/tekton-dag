@@ -13,10 +13,15 @@ Requires OPENAI_API_KEY in environment or ../.env file.
 Narration wording aligns with docs/ENVIRONMENTS-AND-CLUSTERS.md (baseline / validation
 cluster vs customer-facing production). After editing narration/*.md, re-run this script
 so audio/*.mp3 stays in sync, then re-compose affected segments.
+
+Markdown source files may include titles and editor notes (e.g. **Target duration**,
+## Script). Only the speakable body is sent to TTS — never headings like "Narration —
+Segment 12" or stage directions meant for humans.
 """
 
 import argparse
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -53,13 +58,77 @@ def get_narration_files(segment_filter=None):
     return files
 
 
+def _extract_script_section(markdown: str) -> str:
+    """If the file has a '## Script' heading, return only that section; else full text."""
+    text = markdown.strip()
+    match = re.search(r"^##\s+Script[^\n]*\n", text, flags=re.MULTILINE | re.IGNORECASE)
+    if not match:
+        return text
+    rest = text[match.end() :]
+    next_heading = re.search(r"^##\s+\S", rest, flags=re.MULTILINE)
+    if next_heading:
+        rest = rest[: next_heading.start()]
+    return rest.strip()
+
+
+def _inline_markdown_to_plain(line: str) -> str:
+    line = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", line)
+    line = re.sub(r"`([^`]+)`", r"\1", line)
+    line = re.sub(r"\*\*([^*]+)\*\*", r"\1", line)
+    line = re.sub(r"(?<!\*)\*([^*]+)\*(?!\*)", r"\1", line)
+    return line.strip()
+
+
+def markdown_to_tts_plain(markdown: str) -> str:
+    """
+    Turn narration markdown into plain text safe for TTS (no titles, meta, or md syntax).
+    """
+    body = _extract_script_section(markdown)
+    out_lines: list[str] = []
+    for raw_line in body.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        if re.match(r"^#{1,6}\s", line):
+            continue
+        if re.search(r"(?i)target duration", line) and "**" in line:
+            continue
+        if re.search(r"(?i)\*\*visual\*\*\s*:", line) or re.search(
+            r"(?i)^\*\*visual\*\*", line
+        ):
+            continue
+        if line.startswith("*(") or line.startswith("(*"):
+            continue
+        if re.match(r"^\*\([^)]+\)\*$", line):
+            continue
+        if line in ("---", "***", "- - -"):
+            continue
+        line = re.sub(r"^\d+\.\s+", "", line)
+        line = re.sub(r"^[-*]\s+", "", line)
+        line = _inline_markdown_to_plain(line)
+        if not line:
+            continue
+        out_lines.append(line)
+    text = "\n\n".join(out_lines)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
 def generate_audio(narration_file, output_path, dry_run=False):
-    text = narration_file.read_text().strip()
-    if not text:
+    raw = narration_file.read_text().strip()
+    if not raw:
         print(f"  SKIP {narration_file.name} (empty)")
         return False
 
-    print(f"  {narration_file.name} → {output_path.name} ({len(text)} chars)")
+    text = markdown_to_tts_plain(raw)
+    if not text:
+        print(f"  SKIP {narration_file.name} (no speakable text after markdown strip)")
+        return False
+
+    print(
+        f"  {narration_file.name} → {output_path.name} "
+        f"({len(text)} chars TTS, {len(raw)} raw)"
+    )
     if dry_run:
         return True
 

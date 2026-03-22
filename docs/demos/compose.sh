@@ -4,7 +4,7 @@
 # Usage:
 #   ./compose.sh              # compose core segments 01–11 (default)
 #   ./compose.sh 01 03 05     # compose specific segments
-#   ./compose.sh 12 13 14     # M12.2 extension (illustration panels + narration; see generate-all.sh)
+#   ./compose.sh 12 13 14     # M12.2 extension (Manim + narration; or ./regenerate-m12-2.sh for TTS+compose+full concat)
 #
 # full-demo.mp4 is built when all 11 core segment MP4s exist. For optional
 # full-demo-with-m12-2.mp4 (segments 01–14), run docs/demos/generate-all.sh
@@ -41,9 +41,7 @@ VISUAL_MAP[08]="manim:MultiTeamScene.mp4"
 VISUAL_MAP[09]="vhs:09-results-db.mp4"
 VISUAL_MAP[10]="vhs:10-newman.mp4"
 VISUAL_MAP[11]="mixed:BlastRadiusScene.mp4:11-graph-tests.mp4"
-# M12.2 extension — static illustrations (repo docs/assets/panels) + narration.
-# Paths are relative to docs/demos/. Swap files or use vhs:… after real screen capture.
-# See docs/assets/panels-index.json for what each panel depicts.
+# M12.2 extension — Manim scenes (RegressionSuiteScene, …) + TTS. See regenerate-m12-2.sh.
 VISUAL_MAP[12]="manim:RegressionSuiteScene.mp4"
 VISUAL_MAP[13]="manim:ManagementGUIArchitectureScene.mp4"
 VISUAL_MAP[14]="manim:GUIExtensionScene.mp4"
