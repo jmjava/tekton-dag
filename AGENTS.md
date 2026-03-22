@@ -2,6 +2,8 @@
 
 ## Regression — iterate until complete
 
+Full **`run-regression*.sh`** is a **system / integration** suite for this repo (cluster-backed tiers optional). It is **not** the same as “every test on every application pull request” — see [docs/REGRESSION.md](docs/REGRESSION.md) for PR vs platform scope.
+
 Do **not** stop after a single partial test run. Follow **[docs/AGENT-REGRESSION.md](docs/AGENT-REGRESSION.md)**:
 
 - Run **`bash scripts/run-regression-agent.sh`** (or **`run-regression-agent-full.sh`** if Results + DB must pass).

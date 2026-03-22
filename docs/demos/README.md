@@ -1,5 +1,7 @@
 # Demo video toolchain (M8 / M12.2)
 
+**Portable copy** for other repos: [`../../documentation-generator/video-framework/`](../../documentation-generator/video-framework/) (+ [`../../documentation-generator/example-demo-bundle/`](../../documentation-generator/example-demo-bundle/)). Canonical scripts stay here; refresh the copy when the framework changes.
+
 Regenerate narration, animations, terminal recordings, and composed MP4s:
 
 ```bash

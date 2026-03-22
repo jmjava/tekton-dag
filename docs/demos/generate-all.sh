@@ -84,10 +84,10 @@ if [[ "$DRY_RUN" == "true" ]]; then
     echo ""
     echo "Steps that would run:"
     [[ "$SKIP_TTS" != "true" ]] && echo "  1. Generate narration audio (14 segments via OpenAI TTS: 01–11 core + 12–14 M12.2)"
-    [[ "$SKIP_MANIM" != "true" ]] && echo "  2. Render Manim animations (6 scenes)"
-    [[ "$SKIP_VHS" != "true" ]] && echo "  3. Render VHS terminal recordings (all .tape files under terminal/, including 12–14 M12.2)"
+    [[ "$SKIP_MANIM" != "true" ]] && echo "  2. Render Manim animations (9 scenes)"
+    [[ "$SKIP_VHS" != "true" ]] && echo "  3. Render VHS terminal recordings (all .tape under terminal/; 12–14 tapes optional — compose uses stills unless VISUAL_MAP changed)"
     echo "  4. Compose core demo videos 01–11 (ffmpeg → recordings/)"
-    echo "  5. Compose M12.2 extension 12–14 (VHS + narration)"
+    echo "  5. Compose M12.2 extension 12–14 (panel illustrations + narration; see compose.sh VISUAL_MAP)"
     echo "  6. If all 14 segment MP4s exist: concat → full-demo-with-m12-2.mp4"
     echo ""
     echo "Would produce: core 11 + optional 3 segment videos; full-demo.mp4 (01–11);"
@@ -107,7 +107,7 @@ fi
 if [[ "$SKIP_MANIM" != "true" ]]; then
     step "Render Manim animations"
     cd "$DEMOS_DIR/animations"
-    SCENES=(StackDAGScene HeaderPropagationScene InterceptRoutingScene LocalDebugScene MultiTeamScene BlastRadiusScene)
+    SCENES=(StackDAGScene HeaderPropagationScene InterceptRoutingScene LocalDebugScene MultiTeamScene BlastRadiusScene RegressionSuiteScene ManagementGUIArchitectureScene GUIExtensionScene)
     for scene in "${SCENES[@]}"; do
         info "Rendering $scene..."
         manim -qm scenes.py "$scene"
@@ -133,7 +133,7 @@ fi
 step "Compose core demo videos 01–11 (ffmpeg)"
 bash "$DEMOS_DIR/compose.sh"
 
-# ── Step 5: M12.2 extension segments (VHS + TTS) ────────────────────
+# ── Step 5: M12.2 extension segments (image panels + TTS by default) ───
 step "Compose M12.2 extension segments 12–14"
 bash "$DEMOS_DIR/compose.sh" 12 13 14
 

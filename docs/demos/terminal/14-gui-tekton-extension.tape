@@ -4,18 +4,18 @@ Set FontSize 14
 Set Width 1400
 Set Height 800
 Set Theme "Dracula"
-Set TypingSpeed 40ms
+Set TypingSpeed 35ms
 Set Padding 20
 
 Type "# Extending the GUI for more Tekton (M12.2)"
 Enter
 Sleep 500ms
 
-Type "# Pattern: Flask blueprint + k8s_client -> Pinia store -> Vue view"
+Type "# Pattern: route → k8s_client → JSON → Pinia → Vue view"
 Enter
 Sleep 700ms
 
-Type "# --- management-gui/backend/routes/pipelines.py (excerpt) ---"
+Type "# --- backend: Flask blueprint (excerpt) ---"
 Enter
 Sleep 300ms
 Type "from flask import Blueprint, jsonify, request"
@@ -24,29 +24,43 @@ Type "import k8s_client"
 Enter
 Type "bp = Blueprint('pipelines', __name__)"
 Enter
-Type ""
+Sleep 400ms
+Type "@bp.get('/pipelineruns')"
 Enter
-Type "def _resolve_team(team_name):"
+Type "def list_runs(team):"
 Enter
-Type "    # Look up team and return (context, namespace)"
+Type "    ns = _resolve_team(team)"
 Enter
-Sleep 500ms
+Type "    return jsonify(k8s_client.list_pipelineruns(ns))"
+Enter
+Sleep 600ms
 
 Type ""
 Enter
-Type "# --- management-gui/frontend/src/stores/runs.js (excerpt) ---"
+Type "# --- frontend: store calls team-scoped API ---"
 Enter
 Sleep 300ms
 Type "import { get, teamUrl } from '@/api/client'"
 Enter
-Type "..."
+Type "export const useRunsStore = defineStore('runs', {"
 Enter
-Type "const data = await get(teamUrl('/pipelineruns?limit=50'))"
+Type "  async fetchRuns() {"
 Enter
-Sleep 500ms
+Type "    const data = await get(teamUrl('/pipelineruns?limit=50'))"
+Enter
+Type "    this.items = data.items"
+Enter
+Type "  }"
+Enter
+Type "})"
+Enter
+Sleep 600ms
 
 Type ""
 Enter
-Type "# Checklist: pytest for routes, Playwright for UI, mock k8s in CI"
+Type "# Quality bar: pytest routes · Playwright E2E · mock k8s in CI"
 Enter
-Sleep 3s
+Sleep 500ms
+Type "# Ship small PRs: schema + API + store + view + one E2E"
+Enter
+Sleep 6s

@@ -4,6 +4,17 @@ Single entrypoint: **`scripts/run-regression.sh`** (see `--help`). Run when gree
 
 **Cursor / agents:** follow **[AGENT-REGRESSION.md](AGENT-REGRESSION.md)** — run **`scripts/run-regression-agent.sh`** (or **`run-regression-agent-full.sh`**) and **iterate with fixes until exit 0**, not a single partial run. Repo **[AGENTS.md](../AGENTS.md)** points here.
 
+## Application PR pipeline vs platform (system) regression
+
+Do **not** confuse these:
+
+| Scope | What runs | Typical trigger |
+|-------|-----------|-----------------|
+| **Application PR** (`stack-pr-test` on an **app** repo) | Stack-defined tests only — e.g. that app’s Newman/Playwright/Artillery as declared in `stacks/*.yaml`, against the intercept build. | Every PR on the **application** repository (when webhooks/Tekton are wired). |
+| **Platform regression** (`scripts/run-regression*.sh` on **this** repo) | **System / integration** tiers: Phase 1 + orchestrator + shared libs + GUI pytest, Playwright for **management-gui**, real **`stack-dag-verify`** PipelineRun, Newman against **orchestrator** API, optional Tekton Results, optional Kind E2E. | **Manual**, **scheduled**, **pre-release**, or **agent loop** — **not** “automatically on every pull request” unless *you* add GitHub Actions (or similar) to do so. |
+
+So: **not all tests run on every PR.** The full regression driver is a **system test** bar for the platform; app PRs run a narrower, stack-scoped test stage.
+
 **Streaming / timestamps:** use **`scripts/run-regression-stream.sh`** — same arguments, prefixes each line with `[HH:MM:SS]` and preserves the real exit code (plain `| while read` does not).
 
 **Port-forward prep:** [common.sh](../scripts/common.sh) defines **`free_tcp_port`**. Regression (**[run-regression.sh](../scripts/run-regression.sh)**) runs a **prep** step when `kubectl` works: frees **`ORCHESTRATOR_TEST_PORT`** (default **9091**) and **`RESULTS_API_LOCAL_PORT`** (default **8080**). Set **`REGRESSION_FREE_PORTS=0`** to skip that prep. [run-orchestrator-tests.sh](../scripts/run-orchestrator-tests.sh) also frees the orchestrator local port; [verify-results-in-db.sh](../scripts/verify-results-in-db.sh) frees **8080** (or **`RESULTS_API_LOCAL_PORT`**) before forwarding the Results API.
@@ -77,11 +88,11 @@ Environment:
 - `REGRESSION_DAG_VERIFY=auto|skip|yes`
 - `DAG_VERIFY_TIMEOUT` — seconds passed to `verify-dag-phase2.sh` `--timeout` (default **300** in regression).
 
-## Suggested “complete regression” before doc work
+## Suggested regression cadence (not all on every PR)
 
-1. `./scripts/run-regression.sh --local-only` on every commit / PR.
-2. On a cluster with Tekton + orchestrator: **`./scripts/run-regression.sh --cluster --require-dag-verify`** (ensures at least one **Succeeded** `stack-dag-verify` run, not only Newman side-effects).
-3. With Tekton Results: `--with-results-verify` or rely on **auto** when the API exists.
-4. `--kind-e2e` when changing bootstrap, intercepts, or Results integration.
+1. **Often (fast, no cluster):** `./scripts/run-regression.sh --local-only` — Phase 1 + pytest + vitest; good for frequent pushes; safe to wire into lightweight CI.
+2. **System bar (cluster):** **`./scripts/run-regression.sh --cluster --require-dag-verify`** when you need a real **Succeeded** `stack-dag-verify` and orchestrator Newman — treat as **integration / system** work: before releases, after big platform changes, on a schedule, or when agents/docs require proof — **not** as “must pass on every GitHub PR” unless you explicitly configure that.
+3. **With Tekton Results:** `--with-results-verify` or rely on **auto** when the API exists.
+4. **Kind E2E:** `--kind-e2e` when changing bootstrap, intercepts, or Results integration (heavy; occasional).
 
 After the tiers you care about are green, update [milestones/milestone-8.md](../milestones/milestone-8.md) and related testing docs.

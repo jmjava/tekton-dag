@@ -4,35 +4,50 @@ Set FontSize 14
 Set Width 1400
 Set Height 800
 Set Theme "Dracula"
-Set TypingSpeed 40ms
+Set TypingSpeed 35ms
 Set Padding 20
 
 Type "# Management GUI architecture (M12.2)"
 Enter
 Sleep 500ms
 
-Type "# Browser -> Vue SPA -> /api/* -> Flask -> Kubernetes API"
+Type "# Trust boundary: browser never holds kubeconfig or tokens"
 Enter
-Type "# Cluster credentials never leave the backend"
+Sleep 500ms
+Type "# Browser → Vue SPA → /api/* → Flask → Kubernetes API"
 Enter
-Sleep 800ms
+Sleep 700ms
 
-Type "# layout: management-gui/"
+Type ""
+Enter
+Type "# Repo layout"
 Enter
 Sleep 300ms
 Type "management-gui/"
 Enter
-Type "├── backend/     # Flask + k8s client"
+Type "├── backend/          # Flask, Gunicorn, k8s python client"
 Enter
-Type "├── frontend/    # Vue 3 + Pinia + Vue Flow"
+Type "├── frontend/         # Vue 3, Vite, Pinia, Vue Flow"
 Enter
-Type "└── README.md"
+Type "└── tests/            # pytest + Playwright + Postman"
 Enter
 Sleep 600ms
 
 Type ""
 Enter
-Type "# Example: team-scoped PipelineRuns JSON"
+Type "# Team switcher → backend resolves context + namespace"
+Enter
+Sleep 500ms
+Type "# $ curl -s localhost:5000/api/teams | head -c 80"
+Enter
+Sleep 600ms
+Type '{"teams":["alpha","beta"],"active":"alpha"}...'
+Enter
+Sleep 600ms
+
+Type ""
+Enter
+Type "# Example: scoped PipelineRuns (truncated JSON)"
 Enter
 Sleep 400ms
 Type '{"items":[{"name":"stack-one-pr-42","status":"Succeeded"}]}'
@@ -41,6 +56,9 @@ Sleep 500ms
 
 Type ""
 Enter
-Type "# Views: Trigger, Monitor, DAG — each maps to operator workflows"
+Type "# Operator flows: Trigger run · Monitor TaskRuns · Inspect DAG"
 Enter
-Sleep 3s
+Sleep 500ms
+Type "# Network tab shows only same-origin /api — no direct cluster calls"
+Enter
+Sleep 5s

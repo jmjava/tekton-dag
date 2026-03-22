@@ -2,6 +2,8 @@
 
 Shot list and narration beats for **new** videos (or M8 pipeline add-ons). Produce assets with the same toolchain as [milestone-8.md](../../milestones/milestone-8.md) (`docs/demos/generate-all.sh`, Manim/TTS/ffmpeg as configured).
 
+**Current shipped visuals (12–14):** `compose.sh` uses **Manim** (same style as segments 01–11): `RegressionSuiteScene`, `ManagementGUIArchitectureScene`, and `GUIExtensionScene` in [`animations/scenes.py`](animations/scenes.py). Render with `manim -qm scenes.py <SceneName>` (or `generate-all.sh`); outputs land under `animations/media/videos/scenes/720p30/*.mp4`. Optional: full **screen recordings** or **`vhs:`** from `terminal/12–14*.tape` if you swap `VISUAL_MAP[12–14]`.
+
 ## Segment A — Full regression walkthrough (~3–5 min)
 
 | Beat | Visual | Narration idea |

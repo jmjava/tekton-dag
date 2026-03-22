@@ -1,15 +1,11 @@
 #!/usr/bin/env bash
-# compose.sh — Combine visual assets (Manim / VHS) with TTS audio using ffmpeg.
+# compose.sh — Combine visuals (Manim / VHS / still) with TTS audio (ffmpeg).
+# Portable copy (tekton-dag documentation-generator). Place beside narration/, audio/, terminal/.
 #
 # Usage:
-#   ./compose.sh              # compose core segments 01–11 (default)
-#   ./compose.sh 01 03 05     # compose specific segments
-#   ./compose.sh 12 13 14     # M12.2 extension (illustration panels + narration; see generate-all.sh)
+#   ./compose.sh              # DEFAULT_SEGMENTS below
+#   ./compose.sh 01 02        # specific segments
 #
-# full-demo.mp4 is built when all 11 core segment MP4s exist. For optional
-# full-demo-with-m12-2.mp4 (segments 01–14), run docs/demos/generate-all.sh
-# or see compose_extended_demo() there.
-
 set -euo pipefail
 
 DEMOS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -17,41 +13,30 @@ AUDIO_DIR="$DEMOS_DIR/audio"
 MANIM_DIR_720="$DEMOS_DIR/animations/media/videos/scenes/720p30"
 MANIM_DIR_480="$DEMOS_DIR/animations/media/videos/scenes/480p15"
 MANIM_DIR="${MANIM_DIR_720}"
-# Fallback to 480p if 720p not available
 [[ -d "$MANIM_DIR" ]] || MANIM_DIR="$MANIM_DIR_480"
 VHS_DIR="$DEMOS_DIR/terminal/rendered"
 OUT_DIR="$DEMOS_DIR/recordings"
 
 mkdir -p "$OUT_DIR"
 
-# Segment → visual source mapping
-# Format: segment:type:source_file[:source2_for_mixed]
-# type = manim | vhs | mixed | still | image
-#   still = lavfi solid color (hex RGB without 0x)
-#   image = PNG path relative to docs/demos/ (scaled/padded to 1280×720)
-declare -A VISUAL_MAP
-VISUAL_MAP[01]="manim:StackDAGScene.mp4"
-VISUAL_MAP[02]="vhs:02-quickstart.mp4"
-VISUAL_MAP[03]="mixed:HeaderPropagationScene.mp4:03-bootstrap.mp4"
-VISUAL_MAP[04]="vhs:04-pr-pipeline.mp4"
-VISUAL_MAP[05]="manim:InterceptRoutingScene.mp4"
-VISUAL_MAP[06]="manim:LocalDebugScene.mp4"
-VISUAL_MAP[07]="vhs:07-orchestrator-api.mp4"
-VISUAL_MAP[08]="manim:MultiTeamScene.mp4"
-VISUAL_MAP[09]="vhs:09-results-db.mp4"
-VISUAL_MAP[10]="vhs:10-newman.mp4"
-VISUAL_MAP[11]="mixed:BlastRadiusScene.mp4:11-graph-tests.mp4"
-# M12.2 extension — static illustrations (repo docs/assets/panels) + narration.
-# Paths are relative to docs/demos/. Swap files or use vhs:… after real screen capture.
-# See docs/assets/panels-index.json for what each panel depicts.
-VISUAL_MAP[12]="manim:RegressionSuiteScene.mp4"
-VISUAL_MAP[13]="manim:ManagementGUIArchitectureScene.mp4"
-VISUAL_MAP[14]="manim:GUIExtensionScene.mp4"
+# ── CUSTOMIZE FOR YOUR PROJECT ─────────────────────────────────────
+# Segments compose when you run ./compose.sh with no arguments:
+DEFAULT_SEGMENTS=(01 02)
 
-segments=("$@")
-if [[ ${#segments[@]} -eq 0 ]]; then
-    segments=(01 02 03 04 05 06 07 08 09 10 11)
-fi
+# Ordered list; if non-empty and every segment composes successfully, build full-demo.mp4
+FULL_CONCAT_SEGMENTS=(01 02)
+
+# Segment → visual. Types: manim | vhs | mixed | still (hex RGB without 0x)
+declare -A VISUAL_MAP
+VISUAL_MAP[01]="still:2b3a56"
+VISUAL_MAP[02]="vhs:02-terminal.mp4"
+
+# Reference — tekton-dag production map (comment; delete in your project):
+# VISUAL_MAP[01]="manim:StackDAGScene.mp4"
+# VISUAL_MAP[02]="vhs:02-quickstart.mp4"
+# VISUAL_MAP[03]="mixed:HeaderPropagationScene.mp4:03-bootstrap.mp4"
+# ... see tekton-dag docs/demos/compose.sh
+# ─────────────────────────────────────────────────────────────────
 
 compose_simple() {
     local video="$1" audio="$2" output="$3"
@@ -67,8 +52,6 @@ compose_simple() {
     audio_dur=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$audio" | tr -d '\r')
     video_dur=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$video" | tr -d '\r')
 
-    # Never loop VHS/Manim: repeating the same clip looks broken when narration is longer.
-    # Shorter video → hold last frame (tpad clone); longer or equal → trim to audio length.
     if awk -v v="$video_dur" -v a="$audio_dur" 'BEGIN { exit !(v < a) }'; then
         local pad
         pad=$(awk -v v="$video_dur" -v a="$audio_dur" 'BEGIN { printf "%.3f", a - v }')
@@ -122,7 +105,6 @@ compose_mixed() {
     echo "    ✓ mixed concat + audio=${ad}s"
 }
 
-# Solid-color video for the duration of narration (no Manim/VHS required).
 compose_still() {
     local hex="$1" audio="$2" output="$3"
     if [[ ! -f "$audio" ]]; then
@@ -138,36 +120,14 @@ compose_still() {
     echo "    ✓ still 1280x720 + audio=${ad}s"
 }
 
-# Still PNG scaled to 1280×720 (letterbox/pillarbox) for full narration duration.
-compose_image() {
-    local relpath="$1" audio="$2" output="$3"
-    local img
-    if [[ "$relpath" == /* ]]; then
-        img="$relpath"
-    else
-        img="$DEMOS_DIR/$relpath"
-    fi
-    if [[ ! -f "$img" ]]; then
-        echo "    SKIP: missing image $img"
-        return 1
-    fi
-    if [[ ! -f "$audio" ]]; then
-        echo "    SKIP: missing $audio"
-        return 1
-    fi
-    local audio_dur
-    audio_dur=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$audio" | tr -d '\r')
-    ffmpeg -y -loop 1 -framerate 30 -i "$img" -i "$audio" \
-        -vf "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,format=yuv420p" \
-        -c:v libx264 -preset fast -crf 23 \
-        -c:a aac -b:a 128k \
-        -t "$audio_dur" -movflags +faststart \
-        "$output" 2>/dev/null
-    echo "    ✓ image $(basename "$img") + audio=${audio_dur}s"
-}
-
 echo "=== Composing demo videos ==="
 composed=0
+expected=0  # segments with a VISUAL_MAP entry in this run
+
+segments=("$@")
+if [[ ${#segments[@]} -eq 0 ]]; then
+    segments=("${DEFAULT_SEGMENTS[@]}")
+fi
 
 for seg in "${segments[@]}"; do
     spec="${VISUAL_MAP[$seg]:-}"
@@ -175,11 +135,11 @@ for seg in "${segments[@]}"; do
         echo "  [$seg] unknown segment, skipping"
         continue
     fi
+    ((expected++)) || true
 
     IFS=':' read -ra parts <<< "$spec"
     vtype="${parts[0]}"
 
-    # Find the narration file name
     narration_name=$(ls "$DEMOS_DIR/narration/${seg}-"*.md 2>/dev/null | head -1 || true)
     stem=$(basename "${narration_name%.md}" 2>/dev/null || echo "$seg")
     audio="$AUDIO_DIR/${stem}.mp3"
@@ -200,29 +160,34 @@ for seg in "${segments[@]}"; do
         still)
             compose_still "${parts[1]}" "$audio" "$output" && ((composed++)) || true
             ;;
-        image)
-            compose_image "${parts[1]}" "$audio" "$output" && ((composed++)) || true
-            ;;
     esac
 done
 
 echo ""
-echo "=== Composed $composed / ${#segments[@]} segment videos ==="
+echo "=== Composed $composed / $expected segment videos ==="
 
-# Concatenate full demo if all segments present
-if [[ $composed -eq 11 ]]; then
-    echo ""
-    echo "--- Building full demo video ---"
+if [[ ${#FULL_CONCAT_SEGMENTS[@]} -gt 0 ]] && [[ "$composed" -eq "$expected" ]] && [[ "$expected" -gt 0 ]]; then
+    all_ok=true
     concat_file=$(mktemp)
-    for seg in 01 02 03 04 05 06 07 08 09 10 11; do
-        narration_name=$(ls "$DEMOS_DIR/narration/${seg}-"*.md 2>/dev/null | head -1)
+    for seg in "${FULL_CONCAT_SEGMENTS[@]}"; do
+        narration_name=$(ls "$DEMOS_DIR/narration/${seg}-"*.md 2>/dev/null | head -1 || true)
+        [[ -n "$narration_name" ]] || { all_ok=false; break; }
         stem=$(basename "${narration_name%.md}")
-        echo "file '$OUT_DIR/${stem}.mp4'" >> "$concat_file"
+        f="$OUT_DIR/${stem}.mp4"
+        if [[ ! -f "$f" ]]; then
+            all_ok=false
+            break
+        fi
+        echo "file '$f'" >> "$concat_file"
     done
-    ffmpeg -y -f concat -safe 0 -i "$concat_file" -c copy \
-        "$OUT_DIR/full-demo.mp4" 2>/dev/null
+    if [[ "$all_ok" == "true" ]]; then
+        echo ""
+        echo "--- Building full-demo.mp4 ---"
+        ffmpeg -y -f concat -safe 0 -i "$concat_file" -c copy \
+            "$OUT_DIR/full-demo.mp4" 2>/dev/null
+        echo "  ✓ $OUT_DIR/full-demo.mp4"
+    fi
     rm -f "$concat_file"
-    echo "  ✓ $OUT_DIR/full-demo.mp4"
 fi
 
 echo ""

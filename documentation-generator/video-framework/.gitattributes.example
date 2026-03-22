@@ -1,0 +1,5 @@
+# Rename to .gitattributes in your repo (or merge these lines).
+# Keeps large binaries out of normal git blobs when using Git LFS.
+
+docs/demos/recordings/*.mp4 filter=lfs diff=lfs merge=lfs -text
+docs/demos/audio/*.mp3 filter=lfs diff=lfs merge=lfs -text

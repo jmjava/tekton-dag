@@ -1133,3 +1133,192 @@ class BlastRadiusScene(Scene):
         c = Circle(radius=radius, color=color, fill_opacity=0.12, stroke_width=2.5)
         t = Text(label, font_size=12, color=color)
         return VGroup(c, t).move_to(pos)
+
+
+# ═════════════════════════════════════════════════════════════════════
+# M12.2 — Segment 12: Full regression suite
+# Audio: 12-regression-suite.mp3  (~39.4 s)
+# Beats align with narration/12-regression-suite.md numbered script.
+# ═════════════════════════════════════════════════════════════════════
+class RegressionSuiteScene(Scene):
+    def construct(self):
+        self.camera.background_color = C_BG
+        t = 0.0
+
+        title = Text("Full regression suite", font_size=32, color=WHITE)
+        sub = Text("Verify in layers — unit tests alone are not enough", font_size=15, color=GREY)
+        sub.next_to(title, DOWN, buff=0.32)
+        self.play(FadeIn(title), FadeIn(sub), run_time=1.0)
+        t += 1.0
+        t = _wait_until(self, 8.0, t)
+        self.play(FadeOut(title), FadeOut(sub), run_time=0.45)
+        t += 0.45
+
+        h1 = Text("Without Kubernetes", font_size=14, color=C_GUI)
+        h1.move_to(LEFT * 3.6 + UP * 2.55)
+        h2 = Text("With cluster", font_size=14, color=C_ORCH)
+        h2.move_to(RIGHT * 3.6 + UP * 2.55)
+        self.play(FadeIn(h1), FadeIn(h2), run_time=0.5)
+        t += 0.5
+
+        left_col = VGroup(
+            Text("Phase 1 — stack YAML + registry", font_size=11, color=WHITE),
+            Text("pytest — orchestrator, libs, GUI backend", font_size=11, color=WHITE),
+            Text("vitest — baggage-node", font_size=11, color=WHITE),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.22).move_to(LEFT * 3.6 + UP * 0.55)
+
+        right_col = VGroup(
+            Text("stack-dag-verify PipelineRun", font_size=11, color=C_PR),
+            Text("Newman — orchestrator API", font_size=11, color=C_PR),
+            Text("Playwright — management GUI", font_size=11, color=C_PR),
+            Text("Tekton Results (optional)", font_size=10, color=GREY),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.18).move_to(RIGHT * 3.6 + UP * 0.35)
+
+        self.play(LaggedStart(FadeIn(left_col), FadeIn(right_col), lag_ratio=0.35), run_time=1.8)
+        t += 1.8
+        t = _wait_until(self, 26.0, t)
+
+        driver = Text("run-regression-agent.sh", font_size=15, color=C_HOOK)
+        driver.move_to(UP * 1.75)
+        hint = Text("Phase 2 passed · regression exit code 0", font_size=13, color=C_PR)
+        hint.next_to(driver, DOWN, buff=0.38)
+        self.play(FadeIn(driver), run_time=0.45)
+        t += 0.45
+        self.play(FadeIn(hint), run_time=0.45)
+        t += 0.45
+        t = _wait_until(self, 35.5, t)
+
+        self.play(*[FadeOut(m) for m in self.mobjects], run_time=0.45)
+        t += 0.45
+        fin = Text("Scripted bar clear — safe for docs / merge", font_size=20, color=C_PR)
+        self.play(FadeIn(fin), run_time=0.7)
+        t += 0.7
+        t = _wait_until(self, 39.5, t)
+
+
+# ═════════════════════════════════════════════════════════════════════
+# M12.2 — Segment 13: Management GUI architecture
+# Audio: 13-management-gui-architecture.mp3  (~53.8 s)
+# ═════════════════════════════════════════════════════════════════════
+class ManagementGUIArchitectureScene(Scene):
+    def construct(self):
+        self.camera.background_color = C_BG
+        t = 0.0
+
+        title = Text("Management GUI architecture", font_size=28, color=C_GUI)
+        self.play(FadeIn(title), run_time=0.75)
+        t += 0.75
+        t = _wait_until(self, 9.5, t)
+        self.play(title.animate.scale(0.42).to_edge(UP, buff=0.18), run_time=0.45)
+        t += 0.45
+
+        cred = Text("Browser never holds cluster credentials", font_size=12, color=C_PR)
+        cred.move_to(UP * 2.35)
+        br = _box("Browser", GREY, w=1.45, h=0.58, fs=12)
+        vu = _box("Vue 3 SPA", C_VUE, w=1.55, h=0.58, fs=12)
+        apilbl = _box("/api/*", C_FLASK, w=1.25, h=0.58, fs=11)
+        fl = _box("Flask", C_FLASK, w=1.2, h=0.58, fs=12)
+        k8 = _box("Kubernetes", C_PIPE, w=1.65, h=0.58, fs=11)
+        row = VGroup(br, vu, apilbl, fl, k8).arrange(RIGHT, buff=0.28).move_to(UP * 0.75)
+        self.play(FadeIn(cred), LaggedStart(*[FadeIn(x) for x in row], lag_ratio=0.12), run_time=1.6)
+        t += 1.6
+        for i in range(len(row) - 1):
+            arr = Arrow(
+                row[i].get_right(), row[i + 1].get_left(), buff=0.06,
+                color=WHITE, stroke_width=2, max_tip_length_to_length_ratio=0.08,
+            )
+            self.play(Create(arr), run_time=0.12)
+            t += 0.12
+        t = _wait_until(self, 22.0, t)
+
+        team = Text("/api/teams/{team}/pipelineruns …", font_size=11, color=C_ORCH)
+        team.move_to(DOWN * 0.35)
+        self.play(FadeIn(team), run_time=0.45)
+        t += 0.45
+        t = _wait_until(self, 32.5, t)
+
+        views = VGroup(
+            _badge("Trigger", C_PR),
+            _badge("Monitor", C_ORCH),
+            _badge("DAG", C_NEO4J),
+        ).arrange(RIGHT, buff=0.45).move_to(DOWN * 1.85)
+        cap = Text("Stack YAML resolved server-side · Vue Flow", font_size=11, color=GREY)
+        cap.next_to(views, DOWN, buff=0.28)
+        self.play(FadeIn(views), run_time=0.6)
+        t += 0.6
+        self.play(FadeIn(cap), run_time=0.35)
+        t += 0.35
+        t = _wait_until(self, 44.0, t)
+
+        helm = Text("Helm: namespace, RBAC, orchestrator endpoints", font_size=12, color=C_HELM)
+        helm.move_to(DOWN * 3.05)
+        self.play(FadeIn(helm), run_time=0.5)
+        t += 0.5
+        t = _wait_until(self, 53.9, t)
+
+
+# ═════════════════════════════════════════════════════════════════════
+# M12.2 — Segment 14: Extending the GUI for Tekton
+# Audio: 14-gui-tekton-extension.mp3  (~59 s)
+# ═════════════════════════════════════════════════════════════════════
+class GUIExtensionScene(Scene):
+    def construct(self):
+        self.camera.background_color = C_BG
+        t = 0.0
+
+        title = Text("Extending the GUI for Tekton", font_size=28, color=WHITE)
+        self.play(FadeIn(title), run_time=0.75)
+        t += 0.75
+        t = _wait_until(self, 8.5, t)
+        self.play(FadeOut(title), run_time=0.4)
+        t += 0.4
+
+        lt = Text("Flask — add JSON route first", font_size=14, color=C_FLASK)
+        lt.move_to(LEFT * 3.6 + UP * 2.75)
+        rt = Text("Vue — Pinia + views", font_size=14, color=C_VUE)
+        rt.move_to(RIGHT * 3.6 + UP * 2.75)
+        self.play(FadeIn(lt), FadeIn(rt), run_time=0.45)
+        t += 0.45
+
+        left_body = VGroup(
+            Text("Wrap kubernetes client", font_size=11, color=GREY),
+            Text("Stable JSON for tables / charts", font_size=12, color=WHITE),
+            Text("pytest + mocks (same style as routes)", font_size=11, color=GREY),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.2).move_to(LEFT * 3.6 + UP * 0.95)
+
+        right_body = VGroup(
+            Text("Store: useApi + teamUrl()", font_size=12, color=WHITE),
+            Text("Router + view component", font_size=11, color=GREY),
+            Text("Playwright spec per flow", font_size=11, color=GREY),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.2).move_to(RIGHT * 3.6 + UP * 0.95)
+
+        self.play(FadeIn(left_body), run_time=0.85)
+        t += 0.85
+        t = _wait_until(self, 18.0, t)
+        self.play(FadeIn(right_body), run_time=0.85)
+        t += 0.85
+        t = _wait_until(self, 32.0, t)
+
+        bridge = Text("team-scoped reads", font_size=11, color=GREY_B)
+        bridge.move_to(UP * 0.95)
+        self.play(FadeIn(bridge), run_time=0.35)
+        t += 0.35
+        arr = Arrow(LEFT * 1.15 + UP * 0.95, RIGHT * 1.15 + UP * 0.95, buff=0.02, color=GREY_B)
+        self.play(Create(arr), run_time=0.25)
+        t += 0.25
+        t = _wait_until(self, 42.0, t)
+
+        qa = VGroup(
+            Text("pytest — API contracts", font_size=12, color=C_PR),
+            Text("Playwright — UI regressions", font_size=12, color=C_PR),
+            Text("Small PRs: schema, route, store, view, one E2E", font_size=11, color=WHITE),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.18).move_to(DOWN * 2.05)
+        self.play(FadeIn(qa), run_time=0.9)
+        t += 0.9
+        t = _wait_until(self, 52.0, t)
+
+        doc = Text("docs/MANAGEMENT-GUI-EXTENSION.md", font_size=12, color=C_HOOK)
+        doc.to_edge(DOWN, buff=0.32)
+        self.play(FadeIn(doc), run_time=0.45)
+        t += 0.45
+        t = _wait_until(self, 59.2, t)
