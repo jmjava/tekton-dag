@@ -32,6 +32,29 @@ jobs:
         uses: actions/checkout@v4
         with:
           lfs: true
+      # Same MP4 paths are reused on every deploy; browsers + CDN cache them hard.
+      # Bump the query string on each deploy so viewers get the bytes that match main.
+      - name: Cache-bust video URLs in index.html
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          python3 <<'PY'
+          import os, pathlib, re
+          sha = os.environ["GITHUB_SHA"][:12]
+          path = pathlib.Path("docs/index.html")
+          text = path.read_text(encoding="utf-8")
+
+          def repl(m: re.Match) -> str:
+              base = m.group(1)
+              return f'src="{base}?v={sha}"'
+
+          new = re.sub(
+              r'src="(demos/recordings/[^"?]+\.mp4)(?:\?[^"]*)?"',
+              repl,
+              text,
+          )
+          path.write_text(new, encoding="utf-8")
+          PY
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Upload artifact
