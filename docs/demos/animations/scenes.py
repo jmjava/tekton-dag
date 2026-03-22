@@ -1198,7 +1198,8 @@ class RegressionSuiteScene(Scene):
 
 # ═════════════════════════════════════════════════════════════════════
 # M12.2 — Segment 13: Management GUI architecture
-# Audio: 13-management-gui-architecture.mp3  (~53.8 s)
+# Keep total runtime ≤ TTS length (~38 s after M12.2 script strip) so compose
+# does not chop the Helm / DAG beats.
 # ═════════════════════════════════════════════════════════════════════
 class ManagementGUIArchitectureScene(Scene):
     def construct(self):
@@ -1208,7 +1209,7 @@ class ManagementGUIArchitectureScene(Scene):
         title = Text("Management GUI architecture", font_size=28, color=C_GUI)
         self.play(FadeIn(title), run_time=0.75)
         t += 0.75
-        t = _wait_until(self, 9.5, t)
+        t = _wait_until(self, 2.8, t)
         self.play(title.animate.scale(0.42).to_edge(UP, buff=0.18), run_time=0.45)
         t += 0.45
 
@@ -1229,13 +1230,13 @@ class ManagementGUIArchitectureScene(Scene):
             )
             self.play(Create(arr), run_time=0.12)
             t += 0.12
-        t = _wait_until(self, 22.0, t)
+        t = _wait_until(self, 11.0, t)
 
         team = Text("/api/teams/{team}/pipelineruns …", font_size=11, color=C_ORCH)
         team.move_to(DOWN * 0.35)
         self.play(FadeIn(team), run_time=0.45)
         t += 0.45
-        t = _wait_until(self, 32.5, t)
+        t = _wait_until(self, 18.0, t)
 
         views = VGroup(
             _badge("Trigger", C_PR),
@@ -1248,18 +1249,18 @@ class ManagementGUIArchitectureScene(Scene):
         t += 0.6
         self.play(FadeIn(cap), run_time=0.35)
         t += 0.35
-        t = _wait_until(self, 44.0, t)
+        t = _wait_until(self, 28.0, t)
 
         helm = Text("Helm: namespace, RBAC, orchestrator endpoints", font_size=12, color=C_HELM)
         helm.move_to(DOWN * 3.05)
         self.play(FadeIn(helm), run_time=0.5)
         t += 0.5
-        t = _wait_until(self, 53.9, t)
+        t = _wait_until(self, 37.5, t)
 
 
 # ═════════════════════════════════════════════════════════════════════
 # M12.2 — Segment 14: Extending the GUI for Tekton
-# Audio: 14-gui-tekton-extension.mp3  (~59 s)
+# Keep total ≤ TTS (~40 s) so the extension-doc line is not trimmed by ffmpeg.
 # ═════════════════════════════════════════════════════════════════════
 class GUIExtensionScene(Scene):
     def construct(self):
@@ -1269,7 +1270,7 @@ class GUIExtensionScene(Scene):
         title = Text("Extending the GUI for Tekton", font_size=28, color=WHITE)
         self.play(FadeIn(title), run_time=0.75)
         t += 0.75
-        t = _wait_until(self, 8.5, t)
+        t = _wait_until(self, 3.0, t)
         self.play(FadeOut(title), run_time=0.4)
         t += 0.4
 
@@ -1294,10 +1295,10 @@ class GUIExtensionScene(Scene):
 
         self.play(FadeIn(left_body), run_time=0.85)
         t += 0.85
-        t = _wait_until(self, 18.0, t)
+        t = _wait_until(self, 10.0, t)
         self.play(FadeIn(right_body), run_time=0.85)
         t += 0.85
-        t = _wait_until(self, 32.0, t)
+        t = _wait_until(self, 18.0, t)
 
         bridge = Text("team-scoped reads", font_size=11, color=GREY_B)
         bridge.move_to(UP * 0.95)
@@ -1306,7 +1307,7 @@ class GUIExtensionScene(Scene):
         arr = Arrow(LEFT * 1.15 + UP * 0.95, RIGHT * 1.15 + UP * 0.95, buff=0.02, color=GREY_B)
         self.play(Create(arr), run_time=0.25)
         t += 0.25
-        t = _wait_until(self, 42.0, t)
+        t = _wait_until(self, 26.0, t)
 
         qa = VGroup(
             Text("pytest — API contracts", font_size=12, color=C_PR),
@@ -1315,10 +1316,10 @@ class GUIExtensionScene(Scene):
         ).arrange(DOWN, aligned_edge=LEFT, buff=0.18).move_to(DOWN * 2.05)
         self.play(FadeIn(qa), run_time=0.9)
         t += 0.9
-        t = _wait_until(self, 52.0, t)
+        t = _wait_until(self, 35.0, t)
 
         doc = Text("docs/MANAGEMENT-GUI-EXTENSION.md", font_size=12, color=C_HOOK)
         doc.to_edge(DOWN, buff=0.32)
         self.play(FadeIn(doc), run_time=0.45)
         t += 0.45
-        t = _wait_until(self, 59.2, t)
+        t = _wait_until(self, 40.5, t)

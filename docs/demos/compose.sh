@@ -79,13 +79,16 @@ compose_simple() {
             "$output" 2>/dev/null
         echo "    ✓ video=${video_dur}s + freeze ${pad}s → audio=${audio_dur}s"
     else
+        # Video longer than narration: stop when the shorter stream ends.
+        # Avoids -t on output with some ffmpeg builds/MP3 durations producing bad sync
+        # or empty-looking muxes in picky players.
         ffmpeg -y -i "$video" -i "$audio" \
             -map 0:v:0 -map 1:a:0 \
             -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p \
             -c:a aac -b:a 128k \
-            -t "$audio_dur" -movflags +faststart \
+            -shortest -movflags +faststart \
             "$output" 2>/dev/null
-        echo "    ✓ video=${video_dur}s trimmed to audio=${audio_dur}s"
+        echo "    ✓ video=${video_dur}s muxed to narration (~${audio_dur}s, -shortest)"
     fi
 }
 
