@@ -18,20 +18,20 @@ Sleep 700ms
 Type "# --- backend: Flask blueprint (excerpt) ---"
 Enter
 Sleep 300ms
-Type "from flask import Blueprint, jsonify, request"
+Type "# from flask import Blueprint, jsonify, request"
 Enter
-Type "import k8s_client"
+Type "# import k8s_client"
 Enter
-Type "bp = Blueprint('pipelines', __name__)"
+Type "# bp = Blueprint('pipelines', __name__)"
 Enter
 Sleep 400ms
-Type "@bp.get('/pipelineruns')"
+Type "# @bp.get('/pipelineruns')"
 Enter
-Type "def list_runs(team):"
+Type "# def list_runs(team):"
 Enter
-Type "    ns = _resolve_team(team)"
+Type "#     ns = _resolve_team(team)"
 Enter
-Type "    return jsonify(k8s_client.list_pipelineruns(ns))"
+Type "#     return jsonify(k8s_client.list_pipelineruns(ns))"
 Enter
 Sleep 600ms
 
@@ -40,19 +40,19 @@ Enter
 Type "# --- frontend: store calls team-scoped API ---"
 Enter
 Sleep 300ms
-Type "import { get, teamUrl } from '@/api/client'"
+Type `echo '# import { get, teamUrl } from @/api/client'`
 Enter
-Type "export const useRunsStore = defineStore('runs', {"
+Type `echo '# export const useRunsStore = defineStore(runs, {'`
 Enter
-Type "  async fetchRuns() {"
+Type `echo '#   async fetchRuns() {'`
 Enter
-Type "    const data = await get(teamUrl('/pipelineruns?limit=50'))"
+Type `echo '#     const data = await get(teamUrl("/pipelineruns?limit=50"))'`
 Enter
-Type "    this.items = data.items"
+Type `echo '#     this.items = data.items'`
 Enter
-Type "  }"
+Type `echo '#   }'`
 Enter
-Type "})"
+Type `echo '# })'`
 Enter
 Sleep 600ms
 

@@ -1,10 +1,18 @@
 #!/usr/bin/env bash
 # generate-all.sh — Master script to produce all demo assets from scratch.
 #
+# ── Typical workflows ─────────────────────────────────────────────────
+#   Fresh everything (TTS + Manim + VHS + all MP4s + full-demo-with-m12-2):
+#       ./generate-all.sh
+#
+#   You already ran generate-narration.py and have new audio/*.mp3 — rebuild the rest:
+#       ./rebuild-after-audio.sh
+#   (equivalent to: ./generate-all.sh --skip-tts)
+#
 # Usage:
 #   cd docs/demos
 #   ./generate-all.sh                 # full generation
-#   ./generate-all.sh --skip-tts      # skip audio generation (reuse existing)
+#   ./generate-all.sh --skip-tts      # skip TTS only — USE THIS after new MP3s
 #   ./generate-all.sh --skip-manim    # skip Manim render
 #   ./generate-all.sh --skip-vhs      # skip VHS render
 #   ./generate-all.sh --dry-run       # show plan only
@@ -133,7 +141,7 @@ fi
 step "Compose core demo videos 01–11 (ffmpeg)"
 bash "$DEMOS_DIR/compose.sh"
 
-# ── Step 5: M12.2 extension segments (image panels + TTS by default) ───
+# ── Step 5: M12.2 extension segments 12–14 (Manim + existing audio) ───
 step "Compose M12.2 extension segments 12–14"
 bash "$DEMOS_DIR/compose.sh" 12 13 14
 

@@ -17,13 +17,13 @@ Sleep 400ms
 Type "# $ ./scripts/run-regression-stream.sh --local-only"
 Enter
 Sleep 800ms
-Type "==> Phase 1: verify-dag-phase1.sh ... OK"
+Type "# ==> Phase 1: verify-dag-phase1.sh ... OK"
 Enter
 Sleep 200ms
-Type "==> pytest orchestrator ................ 62 passed"
+Type "# ==> pytest orchestrator ................ 62 passed"
 Enter
 Sleep 200ms
-Type "==> vitest (management-gui frontend) .... OK"
+Type "# ==> vitest (management-gui frontend) .... OK"
 Enter
 Sleep 500ms
 
@@ -35,25 +35,25 @@ Sleep 400ms
 Type "# $ ./scripts/run-regression-agent.sh"
 Enter
 Sleep 900ms
-Type "==> Freeing ports 9091, 8080 ..."
+Type "# ==> Freeing ports 9091, 8080 ..."
 Enter
 Sleep 200ms
-Type "==> Phase 1 DAG verify ............... PASSED"
+Type "# ==> Phase 1 DAG verify ............... PASSED"
 Enter
 Sleep 200ms
-Type "==> Playwright management-gui ........ PASSED"
+Type "# ==> Playwright management-gui ........ PASSED"
 Enter
 Sleep 200ms
-Type "==> stack-dag-verify PipelineRun ..... Succeeded"
+Type "# ==> stack-dag-verify PipelineRun ..... Succeeded"
 Enter
 Sleep 200ms
-Type "==> Newman orchestrator collection ... PASSED"
+Type "# ==> Newman orchestrator collection ... PASSED"
 Enter
 Sleep 400ms
 
 Type ""
 Enter
-Type "regression exit code: 0"
+Type "# regression exit code: 0"
 Enter
 Sleep 600ms
 

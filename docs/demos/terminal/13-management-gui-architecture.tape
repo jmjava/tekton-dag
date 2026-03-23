@@ -23,13 +23,13 @@ Enter
 Type "# Repo layout"
 Enter
 Sleep 300ms
-Type "management-gui/"
+Type "# management-gui/"
 Enter
-Type "├── backend/          # Flask, Gunicorn, k8s python client"
+Type "# ├── backend/          # Flask, Gunicorn, k8s python client"
 Enter
-Type "├── frontend/         # Vue 3, Vite, Pinia, Vue Flow"
+Type "# ├── frontend/         # Vue 3, Vite, Pinia, Vue Flow"
 Enter
-Type "└── tests/            # pytest + Playwright + Postman"
+Type "# └── tests/            # pytest + Playwright + Postman"
 Enter
 Sleep 600ms
 
@@ -38,10 +38,10 @@ Enter
 Type "# Team switcher → backend resolves context + namespace"
 Enter
 Sleep 500ms
-Type "# $ curl -s localhost:5000/api/teams | head -c 80"
+Type `echo '# $ curl -s localhost:5000/api/teams | head -c 80'`
 Enter
 Sleep 600ms
-Type '{"teams":["alpha","beta"],"active":"alpha"}...'
+Type `echo '{"teams":["alpha","beta"],"active":"alpha"}...'`
 Enter
 Sleep 600ms
 
@@ -50,7 +50,7 @@ Enter
 Type "# Example: scoped PipelineRuns (truncated JSON)"
 Enter
 Sleep 400ms
-Type '{"items":[{"name":"stack-one-pr-42","status":"Succeeded"}]}'
+Type `echo '{"items":[{"name":"stack-one-pr-42","status":"Succeeded"}]}'`
 Enter
 Sleep 500ms
 

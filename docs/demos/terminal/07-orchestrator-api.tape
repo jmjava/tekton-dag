@@ -13,70 +13,68 @@ Sleep 500ms
 
 Type "# Health checks"
 Enter
-Type "curl -s localhost:8080/healthz | jq ."
+Type `echo '# $ curl -s localhost:8080/healthz | jq .'`
 Enter
 Sleep 500ms
-Type '{"status": "ok"}'
+Type `echo '{"status": "ok"}'`
 Enter
 Sleep 300ms
 
-Type "curl -s localhost:8080/readyz | jq ."
+Type `echo '# $ curl -s localhost:8080/readyz | jq .'`
 Enter
 Sleep 500ms
-Type '{"status": "ready", "stacks_loaded": 2, "teams": ["default"]}'
+Type `echo '{"status": "ready", "stacks_loaded": 2, "teams": ["default"]}'`
 Enter
 Sleep 500ms
 
 Type "# List stacks"
 Enter
-Type "curl -s localhost:8080/api/stacks | jq ."
+Type `echo '# $ curl -s localhost:8080/api/stacks | jq .'`
 Enter
 Sleep 500ms
-Type '['
+Type `echo '['`
 Enter
-Type '  {"name": "stack-one", "apps": ["demo-fe","release-lifecycle-demo","demo-api"]},'
+Type `echo '  {"name": "stack-one", "apps": ["demo-fe","release-lifecycle-demo","demo-api"]},'`
 Enter
-Type '  {"name": "stack-two", "apps": ["vendor-fe","vendor-middleware","vendor-adapter","internal-api","notifications-svc"]}'
+Type `echo '  {"name": "stack-two", "apps": ["vendor-fe","vendor-middleware","vendor-adapter","internal-api","notifications-svc"]}'`
 Enter
-Type ']'
+Type `echo ']'`
 Enter
 Sleep 500ms
 
 Type "# Trigger a PR pipeline"
 Enter
-Type 'curl -s -X POST localhost:8080/api/run -H "Content-Type: application/json" \'
-Enter
-Type '  -d '"'"'{"mode":"pr","stack":"stack-one","app":"demo-api","pr_number":"42"}'"'"' | jq .'
+Type `echo '# $ curl -s -X POST localhost:8080/api/run ... (mode=pr stack=stack-one app=demo-api pr=42) | jq .'`
 Enter
 Sleep 1s
-Type '{"pipelinerun": "stack-one-pr-42-run-xyz78", "status": "created"}'
+Type `echo '{"pipelinerun": "stack-one-pr-42-run-xyz78", "status": "created"}'`
 Enter
 Sleep 500ms
 
 Type "# Query test plan from Neo4j graph"
 Enter
-Type 'curl -s "localhost:8080/api/test-plan?app=demo-api&radius=1" | jq .'
+Type `echo '# $ curl -s "localhost:8080/api/test-plan?app=demo-api&radius=1" | jq .'`
 Enter
 Sleep 500ms
-Type '{"app": "demo-api", "radius": 1, "tests": ["api-post","api-intg","api-load"], "count": 3}'
+Type `echo '{"app": "demo-api", "radius": 1, "tests": ["api-post","api-intg","api-load"], "count": 3}'`
 Enter
 Sleep 500ms
 
 Type "# Graph stats"
 Enter
-Type "curl -s localhost:8080/api/graph/stats | jq ."
+Type `echo '# $ curl -s localhost:8080/api/graph/stats | jq .'`
 Enter
 Sleep 500ms
-Type '{"services": 3, "tests": 9, "touches_edges": 9, "calls_edges": 2}'
+Type `echo '{"services": 3, "tests": 9, "touches_edges": 9, "calls_edges": 2}'`
 Enter
 Sleep 500ms
 
 Type "# Recent pipeline runs"
 Enter
-Type "curl -s localhost:8080/api/runs | jq '.[0]'"
+Type `echo '# $ curl -s localhost:8080/api/runs | jq .[0]'`
 Enter
 Sleep 500ms
-Type '{"name": "stack-one-pr-42-run-xyz78", "status": "Succeeded", "duration": "2m14s"}'
+Type `echo '{"name": "stack-one-pr-42-run-xyz78", "status": "Succeeded", "duration": "2m14s"}'`
 Enter
 Sleep 500ms
 

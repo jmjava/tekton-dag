@@ -13,12 +13,10 @@ Sleep 500ms
 
 Type "# 1. Ingest trace data into the graph"
 Enter
-Type 'curl -s -X POST localhost:8080/api/graph/ingest -H "Content-Type: application/json" \'
-Enter
-Type '  -d @tests/fixtures/trace-data.json | jq .'
+Type `echo '# $ curl -s -X POST localhost:8080/api/graph/ingest ... @tests/fixtures/trace-data.json | jq .'`
 Enter
 Sleep 500ms
-Type '{"ingested": {"services": 3, "tests": 9, "edges": 11}}'
+Type `echo '{"ingested": {"services": 3, "tests": 9, "edges": 11}}'`
 Enter
 Sleep 500ms
 
@@ -26,10 +24,10 @@ Type ""
 Enter
 Type "# 2. Check graph stats"
 Enter
-Type "curl -s localhost:8080/api/graph/stats | jq ."
+Type `echo '# $ curl -s localhost:8080/api/graph/stats | jq .'`
 Enter
 Sleep 500ms
-Type '{"services": 3, "tests": 9, "touches_edges": 9, "calls_edges": 2}'
+Type `echo '{"services": 3, "tests": 9, "touches_edges": 9, "calls_edges": 2}'`
 Enter
 Sleep 500ms
 
@@ -37,20 +35,20 @@ Type ""
 Enter
 Type "# 3. Query test plan for demo-api at radius 1"
 Enter
-Type 'curl -s "localhost:8080/api/test-plan?app=demo-api&radius=1" | jq .'
+Type `echo '# $ curl -s "localhost:8080/api/test-plan?app=demo-api&radius=1" | jq .'`
 Enter
 Sleep 500ms
-Type '{'
+Type `echo '{'`
 Enter
-Type '  "app": "demo-api",'
+Type `echo '  "app": "demo-api",'`
 Enter
-Type '  "radius": 1,'
+Type `echo '  "radius": 1,'`
 Enter
-Type '  "tests": ["api-postman", "api-integration", "api-load-test"],'
+Type `echo '  "tests": ["api-postman", "api-integration", "api-load-test"],'`
 Enter
-Type '  "count": 3'
+Type `echo '  "count": 3'`
 Enter
-Type '}'
+Type `echo '}'`
 Enter
 Sleep 500ms
 
@@ -58,20 +56,20 @@ Type ""
 Enter
 Type "# 4. Expand to radius 2 — includes BFF tests"
 Enter
-Type 'curl -s "localhost:8080/api/test-plan?app=demo-api&radius=2" | jq .'
+Type `echo '# $ curl -s "localhost:8080/api/test-plan?app=demo-api&radius=2" | jq .'`
 Enter
 Sleep 500ms
-Type '{'
+Type `echo '{'`
 Enter
-Type '  "app": "demo-api",'
+Type `echo '  "app": "demo-api",'`
 Enter
-Type '  "radius": 2,'
+Type `echo '  "radius": 2,'`
 Enter
-Type '  "tests": ["api-postman", "api-integration", "api-load-test", "bff-postman", "bff-integration"],'
+Type `echo '  "tests": ["api-postman", "api-integration", "api-load-test", "bff-postman", "bff-integration"],'`
 Enter
-Type '  "count": 5'
+Type `echo '  "count": 5'`
 Enter
-Type '}'
+Type `echo '}'`
 Enter
 Sleep 500ms
 
@@ -79,14 +77,14 @@ Type ""
 Enter
 Type "# 5. CLI graph visualization"
 Enter
-Type "./scripts/stack-graph.sh stack-one"
+Type `echo '# $ ./scripts/stack-graph.sh stack-one'`
 Enter
 Sleep 500ms
-Type "demo-fe (originator)"
+Type `echo 'demo-fe (originator)'`
 Enter
-Type "  └──→ release-lifecycle-demo (forwarder)"
+Type `echo '  └──→ release-lifecycle-demo (forwarder)'`
 Enter
-Type "        └──→ demo-api (terminal)"
+Type `echo '        └──→ demo-api (terminal)'`
 Enter
 Sleep 500ms
 

@@ -35,7 +35,8 @@ VOICE = "coral"
 INSTRUCTIONS = (
     "You are narrating a technical demo video. Speak in a calm, professional tone "
     "like a senior engineer. Moderate pace. Pause briefly between sentences. "
-    "Pronounce acronyms and product names clearly."
+    "Read slash in REST paths as the word slash. Expand abbreviations the script "
+    "spells out. Pronounce acronyms and product names clearly."
 )
 
 
@@ -57,7 +58,9 @@ def load_env():
 
 
 def get_narration_files(segment_filter: str | None = None):
-    files = sorted(NARRATION_DIR.glob("*.md"))
+    files = sorted(
+        f for f in NARRATION_DIR.glob("*.md") if f.name.lower() != "readme.md"
+    )
     if segment_filter:
         files = [f for f in files if f.name.startswith(segment_filter)]
     return files

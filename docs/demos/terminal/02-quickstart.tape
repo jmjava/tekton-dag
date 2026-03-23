@@ -14,7 +14,7 @@ Sleep 500ms
 Type "# 1. Create Kind cluster with local registry"
 Enter
 Sleep 300ms
-Type "./scripts/kind-with-registry.sh"
+Type "# $ ./scripts/kind-with-registry.sh"
 Enter
 Sleep 3s
 Type "# ✓ Kind cluster 'tekton-dag' created, registry at localhost:5001"
@@ -24,7 +24,7 @@ Sleep 500ms
 Type "# 2. Install Tekton Pipelines"
 Enter
 Sleep 300ms
-Type "./scripts/install-tekton.sh"
+Type "# $ ./scripts/install-tekton.sh"
 Enter
 Sleep 3s
 Type "# ✓ Tekton Pipelines v0.56 installed, controller ready"
@@ -34,7 +34,7 @@ Sleep 500ms
 Type "# 3. Publish build images (npm, maven, gradle, pip, composer, mirrord)"
 Enter
 Sleep 300ms
-Type "./scripts/publish-build-images.sh"
+Type "# $ ./scripts/publish-build-images.sh"
 Enter
 Sleep 3s
 Type "# ✓ 6 build images pushed to localhost:5001"
@@ -44,7 +44,7 @@ Sleep 500ms
 Type "# 4. Apply tasks and pipelines"
 Enter
 Sleep 300ms
-Type "kubectl apply -f tasks/ -f pipeline/"
+Type "# $ kubectl apply -f tasks/ -f pipeline/"
 Enter
 Sleep 2s
 Type "# ✓ 23 tasks + 5 pipelines applied"

@@ -3,12 +3,14 @@
 Generate MP3 narration for each segment using OpenAI gpt-4o-mini-tts.
 
 Usage:
-    source .venv/bin/activate
+    cd docs/demos && source .venv/bin/activate
     python generate-narration.py                 # all segments
     python generate-narration.py --segment 01    # single segment
     python generate-narration.py --dry-run       # show what would be generated
 
-Requires OPENAI_API_KEY in environment or ../.env file.
+Requires OPENAI_API_KEY. The script auto-loads the repository root .env (two levels
+above docs/demos). If the key is not picked up, export it or run:
+    set -a && source ../../.env && set +a
 
 Narration wording aligns with docs/ENVIRONMENTS-AND-CLUSTERS.md (baseline / validation
 cluster vs customer-facing production). After editing narration/*.md, re-run this script
@@ -33,11 +35,12 @@ MODEL = "gpt-4o-mini-tts"
 VOICE = "coral"
 INSTRUCTIONS = (
     "You are narrating a technical demo video about a CI/CD pipeline system "
-    "called tekton-dag. Speak in a calm, professional tone like a senior "
-    "engineer giving a conference talk. Moderate pace. Pause briefly between "
-    "sentences. Pronounce technical terms clearly: Tekton, Kubernetes, "
+    "called tekton-dag, pronounced tekton dag. Speak in a calm, professional tone "
+    "like a senior engineer giving a conference talk. Moderate pace. Pause briefly "
+    "between sentences. Read slash in REST paths as the word slash. Say pull request "
+    "in full, not P-R. Pronounce technical terms clearly: Tekton, Kubernetes, "
     "mirrord, Neo4j, Newman, Kaniko, ArgoCD, Helm, kubectl, PipelineRun, "
-    "Vue, Flask, Spring Boot, Gradle, Composer."
+    "Vue, Flask, Spring Boot, Gradle, Composer, Postgres, Playwright, Artillery."
 )
 
 
@@ -52,7 +55,9 @@ def load_env():
 
 
 def get_narration_files(segment_filter=None):
-    files = sorted(NARRATION_DIR.glob("*.md"))
+    files = sorted(
+        f for f in NARRATION_DIR.glob("*.md") if f.name.lower() != "readme.md"
+    )
     if segment_filter:
         files = [f for f in files if f.name.startswith(segment_filter)]
     return files
@@ -180,6 +185,12 @@ def main():
             generated += 1
 
     print(f"\n=== Done: {generated} audio files {'planned' if args.dry_run else 'generated'} ===")
+    if not args.dry_run and generated:
+        print(
+            "\nNext — rebuild Manim, VHS, composed MP4s, and full-demo-with-m12-2:\n"
+            "  cd docs/demos && ./rebuild-after-audio.sh\n"
+            "  (same as: ./generate-all.sh --skip-tts)\n",
+        )
 
 
 if __name__ == "__main__":

@@ -7,8 +7,11 @@
 set -euo pipefail
 
 # ── Path resolution ──────────────────────────────────────────────────
-# SCRIPT_DIR must be set by the caller before sourcing.
-REPO_ROOT="${REPO_ROOT:-$(cd "${SCRIPT_DIR:-.}/.." && pwd)}"
+# SCRIPT_DIR must be set by the caller before sourcing (for sibling script paths).
+# REPO_ROOT must be the real repo root even when scripts are invoked via a symlink
+# (e.g. docs/demos/scripts → ../../scripts for VHS tapes with cwd docs/demos).
+_COMMON_SH_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="${REPO_ROOT:-$(cd "${_COMMON_SH_DIR}/.." && pwd)}"
 STACKS_DIR="${STACKS_DIR:-$REPO_ROOT/stacks}"
 
 # ── Configurable defaults (override via env or flags) ────────────────
