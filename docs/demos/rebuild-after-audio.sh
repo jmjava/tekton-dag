@@ -10,6 +10,9 @@
 set -euo pipefail
 
 DEMOS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$DEMOS_DIR/.venv/bin/activate" ]; then
+    source "$DEMOS_DIR/.venv/bin/activate"
+fi
 echo "═══ Rebuild after audio (Manim + VHS + compose + validate + concat) ═══"
 echo "    (skipping TTS — using existing audio/*.mp3)"
 echo ""

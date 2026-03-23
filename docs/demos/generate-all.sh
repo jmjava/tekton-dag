@@ -23,7 +23,9 @@
 set -euo pipefail
 
 DEMOS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-export PATH="${HOME}/.local/bin:${PATH}"
+if [ -f "$DEMOS_DIR/.venv/bin/activate" ]; then
+    source "$DEMOS_DIR/.venv/bin/activate"
+fi
 
 # Parse --dry-run specially (docgen generate-all doesn't have it)
 DRY_RUN=false

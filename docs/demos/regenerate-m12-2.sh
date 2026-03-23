@@ -7,6 +7,9 @@
 set -euo pipefail
 
 DEMOS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$DEMOS_DIR/.venv/bin/activate" ]; then
+    source "$DEMOS_DIR/.venv/bin/activate"
+fi
 CFG="$DEMOS_DIR/docgen.yaml"
 
 echo "==> TTS narration (12, 13, 14)…"
