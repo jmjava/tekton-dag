@@ -12,7 +12,7 @@ dirs:
   recordings: recordings
 
 segments:
-  default: ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11"]
+  default: ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13"]
   all:
     - "01"
     - "02"
@@ -28,8 +28,11 @@ segments:
     - "12"
     - "13"
     - "14"
+    - "15"
+    - "16"
+    - "17"
+    - "18"
 
-# Segment → narration file name stems (matches narration/*.md file names)
 segment_names:
   "01": "01-architecture"
   "02": "02-quickstart"
@@ -37,17 +40,19 @@ segment_names:
   "04": "04-pr-pipeline"
   "05": "05-intercept-routing"
   "06": "06-local-debug"
-  "07": "07-orchestrator"
-  "08": "08-multi-team-helm"
-  "09": "09-results-db"
-  "10": "10-newman-tests"
-  "11": "11-test-trace-graph"
-  "12": "12-regression-suite"
-  "13": "13-management-gui-architecture"
-  "14": "14-gui-tekton-extension"
+  "07": "07-merge-release"
+  "08": "08-orchestrator"
+  "09": "09-multi-team-helm"
+  "10": "10-baggage-middleware"
+  "11": "11-testing-ecosystem"
+  "12": "12-test-trace-graph"
+  "13": "13-results-db"
+  "14": "14-customization"
+  "15": "15-regression-suite"
+  "16": "16-management-gui"
+  "17": "17-extending-gui"
+  "18": "18-roadmap"
 
-# Visual source mapping — matches the VISUAL_MAP from compose.sh
-# type: manim | vhs | mixed | still
 visual_map:
   "01":
     type: manim
@@ -77,42 +82,57 @@ visual_map:
     scene: LocalDebugScene
     source: LocalDebugScene.mp4
   "07":
-    type: vhs
-    tape: 07-orchestrator-api.tape
-    source: 07-orchestrator-api.mp4
+    type: manim
+    scene: MergeReleaseScene
+    source: MergeReleaseScene.mp4
   "08":
+    type: vhs
+    tape: 08-orchestrator-api.tape
+    source: 08-orchestrator-api.mp4
+  "09":
     type: manim
     scene: MultiTeamScene
     source: MultiTeamScene.mp4
-  "09":
-    type: vhs
-    tape: 09-results-db.tape
-    source: 09-results-db.mp4
   "10":
-    type: vhs
-    tape: 10-newman.tape
-    source: 10-newman.mp4
+    type: manim
+    scene: BaggageMiddlewareScene
+    source: BaggageMiddlewareScene.mp4
   "11":
+    type: vhs
+    tape: 11-testing.tape
+    source: 11-testing.mp4
+  "12":
     type: mixed
     scene: BlastRadiusScene
-    tape: 11-graph-tests.tape
+    tape: 12-graph-tests.tape
     sources:
       - BlastRadiusScene.mp4
-      - 11-graph-tests.mp4
-  "12":
-    type: manim
-    scene: RegressionSuiteScene
-    source: RegressionSuiteScene.mp4
+      - 12-graph-tests.mp4
   "13":
-    type: manim
-    scene: ManagementGUIArchitectureScene
-    source: ManagementGUIArchitectureScene.mp4
+    type: vhs
+    tape: 13-results-db.tape
+    source: 13-results-db.mp4
   "14":
     type: manim
-    scene: GUIExtensionScene
-    source: GUIExtensionScene.mp4
+    scene: CustomizationScene
+    source: CustomizationScene.mp4
+  "15":
+    type: vhs
+    tape: 15-regression.tape
+    source: 15-regression.mp4
+  "16":
+    type: manim
+    scene: ManagementGUITourScene
+    source: ManagementGUITourScene.mp4
+  "17":
+    type: manim
+    scene: GUIExtensionPatternScene
+    source: GUIExtensionPatternScene.mp4
+  "18":
+    type: manim
+    scene: RoadmapScene
+    source: RoadmapScene.mp4
 
-# Manim rendering config
 manim:
   quality: 720p30
   scenes:
@@ -120,13 +140,15 @@ manim:
     - HeaderPropagationScene
     - InterceptRoutingScene
     - LocalDebugScene
+    - MergeReleaseScene
     - MultiTeamScene
+    - BaggageMiddlewareScene
     - BlastRadiusScene
-    - RegressionSuiteScene
-    - ManagementGUIArchitectureScene
-    - GUIExtensionScene
+    - CustomizationScene
+    - ManagementGUITourScene
+    - GUIExtensionPatternScene
+    - RoadmapScene
 
-# TTS config
 tts:
   model: gpt-4o-mini-tts
   voice: coral
@@ -135,7 +157,6 @@ tts:
     called tekton-dag. Speak in a calm, professional tone. Pronounce technical
     terms clearly: Tekton, Kubernetes, Helm, Newman, pytest, Neo4j, Manim.
 
-# Concat configs for full demo files
 concat:
   full-demo:
     - "01"
@@ -149,7 +170,9 @@ concat:
     - "09"
     - "10"
     - "11"
-  full-demo-with-m12-2:
+    - "12"
+    - "13"
+  full-demo-complete:
     - "01"
     - "02"
     - "03"
@@ -164,10 +187,22 @@ concat:
     - "12"
     - "13"
     - "14"
+    - "15"
+    - "16"
+    - "17"
+    - "18"
+  platform-core:
+    - "01"
+    - "02"
+    - "03"
+    - "04"
+    - "05"
+    - "06"
+    - "07"
 
-# Validation thresholds
 validation:
   max_drift_sec: 2.75
+  max_freeze_ratio: 0.85
   ocr:
     error_patterns:
       - "command not found"
@@ -188,7 +223,6 @@ validation:
       - "script section"
       - "edit for voice"
 
-# Wizard config
 wizard:
   llm_model: gpt-4o
   system_prompt: >
@@ -206,7 +240,6 @@ wizard:
     - "**/terminal/rendered/**"
     - "**/.venv/**"
 
-# GitHub Pages
 pages:
   title: "tekton-dag Demo Videos"
   description: "CI/CD pipeline platform demo recordings"

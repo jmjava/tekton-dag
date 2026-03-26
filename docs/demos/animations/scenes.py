@@ -1323,3 +1323,676 @@ class GUIExtensionScene(Scene):
         self.play(FadeIn(doc), run_time=0.45)
         t += 0.45
         t = _wait_until(self, 40.5, t)
+
+
+# ═════════════════════════════════════════════════════════════════════
+# Segment 07 — Merge & Release Pipeline (NEW)
+# ═════════════════════════════════════════════════════════════════════
+class MergeReleaseScene(Scene):
+    def construct(self):
+        self.camera.background_color = C_BG
+        t = 0.0
+
+        title = Text("Merge & Release Pipeline", font_size=30, color=WHITE)
+        self.play(FadeIn(title), run_time=0.8)
+        t += 0.8
+        t = _wait_until(self, 4.0, t)
+        self.play(title.animate.scale(0.55).to_edge(UP, buff=0.3), run_time=0.6)
+        t += 0.6
+
+        # Version transform timeline
+        rc_ver = Text("0.1.0-rc.3", font_size=22, color=C_WARN, font="Monospace")
+        rc_ver.move_to(LEFT * 4.5 + UP * 1.8)
+        rc_label = Text("PR version", font_size=12, color=GREY_B)
+        rc_label.next_to(rc_ver, DOWN, buff=0.15)
+        self.play(FadeIn(rc_ver), FadeIn(rc_label), run_time=0.5)
+        t += 0.5
+        t = _wait_until(self, 8.0, t)
+
+        rel_ver = Text("0.1.0", font_size=22, color=C_PR, font="Monospace")
+        rel_ver.move_to(LEFT * 1.0 + UP * 1.8)
+        rel_label = Text("Release version", font_size=12, color=GREY_B)
+        rel_label.next_to(rel_ver, DOWN, buff=0.15)
+        strip_arr = Arrow(rc_ver.get_right(), rel_ver.get_left(), buff=0.15,
+                          color=C_ORCH, stroke_width=2)
+        strip_text = Text("strip -rc.N", font_size=11, color=C_ORCH)
+        strip_text.next_to(strip_arr, UP, buff=0.08)
+        self.play(Create(strip_arr), FadeIn(strip_text), run_time=0.4)
+        self.play(FadeIn(rel_ver), FadeIn(rel_label), run_time=0.5)
+        t += 0.9
+        t = _wait_until(self, 14.0, t)
+
+        next_ver = Text("0.1.1-rc.0", font_size=22, color=C_PROD, font="Monospace")
+        next_ver.move_to(RIGHT * 3.0 + UP * 1.8)
+        next_label = Text("Next dev cycle", font_size=12, color=GREY_B)
+        next_label.next_to(next_ver, DOWN, buff=0.15)
+        bump_arr = Arrow(rel_ver.get_right(), next_ver.get_left(), buff=0.15,
+                         color=C_ORCH, stroke_width=2)
+        bump_text = Text("bump patch", font_size=11, color=C_ORCH)
+        bump_text.next_to(bump_arr, UP, buff=0.08)
+        self.play(Create(bump_arr), FadeIn(bump_text), run_time=0.4)
+        self.play(FadeIn(next_ver), FadeIn(next_label), run_time=0.5)
+        t += 0.9
+        t = _wait_until(self, 20.0, t)
+
+        # Pipeline steps
+        steps = [
+            ("Compile", C_SPRING),
+            ("Kaniko", C_PIPE),
+            ("crane\ntag", C_PR),
+            ("Push\nversion", C_PROD),
+        ]
+        step_boxes = VGroup()
+        for i, (slabel, scolor) in enumerate(steps):
+            sb = _box(slabel, scolor, w=1.6, h=0.7, fs=14)
+            sb.move_to(RIGHT * (-4.0 + i * 2.6) + DOWN * 0.3)
+            step_boxes.add(sb)
+
+        per = max(0.3, 6.0 / len(steps))
+        for i, sb in enumerate(step_boxes):
+            self.play(FadeIn(sb, shift=DOWN * 0.15), run_time=per)
+            t += per
+            if i < len(step_boxes) - 1:
+                arr = _harrow(sb, step_boxes[i + 1])
+                self.play(Create(arr), run_time=0.2)
+                t += 0.2
+        t = _wait_until(self, 35.0, t)
+
+        # Registry image
+        reg = _box("registry/app:v0.1.0", C_PR, w=3.5, h=0.6, fs=14)
+        reg.move_to(DOWN * 1.8)
+        tag_arr = _varrow(step_boxes[2], reg, color=C_PR)
+        self.play(Create(tag_arr), FadeIn(reg), run_time=0.6)
+        t += 0.6
+        t = _wait_until(self, 42.0, t)
+
+        # Hook tasks
+        hooks = VGroup(
+            _badge("pre-build", C_HOOK, fs=11),
+            _badge("post-build", C_HOOK, fs=11),
+        ).arrange(RIGHT, buff=0.3).move_to(DOWN * 2.8)
+        hook_label = Text("Optional hook tasks", font_size=11, color=C_HOOK)
+        hook_label.next_to(hooks, DOWN, buff=0.15)
+        self.play(FadeIn(hooks), FadeIn(hook_label), run_time=0.5)
+        t += 0.5
+        t = _wait_until(self, 50.0, t)
+
+        # Git push back
+        git_push = Text("git push versions.yaml → next dev cycle", font_size=13, color=C_PROD)
+        git_push.move_to(RIGHT * 3.0 + DOWN * 0.3)
+        self.play(FadeIn(git_push), run_time=0.5)
+        t += 0.5
+        t = _wait_until(self, 60.0, t)
+
+        # Summary
+        summary = VGroup(
+            Text("✓ Version promoted", font_size=13, color=C_PR),
+            Text("✓ Image tagged", font_size=13, color=C_PR),
+            Text("✓ Hooks executed", font_size=13, color=C_HOOK),
+            Text("✓ Next cycle ready", font_size=13, color=C_PROD),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.2).move_to(RIGHT * 4.0 + DOWN * 2.0)
+        for item in summary:
+            self.play(FadeIn(item, shift=RIGHT * 0.15), run_time=0.35)
+            t += 0.35
+        t = _wait_until(self, 72.0, t)
+
+        self.play(*[FadeOut(m) for m in self.mobjects], run_time=1.0)
+        t += 1.0
+
+
+# ═════════════════════════════════════════════════════════════════════
+# Segment 10 — Baggage Middleware (NEW)
+# ═════════════════════════════════════════════════════════════════════
+class BaggageMiddlewareScene(Scene):
+    def construct(self):
+        self.camera.background_color = C_BG
+        t = 0.0
+
+        title = Text("Baggage Middleware", font_size=30, color=WHITE)
+        sub = Text("One header contract — five frameworks", font_size=16, color=GREY_B)
+        sub.next_to(title, DOWN, buff=0.25)
+        tg = VGroup(title, sub).move_to(ORIGIN)
+        self.play(FadeIn(tg), run_time=0.8)
+        t += 0.8
+        t = _wait_until(self, 4.0, t)
+        self.play(tg.animate.scale(0.5).to_edge(UP, buff=0.25), run_time=0.6)
+        t += 0.6
+
+        # Three roles
+        roles = [
+            ("Originator", C_VUE, "Sets header"),
+            ("Forwarder", C_SPRING, "Passes through"),
+            ("Terminal", C_FLASK, "Accepts, stops"),
+        ]
+        role_boxes = VGroup()
+        for i, (rlabel, rcolor, rdesc) in enumerate(roles):
+            rb = _box(rlabel, rcolor, w=2.2, h=0.7, fs=15)
+            rb.move_to(RIGHT * (-4.0 + i * 4.0) + UP * 1.5)
+            desc = Text(rdesc, font_size=11, color=rcolor)
+            desc.next_to(rb, DOWN, buff=0.12)
+            role_boxes.add(VGroup(rb, desc))
+
+        for rb in role_boxes:
+            self.play(FadeIn(rb, shift=DOWN * 0.15), run_time=0.4)
+            t += 0.4
+        t = _wait_until(self, 10.0, t)
+
+        # Arrows between roles
+        for i in range(len(role_boxes) - 1):
+            arr = Arrow(role_boxes[i][0].get_right(), role_boxes[i + 1][0].get_left(),
+                        buff=0.12, color=C_ORCH, stroke_width=2)
+            hdr = Text("x-dev-session", font_size=9, color=C_ORCH)
+            hdr.next_to(arr, UP, buff=0.05)
+            self.play(Create(arr), FadeIn(hdr), run_time=0.3)
+            t += 0.3
+        t = _wait_until(self, 14.0, t)
+
+        # Framework cards
+        frameworks = [
+            ("Spring Boot", C_SPRING, "BaggageContextFilter\nRestTemplateInterceptor"),
+            ("Node / Vue", C_VUE, "createBaggageFetch\ncreateAxiosInterceptor"),
+            ("Flask", C_FLASK, "init_app + before_request\nBaggageSession"),
+            ("PHP", C_PHP, "PSR-15 Middleware\nGuzzleMiddleware"),
+        ]
+        fw_cards = VGroup()
+        for i, (fname, fcolor, fdesc) in enumerate(frameworks):
+            card_bg = RoundedRectangle(
+                corner_radius=0.1, width=2.8, height=1.2,
+                stroke_color=fcolor, fill_color=fcolor, fill_opacity=0.08,
+            )
+            card_title = Text(fname, font_size=13, color=fcolor, weight=BOLD)
+            card_title.move_to(card_bg.get_top() + DOWN * 0.2)
+            card_desc = Text(fdesc, font_size=10, color=GREY_B, font="Monospace")
+            card_desc.move_to(card_bg.get_center() + DOWN * 0.15)
+            card = VGroup(card_bg, card_title, card_desc)
+            col = i % 2
+            row = i // 2
+            card.move_to(RIGHT * (-3.0 + col * 6.0) + DOWN * (0.3 + row * 1.6))
+            fw_cards.add(card)
+
+        per = max(0.4, 18.0 / len(frameworks))
+        for card in fw_cards:
+            self.play(FadeIn(card, shift=UP * 0.15), run_time=0.6)
+            t += 0.6
+            t = _wait_until(self, t + per - 0.6, t)
+        t = _wait_until(self, 48.0, t)
+
+        # W3C baggage callout
+        w3c = Text("W3C baggage header + custom x-dev-session", font_size=13, color=C_ORCH)
+        w3c.move_to(DOWN * 2.8)
+        self.play(FadeIn(w3c), run_time=0.5)
+        t += 0.5
+        t = _wait_until(self, 54.0, t)
+
+        # Safety flag
+        safety = VGroup(
+            Text("BAGGAGE_ENABLED=false", font_size=14, color=C_WARN, font="Monospace"),
+            Text("Off by default in production", font_size=12, color=GREY_B),
+        ).arrange(DOWN, buff=0.15).move_to(DOWN * 3.5)
+        self.play(FadeIn(safety), run_time=0.5)
+        t += 0.5
+        t = _wait_until(self, 66.0, t)
+
+        self.play(*[FadeOut(m) for m in self.mobjects], run_time=1.0)
+        t += 1.0
+
+
+# ═════════════════════════════════════════════════════════════════════
+# Segment 14 — Customization (NEW)
+# ═════════════════════════════════════════════════════════════════════
+class CustomizationScene(Scene):
+    def construct(self):
+        self.camera.background_color = C_BG
+        t = 0.0
+
+        title = Text("Customization", font_size=30, color=WHITE)
+        sub = Text("Config-driven — no pipeline forks", font_size=16, color=GREY_B)
+        sub.next_to(title, DOWN, buff=0.25)
+        tg = VGroup(title, sub).move_to(ORIGIN)
+        self.play(FadeIn(tg), run_time=0.8)
+        t += 0.8
+        t = _wait_until(self, 4.0, t)
+        self.play(tg.animate.scale(0.5).to_edge(UP, buff=0.25), run_time=0.6)
+        t += 0.6
+
+        # Schema validation
+        schema_box = _box("schema.json", C_ORCH, w=2.2, h=0.7, fs=14)
+        schema_box.move_to(LEFT * 4.5 + UP * 1.5)
+        stack_box = _box("stack.yaml", C_SPRING, w=2.2, h=0.7, fs=14)
+        stack_box.move_to(LEFT * 1.0 + UP * 1.5)
+        val_arr = Arrow(schema_box.get_right(), stack_box.get_left(), buff=0.12,
+                        color=C_PR, stroke_width=2)
+        val_label = Text("validates", font_size=10, color=C_PR)
+        val_label.next_to(val_arr, UP, buff=0.05)
+        self.play(FadeIn(schema_box), run_time=0.4)
+        t += 0.4
+        self.play(Create(val_arr), FadeIn(val_label), FadeIn(stack_box), run_time=0.5)
+        t += 0.5
+        t = _wait_until(self, 12.0, t)
+
+        # App entry
+        app_entry = VGroup(
+            Text("apps:", font_size=12, color=C_SPRING, font="Monospace"),
+            Text("  - name: demo-api", font_size=11, color=WHITE, font="Monospace"),
+            Text("    role: terminal", font_size=11, color=GREY_B, font="Monospace"),
+            Text("    build: { tool: maven }", font_size=11, color=GREY_B, font="Monospace"),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.12).move_to(RIGHT * 3.5 + UP * 1.5)
+        self.play(FadeIn(app_entry), run_time=0.6)
+        t += 0.6
+        t = _wait_until(self, 20.0, t)
+
+        # Build variants
+        variants = VGroup(
+            _badge("Java 17", C_SPRING, fs=11),
+            _badge("Java 21", C_SPRING, fs=11),
+            _badge("Node 20", C_VUE, fs=11),
+            _badge("Node 22", C_VUE, fs=11),
+            _badge("Python 3.12", C_FLASK, fs=11),
+            _badge("PHP 8.3", C_PHP, fs=11),
+        ).arrange_in_grid(rows=2, buff=0.2).move_to(LEFT * 3.0 + DOWN * 0.3)
+        var_label = Text("compileImageVariants", font_size=12, color=C_ORCH)
+        var_label.next_to(variants, UP, buff=0.15)
+        self.play(FadeIn(var_label), run_time=0.3)
+        t += 0.3
+        for v in variants:
+            self.play(FadeIn(v, shift=RIGHT * 0.1), run_time=0.2)
+            t += 0.2
+        t = _wait_until(self, 30.0, t)
+
+        # Hook tasks
+        hooks = [
+            ("pre-build", C_HOOK),
+            ("post-build", C_HOOK),
+            ("pre-test", C_HOOK),
+            ("post-test", C_HOOK),
+        ]
+        hook_group = VGroup()
+        for i, (hlabel, hcolor) in enumerate(hooks):
+            hb = _badge(hlabel, hcolor, fs=11)
+            hb.move_to(RIGHT * (-1.5 + i * 2.0) + DOWN * 1.5)
+            hook_group.add(hb)
+
+        hook_title = Text("Pipeline hook tasks", font_size=13, color=C_HOOK)
+        hook_title.next_to(hook_group, UP, buff=0.2)
+        self.play(FadeIn(hook_title), run_time=0.3)
+        t += 0.3
+        for hb in hook_group:
+            self.play(FadeIn(hb, shift=DOWN * 0.1), run_time=0.3)
+            t += 0.3
+        t = _wait_until(self, 42.0, t)
+
+        # Example hooks
+        examples = VGroup(
+            Text("✓ Image scan (Trivy)", font_size=12, color=C_PR),
+            Text("✓ SBOM generation", font_size=12, color=C_PR),
+            Text("✓ Slack notification", font_size=12, color=C_PR),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.15).move_to(RIGHT * 4.0 + DOWN * 0.3)
+        for ex in examples:
+            self.play(FadeIn(ex, shift=RIGHT * 0.1), run_time=0.3)
+            t += 0.3
+        t = _wait_until(self, 50.0, t)
+
+        # Team onboarding
+        team_flow = VGroup(
+            _box("team.yaml", C_PROD, w=1.8, h=0.55, fs=12),
+            _box("values.yaml", C_ORCH, w=1.8, h=0.55, fs=12),
+            _box("helm install", C_HELM, w=1.8, h=0.55, fs=12),
+        ).arrange(RIGHT, buff=0.6).move_to(DOWN * 2.8)
+        for i, tf in enumerate(team_flow):
+            self.play(FadeIn(tf, shift=RIGHT * 0.15), run_time=0.3)
+            t += 0.3
+            if i < len(team_flow) - 1:
+                arr = _harrow(tf, team_flow[i + 1])
+                self.play(Create(arr), run_time=0.15)
+                t += 0.15
+        t = _wait_until(self, 62.0, t)
+
+        onboard = Text("Config-only onboarding — no pipeline forks", font_size=14, color=C_PR)
+        onboard.to_edge(DOWN, buff=0.3)
+        self.play(FadeIn(onboard), run_time=0.5)
+        t += 0.5
+        t = _wait_until(self, 75.0, t)
+
+        self.play(*[FadeOut(m) for m in self.mobjects], run_time=1.0)
+        t += 1.0
+
+
+# ═════════════════════════════════════════════════════════════════════
+# Segment 16 — Management GUI Tour (REWRITE)
+# ═════════════════════════════════════════════════════════════════════
+class ManagementGUITourScene(Scene):
+    def construct(self):
+        self.camera.background_color = C_BG
+        t = 0.0
+
+        title = Text("Management GUI", font_size=30, color=C_GUI)
+        sub = Text("Vue 3 + Flask — team-scoped cluster operations", font_size=16, color=GREY_B)
+        sub.next_to(title, DOWN, buff=0.25)
+        tg = VGroup(title, sub).move_to(ORIGIN)
+        self.play(FadeIn(tg), run_time=0.8)
+        t += 0.8
+        t = _wait_until(self, 4.0, t)
+        self.play(tg.animate.scale(0.5).to_edge(UP, buff=0.25), run_time=0.6)
+        t += 0.6
+
+        # Browser chrome
+        browser = RoundedRectangle(
+            corner_radius=0.15, width=11.5, height=5.6,
+            stroke_color=GREY_D, stroke_width=1.5,
+            fill_color="#11111b", fill_opacity=0.6,
+        ).move_to(DOWN * 0.6)
+        self.play(FadeIn(browser), run_time=0.4)
+        t += 0.4
+
+        # Sidebar
+        sidebar = Rectangle(width=2.0, height=5.2, stroke_color=GREY_D, stroke_width=0.5,
+                            fill_color="#181825", fill_opacity=0.8)
+        sidebar.align_to(browser, LEFT).shift(RIGHT * 0.15 + DOWN * 0.05)
+
+        team_label = Text("Team: alpha", font_size=11, color=C_GUI, weight=BOLD)
+        team_label.move_to(sidebar.get_top() + DOWN * 0.35)
+
+        nav_items = VGroup()
+        nav_labels = ["DAG View", "Runs", "Triggers", "Tests", "Git", "Dashboard"]
+        nav_colors = [C_NEO4J, C_PIPE, C_PR, C_PR, GREY_B, C_ORCH]
+        for i, (nl, nc) in enumerate(zip(nav_labels, nav_colors)):
+            nt = Text(nl, font_size=10, color=nc)
+            nt.move_to(sidebar.get_top() + DOWN * (0.8 + i * 0.4) + RIGHT * 0.1)
+            nav_items.add(nt)
+
+        self.play(FadeIn(sidebar), FadeIn(team_label), run_time=0.4)
+        t += 0.4
+        for ni in nav_items:
+            self.play(FadeIn(ni), run_time=0.15)
+            t += 0.15
+        t = _wait_until(self, 10.0, t)
+
+        # DAG View content
+        content_area = RIGHT * 2.0 + DOWN * 0.6
+        dag_title = Text("DAG View", font_size=16, color=C_NEO4J)
+        dag_title.move_to(content_area + UP * 2.3)
+
+        dag_nodes = VGroup()
+        dag_names = ["demo-fe", "demo-bff", "demo-api"]
+        dag_colors = [C_VUE, C_SPRING, C_SPRING]
+        dag_xs = [-1.5, 1.5, 4.5]
+        for name, color, x in zip(dag_names, dag_colors, dag_xs):
+            node = _box(name, color, w=1.6, h=0.55, fs=11)
+            node.move_to(content_area + RIGHT * (x - 1.5) + UP * 0.8)
+            dag_nodes.add(node)
+
+        self.play(FadeIn(dag_title), run_time=0.3)
+        t += 0.3
+        for dn in dag_nodes:
+            self.play(FadeIn(dn), run_time=0.25)
+            t += 0.25
+        for i in range(len(dag_nodes) - 1):
+            arr = _harrow(dag_nodes[i], dag_nodes[i + 1])
+            self.play(Create(arr), run_time=0.15)
+            t += 0.15
+        t = _wait_until(self, 18.0, t)
+
+        # Runs view
+        self.play(FadeOut(dag_title), FadeOut(dag_nodes), run_time=0.3)
+        t += 0.3
+
+        runs_title = Text("Pipeline Runs", font_size=16, color=C_PIPE)
+        runs_title.move_to(content_area + UP * 2.3)
+        self.play(FadeIn(runs_title), run_time=0.3)
+        t += 0.3
+
+        run_rows = VGroup()
+        runs_data = [
+            ("bootstrap-001", "Succeeded", C_PR),
+            ("pr-test-042", "Running", C_ORCH),
+            ("merge-rel-039", "Succeeded", C_PR),
+        ]
+        for i, (rname, rstatus, rcolor) in enumerate(runs_data):
+            rn = Text(rname, font_size=11, color=WHITE, font="Monospace")
+            rs = Text(rstatus, font_size=11, color=rcolor)
+            rn.move_to(content_area + LEFT * 1.5 + DOWN * (0.0 + i * 0.5))
+            rs.move_to(content_area + RIGHT * 2.5 + DOWN * (0.0 + i * 0.5))
+            run_rows.add(VGroup(rn, rs))
+
+        for rr in run_rows:
+            self.play(FadeIn(rr), run_time=0.25)
+            t += 0.25
+        t = _wait_until(self, 28.0, t)
+
+        # Triggers
+        self.play(FadeOut(runs_title), FadeOut(run_rows), run_time=0.3)
+        t += 0.3
+
+        trig_title = Text("Manual Triggers", font_size=16, color=C_PR)
+        trig_title.move_to(content_area + UP * 2.3)
+        self.play(FadeIn(trig_title), run_time=0.3)
+        t += 0.3
+
+        trigger_btns = VGroup(
+            _badge("Bootstrap", C_PIPE, fs=12),
+            _badge("PR Test", C_PR, fs=12),
+            _badge("Merge", C_PROD, fs=12),
+        ).arrange(RIGHT, buff=0.4).move_to(content_area + UP * 0.5)
+        self.play(FadeIn(trigger_btns), run_time=0.5)
+        t += 0.5
+        t = _wait_until(self, 36.0, t)
+
+        # Test results
+        self.play(FadeOut(trig_title), FadeOut(trigger_btns), run_time=0.3)
+        t += 0.3
+
+        test_title = Text("Test Results", font_size=16, color=C_PR)
+        test_title.move_to(content_area + UP * 2.3)
+        self.play(FadeIn(test_title), run_time=0.3)
+        t += 0.3
+
+        test_items = VGroup(
+            Text("Newman: 24/24 passed", font_size=12, color=C_PR),
+            Text("Playwright: 69/69 passed", font_size=12, color=C_PR),
+            Text("Artillery: p99 < 200ms", font_size=12, color=C_PR),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.2).move_to(content_area)
+        for ti in test_items:
+            self.play(FadeIn(ti, shift=RIGHT * 0.1), run_time=0.3)
+            t += 0.3
+        t = _wait_until(self, 45.0, t)
+
+        # Architecture callout
+        self.play(FadeOut(test_title), FadeOut(test_items), run_time=0.3)
+        t += 0.3
+
+        arch = VGroup(
+            Text("Vue 3 + Vite", font_size=14, color=C_VUE),
+            Text("Pinia stores", font_size=12, color=GREY_B),
+            Text("Flask backend", font_size=14, color=C_FLASK),
+            Text("K8s Python client", font_size=12, color=GREY_B),
+        ).arrange(DOWN, buff=0.2).move_to(content_area + UP * 0.5)
+
+        testing = VGroup(
+            Text("50+ pytest", font_size=12, color=C_PR),
+            Text("69 Playwright E2E", font_size=12, color=C_PR),
+            Text("Newman API suite", font_size=12, color=C_PR),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.15).move_to(content_area + DOWN * 1.5)
+
+        self.play(FadeIn(arch), run_time=0.6)
+        t += 0.6
+        t = _wait_until(self, 55.0, t)
+        self.play(FadeIn(testing), run_time=0.5)
+        t += 0.5
+        t = _wait_until(self, 70.0, t)
+
+        # Closing
+        closing = Text("Team-scoped · Cluster-safe · Fully tested", font_size=15, color=C_GUI)
+        closing.to_edge(DOWN, buff=0.3)
+        self.play(FadeIn(closing), run_time=0.5)
+        t += 0.5
+        t = _wait_until(self, 76.0, t)
+
+        self.play(*[FadeOut(m) for m in self.mobjects], run_time=1.0)
+        t += 1.0
+
+
+# ═════════════════════════════════════════════════════════════════════
+# Segment 17 — Extending the GUI (REWRITE)
+# ═════════════════════════════════════════════════════════════════════
+class GUIExtensionPatternScene(Scene):
+    def construct(self):
+        self.camera.background_color = C_BG
+        t = 0.0
+
+        title = Text("Extending the GUI", font_size=30, color=WHITE)
+        sub = Text("Five steps — one pattern", font_size=16, color=GREY_B)
+        sub.next_to(title, DOWN, buff=0.25)
+        tg = VGroup(title, sub).move_to(ORIGIN)
+        self.play(FadeIn(tg), run_time=0.8)
+        t += 0.8
+        t = _wait_until(self, 4.0, t)
+        self.play(tg.animate.scale(0.5).to_edge(UP, buff=0.25), run_time=0.6)
+        t += 0.6
+
+        # Five steps as a flow
+        step_data = [
+            ("1. Flask\nroute", C_FLASK),
+            ("2. pytest", C_PR),
+            ("3. Pinia\nstore", C_VUE),
+            ("4. Vue\ncomponent", C_VUE),
+            ("5. Playwright\nspec", C_PR),
+        ]
+        step_boxes = VGroup()
+        for i, (slabel, scolor) in enumerate(step_data):
+            sb = _box(slabel, scolor, w=1.8, h=0.9, fs=12)
+            sb.move_to(RIGHT * (-4.5 + i * 2.3) + UP * 1.5)
+            step_boxes.add(sb)
+
+        per = max(0.35, 8.0 / len(step_data))
+        for i, sb in enumerate(step_boxes):
+            self.play(FadeIn(sb, shift=DOWN * 0.15), run_time=per)
+            t += per
+            if i < len(step_boxes) - 1:
+                arr = _harrow(sb, step_boxes[i + 1])
+                self.play(Create(arr), run_time=0.15)
+                t += 0.15
+        t = _wait_until(self, 14.0, t)
+
+        # Example: TaskRun Logs
+        example_title = Text("Example: TaskRun Logs panel", font_size=15, color=C_GUI)
+        example_title.move_to(DOWN * 0.1)
+        self.play(FadeIn(example_title), run_time=0.4)
+        t += 0.4
+
+        details = [
+            ("Flask: /api/teams/{team}/taskruns/{name}/logs", C_FLASK),
+            ("pytest: mock read_namespaced_pod_log", C_PR),
+            ("Store: useTaskRunLogs composable", C_VUE),
+            ("View: <TaskRunLogs /> with auto-scroll", C_VUE),
+            ("E2E: navigate → click TaskRun → verify logs", C_PR),
+        ]
+        detail_group = VGroup()
+        for i, (dlabel, dcolor) in enumerate(details):
+            dt = Text(dlabel, font_size=11, color=dcolor, font="Monospace")
+            dt.move_to(LEFT * 0.5 + DOWN * (0.7 + i * 0.4))
+            detail_group.add(dt)
+
+        per = max(0.3, 25.0 / len(details))
+        for dt in detail_group:
+            self.play(FadeIn(dt, shift=RIGHT * 0.15), run_time=0.4)
+            t += 0.4
+            t = _wait_until(self, t + per - 0.4, t)
+        t = _wait_until(self, 50.0, t)
+
+        # More ideas
+        ideas_title = Text("More extension ideas:", font_size=13, color=C_ORCH)
+        ideas_title.move_to(DOWN * 3.0 + LEFT * 3.0)
+        ideas = VGroup(
+            Text("Results views", font_size=11, color=GREY_B),
+            Text("Event streams", font_size=11, color=GREY_B),
+            Text("Quota dashboards", font_size=11, color=GREY_B),
+            Text("Webhook config", font_size=11, color=GREY_B),
+        ).arrange(RIGHT, buff=0.6).move_to(DOWN * 3.5)
+        self.play(FadeIn(ideas_title), FadeIn(ideas), run_time=0.5)
+        t += 0.5
+        t = _wait_until(self, 60.0, t)
+
+        closing = Text("Five files · One pattern · Unlimited extensibility", font_size=15, color=C_PR)
+        closing.to_edge(DOWN, buff=0.3)
+        self.play(FadeIn(closing), run_time=0.5)
+        t += 0.5
+        t = _wait_until(self, 67.0, t)
+
+        self.play(*[FadeOut(m) for m in self.mobjects], run_time=1.0)
+        t += 1.0
+
+
+# ═════════════════════════════════════════════════════════════════════
+# Segment 18 — Roadmap / What's Coming Next (NEW)
+# ═════════════════════════════════════════════════════════════════════
+class RoadmapScene(Scene):
+    def construct(self):
+        self.camera.background_color = C_BG
+        t = 0.0
+
+        title = Text("What's Coming Next", font_size=30, color=WHITE)
+        sub = Text("Milestone 13 — Production Hardening", font_size=16, color=C_ORCH)
+        sub.next_to(title, DOWN, buff=0.25)
+        tg = VGroup(title, sub).move_to(ORIGIN)
+        self.play(FadeIn(tg), run_time=0.8)
+        t += 0.8
+        t = _wait_until(self, 5.0, t)
+        self.play(tg.animate.scale(0.5).to_edge(UP, buff=0.25), run_time=0.6)
+        t += 0.6
+
+        # Five pillars as cards
+        pillars = [
+            ("Retry on\nTransient Failures", C_WARN,
+             "Task retries for spot\npreemptions, throttling"),
+            ("Precise Build\nImage Sizing", C_SPRING,
+             "Per-tool CPU/memory\nHelm-configurable"),
+            ("Multi-Cluster\nPush", C_PROD,
+             "Remote registries\nPromotion pipeline"),
+            ("Operational\nReliability", C_PIPE,
+             "Timeouts, health gates\nDB backup"),
+            ("Observability", C_NEO4J,
+             "Prometheus metrics\nCost attribution"),
+        ]
+
+        cards = VGroup()
+        for i, (plabel, pcolor, pdesc) in enumerate(pillars):
+            card_bg = RoundedRectangle(
+                corner_radius=0.12, width=2.4, height=2.0,
+                stroke_color=pcolor, fill_color=pcolor, fill_opacity=0.08,
+            )
+            card_icon = Circle(radius=0.18, color=pcolor, fill_opacity=0.3)
+            card_icon.move_to(card_bg.get_top() + DOWN * 0.35)
+            card_num = Text(str(i + 1), font_size=12, color=pcolor)
+            card_num.move_to(card_icon)
+            card_title = Text(plabel, font_size=11, color=pcolor, weight=BOLD)
+            card_title.move_to(card_bg.get_center() + UP * 0.1)
+            card_desc = Text(pdesc, font_size=9, color=GREY_B)
+            card_desc.move_to(card_bg.get_center() + DOWN * 0.55)
+
+            card = VGroup(card_bg, card_icon, card_num, card_title, card_desc)
+
+            if i < 3:
+                card.move_to(RIGHT * (-4.0 + i * 4.0) + UP * 0.5)
+            else:
+                card.move_to(RIGHT * (-2.0 + (i - 3) * 4.0) + DOWN * 2.2)
+            cards.add(card)
+
+        per = max(0.5, 50.0 / len(pillars))
+        for i, card in enumerate(cards):
+            self.play(FadeIn(card, shift=UP * 0.2), run_time=0.7)
+            t += 0.7
+            t = _wait_until(self, 12.0 + i * per, t)
+
+        t = _wait_until(self, 78.0, t)
+
+        closing = Text(
+            "Infrastructure-grade reliability · Cost-aware · Multi-environment",
+            font_size=14, color=C_PR,
+        )
+        closing.to_edge(DOWN, buff=0.3)
+        self.play(FadeIn(closing), run_time=0.5)
+        t += 0.5
+        t = _wait_until(self, 86.0, t)
+
+        self.play(*[FadeOut(m) for m in self.mobjects], run_time=1.0)
+        t += 1.0
