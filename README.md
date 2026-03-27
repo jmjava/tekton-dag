@@ -9,26 +9,48 @@ Standalone Tekton pipeline system for **local development and proof-of-concept**
 
 Each row links to the **in-browser player** on Pages (`#seg-…`) and to the **composed MP4** in the repo. Anchors match [docs/index.html](docs/index.html).
 
-| # | Video | Description | Duration | Watch (Pages) | MP4 in repo |
-|---|-------|-------------|----------|---------------|-------------|
-| 01 | Architecture overview | System architecture, DAG model, polyglot support, pipelines | ~2m 46s | [▶ Pages](https://jmjava.github.io/tekton-dag/#seg-01) | [`01-architecture.mp4`](docs/demos/recordings/01-architecture.mp4) |
-| 02 | Quick start | Kind, Tekton, images, tasks (VHS) | ~1m 50s | [▶ Pages](https://jmjava.github.io/tekton-dag/#seg-02) | [`02-quickstart.mp4`](docs/demos/recordings/02-quickstart.mp4) |
-| 03 | Bootstrap dataflow | Stack bootstrap PipelineRun walkthrough | ~2m 30s | [▶ Pages](https://jmjava.github.io/tekton-dag/#seg-03) | [`03-bootstrap-dataflow.mp4`](docs/demos/recordings/03-bootstrap-dataflow.mp4) |
-| 04 | PR pipeline | PR flow, intercepts, tests (VHS) | ~2m 30s | [▶ Pages](https://jmjava.github.io/tekton-dag/#seg-04) | [`04-pr-pipeline.mp4`](docs/demos/recordings/04-pr-pipeline.mp4) |
-| 05 | Intercept routing | PR vs normal traffic routing, header-based interception | ~2m 6s | [▶ Pages](https://jmjava.github.io/tekton-dag/#seg-05) | [`05-intercept-routing.mp4`](docs/demos/recordings/05-intercept-routing.mp4) |
-| 06 | Local debugging | mirrord integration, IDE breakpoints, live cluster debugging | ~1m 57s | [▶ Pages](https://jmjava.github.io/tekton-dag/#seg-06) | [`06-local-debug.mp4`](docs/demos/recordings/06-local-debug.mp4) |
-| 07 | Orchestrator API | REST API, stacks, test plan, graph (VHS) | ~2m 14s | [▶ Pages](https://jmjava.github.io/tekton-dag/#seg-07) | [`07-orchestrator.mp4`](docs/demos/recordings/07-orchestrator.mp4) |
-| 08 | Multi-team Helm | Helm chart deployment, team isolation, custom hooks | ~1m 59s | [▶ Pages](https://jmjava.github.io/tekton-dag/#seg-08) | [`08-multi-team-helm.mp4`](docs/demos/recordings/08-multi-team-helm.mp4) |
-| 09 | Tekton Results | Results API and persisted history (VHS) | ~1m 40s | [▶ Pages](https://jmjava.github.io/tekton-dag/#seg-09) | [`09-results-db.mp4`](docs/demos/recordings/09-results-db.mp4) |
-| 10 | Newman / regression | API tests and local test tiers (VHS) | ~2m 0s | [▶ Pages](https://jmjava.github.io/tekton-dag/#seg-10) | [`10-newman-tests.mp4`](docs/demos/recordings/10-newman-tests.mp4) |
-| 11 | Test-trace graph | Blast radius, graph query, focused tests (mixed) | ~2m 0s | [▶ Pages](https://jmjava.github.io/tekton-dag/#seg-11) | [`11-test-trace-graph.mp4`](docs/demos/recordings/11-test-trace-graph.mp4) |
-| 12 | Regression suite (M12.2) | Full regression story + agent workflows | varies | [▶ Pages](https://jmjava.github.io/tekton-dag/#seg-12) | [`12-regression-suite.mp4`](docs/demos/recordings/12-regression-suite.mp4) |
-| 13 | Management GUI architecture (M12.2) | Vue, Flask, orchestrator | varies | [▶ Pages](https://jmjava.github.io/tekton-dag/#seg-13) | [`13-management-gui-architecture.mp4`](docs/demos/recordings/13-management-gui-architecture.mp4) |
-| 14 | GUI Tekton extension (M12.2) | Extending the GUI for Tekton | varies | [▶ Pages](https://jmjava.github.io/tekton-dag/#seg-14) | [`14-gui-tekton-extension.mp4`](docs/demos/recordings/14-gui-tekton-extension.mp4) |
+### Platform Core (01–07)
 
-**Full concat files:** [01–11 on Pages](https://jmjava.github.io/tekton-dag/#full-demo) → [`full-demo.mp4`](docs/demos/recordings/full-demo.mp4) · [01–14 on Pages](https://jmjava.github.io/tekton-dag/#full-demo-m12-2) → [`full-demo-with-m12-2.mp4`](docs/demos/recordings/full-demo-with-m12-2.mp4)
+| # | Video | Description | Duration | Watch | MP4 |
+|---|-------|-------------|----------|-------|-----|
+| 01 | Architecture Overview | System architecture, DAG model, polyglot support, pipelines | ~2:46 | [▶](https://jmjava.github.io/tekton-dag/#seg-01) | [`01-architecture.mp4`](docs/demos/recordings/01-architecture.mp4) |
+| 02 | Quick Start | Kind cluster, Tekton install, image builds, task deployment | ~1:50 | [▶](https://jmjava.github.io/tekton-dag/#seg-02) | [`02-quickstart.mp4`](docs/demos/recordings/02-quickstart.mp4) |
+| 03 | Bootstrap Dataflow | Stack bootstrap PipelineRun, header propagation, dependency resolution | ~2:30 | [▶](https://jmjava.github.io/tekton-dag/#seg-03) | [`03-bootstrap-dataflow.mp4`](docs/demos/recordings/03-bootstrap-dataflow.mp4) |
+| 04 | PR Pipeline | Pull request flow, intercept setup, compile, containerize, test | ~2:30 | [▶](https://jmjava.github.io/tekton-dag/#seg-04) | [`04-pr-pipeline.mp4`](docs/demos/recordings/04-pr-pipeline.mp4) |
+| 05 | Intercept Routing | PR vs normal traffic routing, header-based interception | ~2:06 | [▶](https://jmjava.github.io/tekton-dag/#seg-05) | [`05-intercept-routing.mp4`](docs/demos/recordings/05-intercept-routing.mp4) |
+| 06 | Local Debugging | mirrord integration, IDE breakpoints, live cluster debugging | ~1:57 | [▶](https://jmjava.github.io/tekton-dag/#seg-06) | [`06-local-debug.mp4`](docs/demos/recordings/06-local-debug.mp4) |
+| 07 | Merge & Release Pipeline | Version bump, compile, Crane tag, hook tasks, next-cycle push | ~2:30 | [▶](https://jmjava.github.io/tekton-dag/#seg-07) | [`07-merge-release.mp4`](docs/demos/recordings/07-merge-release.mp4) |
 
-*All videos are generated programmatically — run [`docs/demos/generate-all.sh`](docs/demos/generate-all.sh). See [Milestone 8](milestones/milestone-8.md), [M12.2](milestones/milestone-12.2.md), and [docs/demos/README.md](docs/demos/README.md).*
+### Infrastructure (08–13)
+
+| # | Video | Description | Duration | Watch | MP4 |
+|---|-------|-------------|----------|-------|-----|
+| 08 | Orchestrator API | REST API, stacks, test plan, graph queries | ~2:14 | [▶](https://jmjava.github.io/tekton-dag/#seg-08) | [`08-orchestrator.mp4`](docs/demos/recordings/08-orchestrator.mp4) |
+| 09 | Multi-Team Helm | Helm chart, team isolation, namespace scoping, custom hooks | ~1:59 | [▶](https://jmjava.github.io/tekton-dag/#seg-09) | [`09-multi-team-helm.mp4`](docs/demos/recordings/09-multi-team-helm.mp4) |
+| 10 | Baggage Middleware | Five-framework deep dive: Spring, Node, Flask, PHP propagation, W3C baggage | ~3:06 | [▶](https://jmjava.github.io/tekton-dag/#seg-10) | [`10-baggage-middleware.mp4`](docs/demos/recordings/10-baggage-middleware.mp4) |
+| 11 | Testing Ecosystem | Newman API tests, Playwright E2E, Artillery load tests, regression tiers | ~2:00 | [▶](https://jmjava.github.io/tekton-dag/#seg-11) | [`11-testing-ecosystem.mp4`](docs/demos/recordings/11-testing-ecosystem.mp4) |
+| 12 | Test-Trace Graph | Neo4j blast-radius analysis, graph-guided test selection | ~2:00 | [▶](https://jmjava.github.io/tekton-dag/#seg-12) | [`12-test-trace-graph.mp4`](docs/demos/recordings/12-test-trace-graph.mp4) |
+| 13 | Tekton Results DB | Results API, persisted history, log retrieval, Postgres backing | ~1:40 | [▶](https://jmjava.github.io/tekton-dag/#seg-13) | [`13-results-db.mp4`](docs/demos/recordings/13-results-db.mp4) |
+
+### Customization & GUI (14–18)
+
+| # | Video | Description | Duration | Watch | MP4 |
+|---|-------|-------------|----------|-------|-----|
+| 14 | Customization | Stack schema, app entries, build variants, hook tasks, team onboarding, Helm values | ~3:06 | [▶](https://jmjava.github.io/tekton-dag/#seg-14) | [`14-customization.mp4`](docs/demos/recordings/14-customization.mp4) |
+| 15 | Regression Suite | Full regression: local tiers, cluster checks, agent workflows | ~2:30 | [▶](https://jmjava.github.io/tekton-dag/#seg-15) | [`15-regression-suite.mp4`](docs/demos/recordings/15-regression-suite.mp4) |
+| 16 | Management GUI | Vue 3 + Flask: team switcher, DAG view, runs, triggers, tests, Git browser | ~3:30 | [▶](https://jmjava.github.io/tekton-dag/#seg-16) | [`16-management-gui.mp4`](docs/demos/recordings/16-management-gui.mp4) |
+| 17 | Extending the GUI | Five-step pattern: Flask route, pytest, Pinia store, Vue component, Playwright | ~2:36 | [▶](https://jmjava.github.io/tekton-dag/#seg-17) | [`17-extending-gui.mp4`](docs/demos/recordings/17-extending-gui.mp4) |
+| 18 | What's Coming Next | Milestone 13 roadmap: retry, sizing, multi-cluster, reliability, observability | ~3:25 | [▶](https://jmjava.github.io/tekton-dag/#seg-18) | [`18-roadmap.mp4`](docs/demos/recordings/18-roadmap.mp4) |
+
+### Concat Demos
+
+| Name | Segments | Duration | Watch | MP4 |
+|------|----------|----------|-------|-----|
+| Full Demo | 01–13 | ~30 min | [▶](https://jmjava.github.io/tekton-dag/#full-demo) | [`full-demo.mp4`](docs/demos/recordings/full-demo.mp4) |
+| Complete Demo | 01–18 | ~45 min | [▶](https://jmjava.github.io/tekton-dag/#full-demo-complete) | [`full-demo-complete.mp4`](docs/demos/recordings/full-demo-complete.mp4) |
+| Platform Core | 01–07 | ~16 min | [▶](https://jmjava.github.io/tekton-dag/#platform-core) | [`platform-core.mp4`](docs/demos/recordings/platform-core.mp4) |
+
+*All videos generated with [`docgen`](https://github.com/jmjava/documentation-generator) from Markdown narration + Manim animations. See [docs/demos/README.md](docs/demos/README.md).*
 
 ---
 
@@ -49,11 +71,18 @@ Each row links to the **in-browser player** on Pages (`#seg-…`) and to the **c
 | [M11](milestones/milestone-11.md) | **Completed** | Vue 3 Management GUI + Python/Flask backend (replaces `reporting-gui/`). Multi-team, multi-cluster, DAG visualization. 69 Playwright E2E tests, 56 pytest unit tests, Postman collection. |
 | [M12](milestones/milestone-12.md) | **Completed** | Architecture customization: shared Python package, Helm ConfigMap/PVC templates, parameterized pipelines (no hardcoded `localhost:5000`), `scripts/common.sh`, build image variants (Java 11/17/21, Node 18/20/22, Python 3.10–3.12, PHP 8.1–8.3), custom pipeline hook tasks (pre/post build/test), stack JSON schema, 62 orchestrator pytest tests, 14 shared-package tests. Full docs: [CUSTOMIZATION.md](docs/CUSTOMIZATION.md), [TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md](docs/TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md), MAINTENANCE.md, Helm README. |
 | [M12.2](milestones/milestone-12.2.md) | **Partial** | **Part A done:** doc sync + archive. **Part B open:** regression + Management GUI [docs & demo plan](docs/TESTING-AND-REGRESSION-OVERVIEW.md) / [GUI extension](docs/MANAGEMENT-GUI-EXTENSION.md) / [video segments](docs/demos/segments-m12-2-regression-gui.md) |
-| [doc-generator](milestones/milestone-doc-generator.md) | **Planned** | Reusable Python library (`docgen`) extracting the demo pipeline (TTS, Manim, VHS, ffmpeg, validation, Pages) into [`documentation-generator`](https://github.com/jmjava/documentation-generator). OCR validation, A/V sync, narration linting, auto-generated GitHub Pages. Supersedes remaining M8 toolchain scripts. |
+| [doc-generator](milestones/milestone-doc-generator.md) | **Completed** | Reusable Python library ([`docgen`](https://github.com/jmjava/documentation-generator)) extracting the demo pipeline (TTS, Manim, VHS, ffmpeg, validation, Pages). OCR validation, A/V sync, narration linting, auto-generated GitHub Pages. All 18 demo segments regenerated via `docgen`. |
+| [M13](milestones/milestone-13.md) | **Planned** | Production hardening: retry on transient failures, precise build image sizing, multi-cluster push, operational reliability, observability. See [segment 18](https://jmjava.github.io/tekton-dag/#seg-18) for video walkthrough. |
 
 Older milestones (M2, M3) are in [milestones/completed/](milestones/completed/).
 
-**Next up:** **[doc-generator](milestones/milestone-doc-generator.md)** — extract demo toolchain into reusable library with automated validation and Pages publishing; **[M12.2 Part B](milestones/milestone-12.2.md)** regression + GUI [docs](docs/TESTING-AND-REGRESSION-OVERVIEW.md) and [demo segments](docs/demos/segments-m12-2-regression-gui.md); ongoing maintenance via [CUSTOMIZATION.md](docs/CUSTOMIZATION.md) and [MAINTENANCE.md](docs/MAINTENANCE.md).
+**Next up — [Milestone 13: Production Hardening](milestones/milestone-13.md):**
+
+1. **Retry on transient failures** — task-level retries for build/deploy (not tests), spot eviction handling, registry throttle backoff, configurable retry counts, structured retry annotations
+2. **Precise build image sizing** — per-tool resource profiles (Maven ≠ npm ≠ Kaniko), Helm-configurable, stack-level overrides, monitoring baseline
+3. **Multi-cluster push** — remote registry push, promotion pipeline, cross-cluster deploy task, environment gates (manual approval), promotion audit trail in Tekton Results
+4. **Operational reliability** — pipeline timeouts, graceful cleanup on timeout (`finally` block), health-check gates before tests, Results DB backup, Neo4j persistence
+5. **Observability** — Prometheus metrics (build duration, test pass rate, retry count, queue time), alerting rules, cost attribution labels (team/stack/app)
 
 **Regression (humans & Cursor agents):** run **`scripts/run-regression-agent.sh`** and iterate with fixes until green — see [AGENTS.md](AGENTS.md) and [docs/AGENT-REGRESSION.md](docs/AGENT-REGRESSION.md). Full tier list: [docs/REGRESSION.md](docs/REGRESSION.md).
 
