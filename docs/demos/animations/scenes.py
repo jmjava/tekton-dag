@@ -2521,393 +2521,383 @@ class GUIExtensionPatternScene(Scene):
 # Segment 18 — Roadmap / What's Coming Next (NEW)
 # ═════════════════════════════════════════════════════════════════════
 class RoadmapScene(Scene):
-    """~205s scene synced to 18-roadmap Whisper timing."""
+    """~315s scene synced to 18-roadmap Whisper timing (7 pillars).
+
+    Layout rules:
+    - Pillar strip sits at a fixed Y (STRIP_Y) — never moves.
+    - CONTENT_TOP is the Y coordinate just below the strip where pillar
+      titles appear.  All detail content is placed relative to the title
+      using next_to / arrange — **never** with absolute Y math.
+    - Font sizes: titles 24, section headings 20, body 16, subtitle 14.
+    - Render at 1080p30 for sharp text.
+    """
+
+    STRIP_Y   = 3.0          # y-centre of the pillar nav strip
+    CONTENT_TOP = 1.8         # y-centre of each pillar title
+
+    # ── reusable builders ────────────────────────────────────────
 
     def _pillar_card(self, label, color, num):
         bg = RoundedRectangle(
-            corner_radius=0.12, width=1.8, height=0.7,
-            stroke_color=color, fill_color=color, fill_opacity=0.18,
+            corner_radius=0.15, width=1.65, height=0.6,
+            stroke_color=color, fill_color=color, fill_opacity=0.25,
         )
-        icon = Circle(radius=0.15, color=color, fill_opacity=0.4)
-        icon.move_to(bg.get_left() + RIGHT * 0.25)
-        n = Text(str(num), font_size=10, color=WHITE)
-        n.move_to(icon)
-        t = Text(label, font_size=10, color=WHITE, weight=BOLD)
-        t.move_to(bg.get_center() + RIGHT * 0.1)
-        return VGroup(bg, icon, n, t)
+        n = Text(str(num), font_size=18, color=WHITE)
+        n.move_to(bg.get_left() + RIGHT * 0.25)
+        t = Text(label, font_size=15, color=WHITE)
+        t.move_to(bg.get_center() + RIGHT * 0.15)
+        return VGroup(bg, n, t)
 
-    def _detail_item(self, txt, color=GREY_B, icon_color=None):
-        ic = Text("›", font_size=13, color=icon_color or color)
-        tx = Text(txt, font_size=10, color=color, font="Monospace")
-        tx.next_to(ic, RIGHT, buff=0.12)
+    def _bullet(self, txt, color=WHITE, accent=None):
+        """Single bullet item — icon + text, arranged with next_to."""
+        ic = Text("›", font_size=20, color=accent or color)
+        tx = Text(txt, font_size=16, color=color)
+        tx.next_to(ic, RIGHT, buff=0.15)
         return VGroup(ic, tx)
+
+    def _bullet_list(self, items, color=WHITE, accent=None):
+        """Build a VGroup of bullets stacked with arrange(DOWN)."""
+        rows = VGroup()
+        for txt in items:
+            rows.add(self._bullet(txt, color=color, accent=accent))
+        rows.arrange(DOWN, buff=0.25, aligned_edge=LEFT)
+        return rows
+
+    def _kv_list(self, pairs, key_color=WHITE, val_color=GREY_B):
+        """Key-value rows: emphasized key + lighter description."""
+        rows = VGroup()
+        for k, v in pairs:
+            kk = Text(k, font_size=18, color=key_color)
+            vv = Text(v, font_size=15, color=val_color)
+            vv.next_to(kk, RIGHT, buff=0.2)
+            rows.add(VGroup(kk, vv))
+        rows.arrange(DOWN, buff=0.3, aligned_edge=LEFT)
+        return rows
+
+    def _flow_box(self, label, color):
+        bg = RoundedRectangle(
+            corner_radius=0.15, width=2.2, height=0.85,
+            stroke_color=color, fill_color=color, fill_opacity=0.25,
+        )
+        t = Text(label, font_size=16, color=WHITE)
+        t.move_to(bg.get_center())
+        return VGroup(bg, t)
+
+    # ── pillar section helper ────────────────────────────────────
+
+    def _show_pillar(self, pillar_idx, title_text, title_color,
+                     overview_cards, t):
+        """Highlight card, show title, return (title_mob, t)."""
+        anims = []
+        for j, c in enumerate(overview_cards):
+            anims.append(c.animate.set_opacity(1.0 if j == pillar_idx else 0.4))
+        self.play(*anims, run_time=0.4)
+        t += 0.4
+
+        title = Text(title_text, font_size=24, color=title_color)
+        title.move_to(UP * self.CONTENT_TOP)
+        self.play(FadeIn(title, shift=LEFT * 0.2), run_time=0.5)
+        t += 0.5
+        return title, t
+
+    def _add_subtitle(self, txt, anchor, t):
+        """Place a grey subtitle just below *anchor* using next_to."""
+        sub = Text(txt, font_size=16, color=GREY_B)
+        sub.next_to(anchor, DOWN, buff=0.25)
+        self.play(FadeIn(sub), run_time=0.4)
+        return sub, t + 0.4
+
+    def _reveal_list(self, grp, anchor, t, end_t):
+        """Position *grp* below *anchor*, reveal items one-by-one, paced to end_t."""
+        grp.next_to(anchor, DOWN, buff=0.3)
+        per = max(0.3, (end_t - t) / len(grp) - 0.5)
+        for item in grp:
+            self.play(FadeIn(item, shift=RIGHT * 0.15), run_time=0.4)
+            t += 0.4
+            t = _wait_until(self, t + per, t)
+        return t
+
+    def _clear(self, *mobs, t=0):
+        flat = [m for m in mobs if m is not None]
+        if flat:
+            self.play(*[FadeOut(m) for m in flat], run_time=0.4)
+        return t + 0.4
+
+    # ── main construct ───────────────────────────────────────────
 
     def construct(self):
         self.camera.background_color = C_BG
+        Text.set_default(font="Liberation Sans")
         t = 0.0
 
-        # ── Intro (0-12s) ────────────────────────────────────────
-        title = Text("What's Coming Next", font_size=30, color=WHITE)
-        sub = Text("Milestone 13 — Production Hardening", font_size=16, color=C_ORCH)
-        sub.next_to(title, DOWN, buff=0.25)
+        # ── Intro (0-12s) ───────────────────────────────────────
+        title = Text("What's Coming Next", font_size=36, color=WHITE)
+        sub = Text("Milestone 13 — Production Hardening", font_size=20, color=C_ORCH)
+        sub.next_to(title, DOWN, buff=0.3)
         tg = VGroup(title, sub).move_to(ORIGIN)
-        self.play(FadeIn(tg), run_time=0.8)
-        t += 0.8
+        self.play(FadeIn(tg), run_time=0.8); t += 0.8
 
-        tagline = Text(
-            "Build · Test · Intercept · Merge · Release",
-            font_size=13, color=GREY_B,
-        )
-        tagline.next_to(sub, DOWN, buff=0.35)
+        tagline = Text("Build · Test · Intercept · Merge · Release",
+                        font_size=16, color=GREY_B)
+        tagline.next_to(sub, DOWN, buff=0.4)
         t = _wait_until(self, 4.0, t)
-        self.play(FadeIn(tagline, shift=UP * 0.15), run_time=0.6)
-        t += 0.6
+        self.play(FadeIn(tagline, shift=UP * 0.15), run_time=0.6); t += 0.6
 
         t = _wait_until(self, 7.5, t)
         self.play(
-            tg.animate.scale(0.55).to_edge(UP, buff=0.2),
+            tg.animate.scale(0.5).to_edge(UP, buff=0.15),
             FadeOut(tagline),
             run_time=0.6,
-        )
-        t += 0.6
+        ); t += 0.6
 
-        # ── Overview strip: 5 pillar cards (8-12s) ──────────────
+        # ── Overview strip: 7 pillar cards ──────────────────────
         pillar_data = [
-            ("Retry", C_WARN),
-            ("Sizing", C_SPRING),
-            ("Multi-Cluster", C_PROD),
-            ("Reliability", C_PIPE),
-            ("Observability", C_NEO4J),
+            ("Retry",        C_WARN),
+            ("Sizing",       C_SPRING),
+            ("Multi-Cluster",C_PROD),
+            ("Reliability",  C_PIPE),
+            ("Observability",C_NEO4J),
+            ("Secrets",      "#E06C75"),
+            ("Config",       "#61AFEF"),
         ]
         overview_cards = VGroup()
         for i, (lbl, col) in enumerate(pillar_data):
-            c = self._pillar_card(lbl, col, i + 1)
-            c.move_to(RIGHT * (-4.8 + i * 2.4) + UP * 2.2)
-            overview_cards.add(c)
+            overview_cards.add(self._pillar_card(lbl, col, i + 1))
+        overview_cards.arrange(RIGHT, buff=0.15)
+        overview_cards.move_to(UP * self.STRIP_Y)
 
         self.play(
-            LaggedStart(*[FadeIn(c, shift=UP * 0.15) for c in overview_cards],
-                        lag_ratio=0.15),
+            LaggedStart(*[FadeIn(c, shift=UP * 0.12) for c in overview_cards],
+                        lag_ratio=0.08),
             run_time=1.5,
-        )
-        t += 1.5
-        t = _wait_until(self, 12.0, t)
+        ); t += 1.5
+        t = _wait_until(self, 13.0, t)
 
-        # Helper to highlight active pillar
-        def _highlight(idx, t_val):
-            anims = []
-            for j, c in enumerate(overview_cards):
-                if j == idx:
-                    anims.append(c.animate.set_opacity(1.0))
-                else:
-                    anims.append(c.animate.set_opacity(0.45))
-            self.play(*anims, run_time=0.4)
-            return t_val + 0.4
+        # ═══ PILLAR 1 — Retry (14-58s) ═════════════════════════
+        t = _wait_until(self, 14.0, t)
+        p_title, t = self._show_pillar(0, "Retry on Transient Failures",
+                                       C_WARN, overview_cards, t)
 
-        # ── PILLAR 1: Retry on transient failures (12-55s) ──────
-        t = _highlight(0, t)
-
-        detail_area = DOWN * 0.3
-        p1_title = Text("Retry on Transient Failures", font_size=16, color=C_WARN, weight=BOLD)
-        p1_title.move_to(detail_area + UP * 1.3)
-        self.play(FadeIn(p1_title, shift=LEFT * 0.2), run_time=0.5)
-        t += 0.5
-
-        # Failure scenarios
-        t = _wait_until(self, 15.5, t)
-        scenarios = [
+        t = _wait_until(self, 18.0, t)
+        problems = self._bullet_list([
             "Spot node eviction mid-build",
             "Registry push timeout",
             "DNS lookup failure during burst",
-        ]
-        sc_group = VGroup()
-        for i, sc in enumerate(scenarios):
-            item = self._detail_item(sc, color=C_WARN, icon_color=RED)
-            item.move_to(detail_area + UP * (0.9 - i * 0.45) + LEFT * 1.5)
-            sc_group.add(item)
+        ], color=C_WARN, accent=RED)
+        t = self._reveal_list(problems, p_title, t, 30.0)
 
-        for item in sc_group:
-            self.play(FadeIn(item, shift=RIGHT * 0.15), run_time=0.4)
-            t += 0.4
-        t = _wait_until(self, 29.0, t)
+        t = _wait_until(self, 34.0, t)
+        noise, t = self._add_subtitle("Infrastructure noise — not code bugs", problems, t)
 
-        noise_label = Text("≠ code bugs → infrastructure noise", font_size=12, color=GREY_B)
-        noise_label.next_to(sc_group, DOWN, buff=0.35)
-        self.play(FadeIn(noise_label), run_time=0.4)
-        t += 0.4
-
-        # Retry strategy
-        t = _wait_until(self, 32.5, t)
-        strategy_items = [
+        t = _wait_until(self, 37.0, t)
+        strategy = self._bullet_list([
             "Task-level retries: build, deploy, containerize",
             "Test tasks: NO retry (real signal)",
             "Eviction vs application exit codes",
             "Structured retry annotations per TaskRun",
-        ]
-        st_group = VGroup()
-        for i, si in enumerate(strategy_items):
-            item = self._detail_item(si, color=WHITE, icon_color=C_WARN)
-            item.move_to(detail_area + DOWN * (0.4 + i * 0.4) + LEFT * 1.2)
-            st_group.add(item)
+        ], color=WHITE, accent=C_WARN)
+        t = self._reveal_list(strategy, noise, t, 56.0)
 
-        per_item = max(0.3, (53.0 - t) / len(strategy_items) - 0.5)
-        for item in st_group:
-            self.play(FadeIn(item, shift=RIGHT * 0.1), run_time=0.4)
-            t += 0.4
-            t = _wait_until(self, t + per_item, t)
+        t = _wait_until(self, 58.0, t)
+        t = self._clear(p_title, problems, noise, strategy, t=t)
 
-        t = _wait_until(self, 54.5, t)
-        self.play(
-            FadeOut(p1_title), FadeOut(sc_group),
-            FadeOut(noise_label), FadeOut(st_group),
-            run_time=0.4,
-        )
-        t += 0.4
-
-        # ── PILLAR 2: Precise build image sizing (55-94s) ───────
-        t = _wait_until(self, 55.5, t)
-        t = _highlight(1, t)
-
-        p2_title = Text("Precise Build Image Sizing", font_size=16, color=C_SPRING, weight=BOLD)
-        p2_title.move_to(detail_area + UP * 1.3)
-        self.play(FadeIn(p2_title, shift=LEFT * 0.2), run_time=0.5)
-        t += 0.5
-
-        # Problem illustration
+        # ═══ PILLAR 2 — Sizing (59-99s) ════════════════════════
         t = _wait_until(self, 59.0, t)
-        prob_items = [
+        p_title, t = self._show_pillar(1, "Precise Build Image Sizing",
+                                       C_SPRING, overview_cards, t)
+
+        t = _wait_until(self, 63.0, t)
+        problems = self._bullet_list([
             "Maven requests 4 GB — needs 1 GB",
             "Spring Boot monolith → OOM killed",
             "Default resources → wasted capacity",
-        ]
-        prob_group = VGroup()
-        for i, pi in enumerate(prob_items):
-            item = self._detail_item(pi, color=RED, icon_color=RED)
-            item.move_to(detail_area + UP * (0.9 - i * 0.45) + LEFT * 1.5)
-            prob_group.add(item)
+        ], color=RED, accent=RED)
+        t = self._reveal_list(problems, p_title, t, 74.0)
 
-        for item in prob_group:
-            self.play(FadeIn(item, shift=RIGHT * 0.15), run_time=0.4)
-            t += 0.4
-        t = _wait_until(self, 72.0, t)
-
-        # Solution
-        solution_items = [
-            "Per-tool resource profiles (Helm values)",
+        t = _wait_until(self, 76.0, t)
+        solutions = self._bullet_list([
+            "Per-tool resource profiles via Helm",
             "Maven ≠ NPM ≠ Kaniko sizing",
             "stack.yaml per-app overrides",
             "Monitoring baseline: peak usage capture",
-        ]
-        sol_group = VGroup()
-        for i, si in enumerate(solution_items):
-            item = self._detail_item(si, color=WHITE, icon_color=C_SPRING)
-            item.move_to(detail_area + DOWN * (0.3 + i * 0.4) + LEFT * 1.2)
-            sol_group.add(item)
+        ], color=WHITE, accent=C_SPRING)
+        t = self._reveal_list(solutions, problems, t, 97.0)
 
-        per_item = max(0.3, (92.0 - t) / len(solution_items) - 0.5)
-        for item in sol_group:
-            self.play(FadeIn(item, shift=RIGHT * 0.1), run_time=0.4)
-            t += 0.4
-            t = _wait_until(self, t + per_item, t)
+        t = _wait_until(self, 99.0, t)
+        t = self._clear(p_title, problems, solutions, t=t)
 
-        t = _wait_until(self, 93.5, t)
-        self.play(
-            FadeOut(p2_title), FadeOut(prob_group), FadeOut(sol_group),
-            run_time=0.4,
-        )
-        t += 0.4
+        # ═══ PILLAR 3 — Multi-Cluster (100-147s) ═══════════════
+        t = _wait_until(self, 100.0, t)
+        p_title, t = self._show_pillar(2, "Multi-Cluster Push",
+                                       C_PROD, overview_cards, t)
 
-        # ── PILLAR 3: Multi-cluster push (94-137s) ──────────────
-        t = _wait_until(self, 94.5, t)
-        t = _highlight(2, t)
+        t = _wait_until(self, 104.0, t)
+        single, t = self._add_subtitle(
+            "Today: single-cluster build + deploy", p_title, t)
 
-        p3_title = Text("Multi-Cluster Push", font_size=16, color=C_PROD, weight=BOLD)
-        p3_title.move_to(detail_area + UP * 1.3)
-        self.play(FadeIn(p3_title, shift=LEFT * 0.2), run_time=0.5)
-        t += 0.5
-
-        # Current state
-        t = _wait_until(self, 98.0, t)
-        single = Text("Today: single-cluster build + deploy", font_size=12, color=GREY_B)
-        single.move_to(detail_area + UP * 0.7)
-        self.play(FadeIn(single), run_time=0.4)
-        t += 0.4
-
-        # Pipeline flow
-        t = _wait_until(self, 105.5, t)
-        flow_boxes = []
-        flow_labels = ["Registry\nList", "Promotion\nPipeline", "Approval\nGate", "Deploy\nTarget"]
+        t = _wait_until(self, 110.0, t)
+        flow_labels = ["Registry\nList", "Promotion\nPipeline",
+                       "Approval\nGate", "Deploy\nTarget"]
         flow_colors = [C_PROD, C_PIPE, C_WARN, C_SPRING]
-        for i, (fl, fc) in enumerate(zip(flow_labels, flow_colors)):
-            bx = _hc_box(fl, fc, w=1.8, h=0.7, fs=9)
-            bx.move_to(detail_area + DOWN * 0.2 + RIGHT * (-3.2 + i * 2.2))
-            flow_boxes.append(bx)
+        boxes = VGroup()
+        for lbl, col in zip(flow_labels, flow_colors):
+            boxes.add(self._flow_box(lbl, col))
 
-        arrows = []
-        for i in range(len(flow_boxes) - 1):
-            ar = Arrow(
-                flow_boxes[i].get_right(), flow_boxes[i + 1].get_left(),
-                buff=0.1, color=GREY_B, stroke_width=2,
-            )
-            arrows.append(ar)
+        arrows_g = VGroup()
+        flow_row = VGroup()
+        for i, bx in enumerate(boxes):
+            flow_row.add(bx)
+            if i < len(boxes) - 1:
+                ar = Arrow(ORIGIN, RIGHT * 0.6, color=GREY_B, stroke_width=3,
+                           buff=0, max_tip_length_to_length_ratio=0.3)
+                flow_row.add(ar)
+                arrows_g.add(ar)
+        flow_row.arrange(RIGHT, buff=0.12)
+        flow_row.next_to(single, DOWN, buff=0.4)
 
-        per_box = max(0.3, (124.0 - t) / len(flow_boxes) - 0.8)
-        for i, bx in enumerate(flow_boxes):
-            self.play(FadeIn(bx, shift=RIGHT * 0.15), run_time=0.5)
-            t += 0.5
-            if i < len(arrows):
-                self.play(GrowArrow(arrows[i]), run_time=0.3)
-                t += 0.3
+        per_box = max(0.3, (128.0 - t) / len(boxes) - 0.8)
+        for i, bx in enumerate(boxes):
+            self.play(FadeIn(bx, shift=RIGHT * 0.15), run_time=0.5); t += 0.5
+            if i < len(arrows_g):
+                self.play(GrowArrow(arrows_g[i]), run_time=0.3); t += 0.3
             t = _wait_until(self, t + per_box, t)
 
-        # Approval + audit
-        t = _wait_until(self, 124.5, t)
-        audit_items = [
-            "Manual sign-off or /approved on PR",
+        t = _wait_until(self, 131.0, t)
+        audit = self._bullet_list([
+            "Manual sign-off or /approve on PR",
             "Management GUI approval button",
             "Recorded in Tekton Results (audit trail)",
-        ]
-        audit_group = VGroup()
-        for i, ai in enumerate(audit_items):
-            item = self._detail_item(ai, color=WHITE, icon_color=C_PROD)
-            item.move_to(detail_area + DOWN * (1.2 + i * 0.38) + LEFT * 1.2)
-            audit_group.add(item)
+        ], color=WHITE, accent=C_PROD)
+        t = self._reveal_list(audit, flow_row, t, 145.0)
 
-        for item in audit_group:
-            self.play(FadeIn(item, shift=RIGHT * 0.1), run_time=0.4)
-            t += 0.4
-        t = _wait_until(self, 136.0, t)
+        t = _wait_until(self, 147.0, t)
+        t = self._clear(p_title, single, flow_row, audit, t=t)
 
-        all_p3 = VGroup(p3_title, single, *flow_boxes, *arrows, audit_group)
-        self.play(FadeOut(all_p3), run_time=0.4)
-        t += 0.4
+        # ═══ PILLAR 4 — Reliability (148-173s) ═════════════════
+        t = _wait_until(self, 148.0, t)
+        p_title, t = self._show_pillar(3, "Operational Reliability",
+                                       C_PIPE, overview_cards, t)
 
-        # ── PILLAR 4: Operational reliability (137-166s) ─────────
-        t = _wait_until(self, 137.5, t)
-        t = _highlight(3, t)
+        t = _wait_until(self, 151.0, t)
+        rel = self._kv_list([
+            ("Pipeline timeouts",      "No infinite hangs"),
+            ("finally block on timeout","Intercept cleanup + PR status"),
+            ("Health-check gates",     "Pod readiness before tests"),
+            ("DB backup scripts",      "Postgres + Neo4j"),
+        ], key_color=C_PIPE, val_color=GREY_B)
+        t = self._reveal_list(rel, p_title, t, 171.0)
 
-        p4_title = Text("Operational Reliability", font_size=16, color=C_PIPE, weight=BOLD)
-        p4_title.move_to(detail_area + UP * 1.3)
-        self.play(FadeIn(p4_title, shift=LEFT * 0.2), run_time=0.5)
-        t += 0.5
+        t = _wait_until(self, 173.0, t)
+        t = self._clear(p_title, rel, t=t)
 
-        t = _wait_until(self, 140.5, t)
-        rel_items = [
-            ("Pipeline timeouts", "No infinite hangs on slow clusters"),
-            ("finally block on timeout", "Intercept cleanup + PR status"),
-            ("Health-check gates", "Wait for pod readiness before tests"),
-            ("DB backup scripts", "Postgres (Results) + Neo4j (Graph)"),
-        ]
-        rel_group = VGroup()
-        for i, (rl, rd) in enumerate(rel_items):
-            label = Text(rl, font_size=11, color=C_PIPE, weight=BOLD)
-            desc = Text(rd, font_size=9, color=GREY_B)
-            label.move_to(detail_area + UP * (1.0 - i * 0.6) + LEFT * 2.0)
-            desc.next_to(label, RIGHT, buff=0.25)
-            rel_group.add(VGroup(label, desc))
+        # ═══ PILLAR 5 — Observability (174-204s) ═══════════════
+        t = _wait_until(self, 174.0, t)
+        p_title, t = self._show_pillar(4, "Observability",
+                                       C_NEO4J, overview_cards, t)
 
-        per_item = max(0.4, (164.0 - t) / len(rel_items) - 0.8)
-        for item in rel_group:
-            self.play(FadeIn(item, shift=RIGHT * 0.15), run_time=0.5)
-            t += 0.5
-            t = _wait_until(self, t + per_item, t)
-
-        t = _wait_until(self, 165.5, t)
-        self.play(FadeOut(p4_title), FadeOut(rel_group), run_time=0.4)
-        t += 0.4
-
-        # ── PILLAR 5: Observability (166-193s) ──────────────────
-        t = _wait_until(self, 166.5, t)
-        t = _highlight(4, t)
-
-        p5_title = Text("Observability", font_size=16, color=C_NEO4J, weight=BOLD)
-        p5_title.move_to(detail_area + UP * 1.3)
-        self.play(FadeIn(p5_title, shift=LEFT * 0.2), run_time=0.5)
-        t += 0.5
-
-        t = _wait_until(self, 169.0, t)
-        # Metrics table
-        metrics = [
+        t = _wait_until(self, 177.0, t)
+        metrics = self._bullet_list([
             "Build duration per tool",
             "Test pass rate",
             "Retry count",
             "Pipeline queue time",
-        ]
-        m_group = VGroup()
-        for i, m in enumerate(metrics):
-            item = self._detail_item(m, color=WHITE, icon_color=C_NEO4J)
-            item.move_to(detail_area + UP * (1.0 - i * 0.4) + LEFT * 2.5)
-            m_group.add(item)
+        ], color=WHITE, accent=C_NEO4J)
+        t = self._reveal_list(metrics, p_title, t, 185.0)
 
-        per_m = max(0.3, (176.0 - t) / len(metrics) - 0.3)
-        for item in m_group:
-            self.play(FadeIn(item, shift=RIGHT * 0.1), run_time=0.35)
-            t += 0.35
-            t = _wait_until(self, t + per_m, t)
-
-        # Alerting
-        t = _wait_until(self, 177.0, t)
-        alert_items = [
+        t = _wait_until(self, 186.0, t)
+        alerts = self._bullet_list([
             "Alert on failure rate threshold",
             "Alert on registry push failures",
-        ]
-        a_group = VGroup()
-        for i, ai in enumerate(alert_items):
-            item = self._detail_item(ai, color=C_WARN, icon_color=RED)
-            item.move_to(detail_area + DOWN * (0.3 + i * 0.4) + LEFT * 2.5)
-            a_group.add(item)
+        ], color=C_WARN, accent=RED)
+        t = self._reveal_list(alerts, metrics, t, 191.0)
 
-        for item in a_group:
-            self.play(FadeIn(item, shift=RIGHT * 0.1), run_time=0.35)
-            t += 0.35
-        t = _wait_until(self, 182.5, t)
-
-        # Cost attribution
-        cost_items = [
+        t = _wait_until(self, 191.0, t)
+        costs = self._bullet_list([
             "Labels: team · stack · app",
-            "KubeCost integration",
+            "KubeCost / OpenCost integration",
             "Per-pipeline cost visibility",
-        ]
-        c_group = VGroup()
-        for i, ci in enumerate(cost_items):
-            item = self._detail_item(ci, color=WHITE, icon_color=C_NEO4J)
-            item.move_to(detail_area + DOWN * (1.4 + i * 0.4) + LEFT * 2.5)
-            c_group.add(item)
+        ], color=WHITE, accent=C_NEO4J)
+        t = self._reveal_list(costs, alerts, t, 202.0)
 
-        per_c = max(0.3, (192.0 - t) / len(cost_items) - 0.3)
-        for item in c_group:
-            self.play(FadeIn(item, shift=RIGHT * 0.1), run_time=0.35)
-            t += 0.35
-            t = _wait_until(self, t + per_c, t)
+        t = _wait_until(self, 204.0, t)
+        t = self._clear(p_title, metrics, alerts, costs, t=t)
 
-        t = _wait_until(self, 193.0, t)
-        self.play(
-            FadeOut(p5_title), FadeOut(m_group), FadeOut(a_group), FadeOut(c_group),
-            run_time=0.4,
-        )
-        t += 0.4
+        # ═══ PILLAR 6 — Secrets (205-256s) ══════════════════════
+        t = _wait_until(self, 205.0, t)
+        p_title, t = self._show_pillar(5, "Secrets Injection",
+                                       "#E06C75", overview_cards, t)
 
-        # ── Closing (194-205s) ──────────────────────────────────
-        t = _wait_until(self, 194.0, t)
+        t = _wait_until(self, 208.0, t)
+        prob, t = self._add_subtitle(
+            "Today: bare Deployments — no secrets, no env vars", p_title, t)
 
-        # Restore all pillar cards to full opacity
-        self.play(*[c.animate.set_opacity(1.0) for c in overview_cards], run_time=0.5)
-        t += 0.5
+        t = _wait_until(self, 214.0, t)
+        stack_sec = self._bullet_list([
+            "stack YAML secrets block per app",
+            "env-from → envFrom secretRef",
+            "volume-mounts → TLS certs, key files",
+            "Deploy task wires into pod spec",
+        ], color=WHITE, accent="#E06C75")
+        t = self._reveal_list(stack_sec, prob, t, 234.0)
+
+        t = _wait_until(self, 235.0, t)
+        providers = self._bullet_list([
+            "External Secrets Operator (ESO)",
+            "AWS SM / Vault / Azure KV",
+            "SecretStore per team namespace",
+            "Pre-deploy validation: fail fast",
+        ], color=WHITE, accent="#E06C75")
+        t = self._reveal_list(providers, stack_sec, t, 255.0)
+
+        t = _wait_until(self, 256.0, t)
+        t = self._clear(p_title, prob, stack_sec, providers, t=t)
+
+        # ═══ PILLAR 7 — Config (257-302s) ══════════════════════
+        t = _wait_until(self, 257.0, t)
+        p_title, t = self._show_pillar(6, "Per-App Config per Environment",
+                                       "#61AFEF", overview_cards, t)
+
+        t = _wait_until(self, 260.0, t)
+        need, t = self._add_subtitle(
+            "DB URLs · feature flags · log levels · endpoints", p_title, t)
+
+        t = _wait_until(self, 268.0, t)
+        cfg = self._bullet_list([
+            "stack YAML config block",
+            "Helm templates → ConfigMap per app",
+            "appConfig map in values.yaml",
+        ], color=WHITE, accent="#61AFEF")
+        t = self._reveal_list(cfg, need, t, 282.0)
+
+        t = _wait_until(self, 283.0, t)
+        envs = self._bullet_list([
+            "values-local / values-staging / values-prod",
+            "helm upgrade -f values-staging.yaml",
+            ".env.<app> for local dev → ConfigMap",
+            "Config validation hook pre-deploy",
+        ], color=WHITE, accent="#61AFEF")
+        t = self._reveal_list(envs, cfg, t, 300.0)
+
+        t = _wait_until(self, 301.0, t)
+        t = self._clear(p_title, need, cfg, envs, t=t)
+
+        # ── Closing (302-315s) ──────────────────────────────────
+        t = _wait_until(self, 302.0, t)
+        self.play(*[c.animate.set_opacity(1.0) for c in overview_cards],
+                  run_time=0.5); t += 0.5
 
         closing = Text(
-            "Infrastructure-grade · Cost-aware · Multi-environment · Observable",
-            font_size=14, color=C_PR,
+            "Reliable · Cost-aware · Multi-env · Observable · Secure · Configurable",
+            font_size=18, color=C_PR,
         )
         closing.move_to(DOWN * 0.5)
-        m13 = Text("Milestone 13 — Production Hardening", font_size=16, color=C_ORCH)
-        m13.next_to(closing, DOWN, buff=0.3)
+        m13 = Text("Milestone 13 — Production Hardening",
+                    font_size=22, color=C_ORCH)
+        m13.next_to(closing, DOWN, buff=0.35)
 
-        self.play(FadeIn(closing), run_time=0.5)
-        t += 0.5
-        t = _wait_until(self, 201.0, t)
-        self.play(FadeIn(m13), run_time=0.5)
-        t += 0.5
-        t = _wait_until(self, 203.5, t)
+        self.play(FadeIn(closing), run_time=0.5); t += 0.5
+        t = _wait_until(self, 310.0, t)
+        self.play(FadeIn(m13), run_time=0.5); t += 0.5
+        t = _wait_until(self, 313.0, t)
 
-        self.play(*[FadeOut(m) for m in self.mobjects], run_time=1.0)
-        t += 1.0
+        self.play(*[FadeOut(m) for m in self.mobjects], run_time=1.0); t += 1.0

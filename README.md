@@ -72,7 +72,7 @@ Each row links to the **in-browser player** on Pages (`#seg-…`) and to the **c
 | [M12](milestones/milestone-12.md) | **Completed** | Architecture customization: shared Python package, Helm ConfigMap/PVC templates, parameterized pipelines (no hardcoded `localhost:5000`), `scripts/common.sh`, build image variants (Java 11/17/21, Node 18/20/22, Python 3.10–3.12, PHP 8.1–8.3), custom pipeline hook tasks (pre/post build/test), stack JSON schema, 62 orchestrator pytest tests, 14 shared-package tests. Full docs: [CUSTOMIZATION.md](docs/CUSTOMIZATION.md), [TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md](docs/TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md), MAINTENANCE.md, Helm README. |
 | [M12.2](milestones/milestone-12.2.md) | **Partial** | **Part A done:** doc sync + archive. **Part B open:** regression + Management GUI [docs & demo plan](docs/TESTING-AND-REGRESSION-OVERVIEW.md) / [GUI extension](docs/MANAGEMENT-GUI-EXTENSION.md) / [video segments](docs/demos/segments-m12-2-regression-gui.md) |
 | [doc-generator](milestones/milestone-doc-generator.md) | **Completed** | Reusable Python library ([`docgen`](https://github.com/jmjava/documentation-generator)) extracting the demo pipeline (TTS, Manim, VHS, ffmpeg, validation, Pages). OCR validation, A/V sync, narration linting, auto-generated GitHub Pages. All 18 demo segments regenerated via `docgen`. |
-| [M13](milestones/milestone-13.md) | **Planned** | Production hardening: retry on transient failures, precise build image sizing, multi-cluster push, operational reliability, observability. See [segment 18](https://jmjava.github.io/tekton-dag/#seg-18) for video walkthrough. |
+| [M13](milestones/milestone-13.md) | **Planned** | Production hardening: retry on transient failures, precise build image sizing, multi-cluster push, operational reliability, observability, secrets injection (ESO/Sealed Secrets), per-app config per environment. See [segment 18](https://jmjava.github.io/tekton-dag/#seg-18) for video walkthrough. |
 
 Older milestones (M2, M3) are in [milestones/completed/](milestones/completed/).
 
@@ -83,6 +83,8 @@ Older milestones (M2, M3) are in [milestones/completed/](milestones/completed/).
 3. **Multi-cluster push** — remote registry push, promotion pipeline, cross-cluster deploy task, environment gates (manual approval), promotion audit trail in Tekton Results
 4. **Operational reliability** — pipeline timeouts, graceful cleanup on timeout (`finally` block), health-check gates before tests, Results DB backup, Neo4j persistence
 5. **Observability** — Prometheus metrics (build duration, test pass rate, retry count, queue time), alerting rules, cost attribution labels (team/stack/app)
+6. **Secrets injection** — External Secrets Operator (ESO) integration, stack YAML `secrets` block (`env-from` + `volume-mounts`), deploy task wiring, ESO SecretStore per team, Sealed Secrets fallback, pre-deploy secret validation, Management GUI secret status panel
+7. **Per-app config per environment** — stack YAML `config` block, Helm-templated ConfigMaps from `appConfig` values, environment overlay pattern (`values-local.yaml` / `values-staging.yaml` / `values-prod.yaml`), `.env.<app>` support for local dev, config validation hook, Management GUI config view
 
 **Regression (humans & Cursor agents):** run **`scripts/run-regression-agent.sh`** and iterate with fixes until green — see [AGENTS.md](AGENTS.md) and [docs/AGENT-REGRESSION.md](docs/AGENT-REGRESSION.md). Full tier list: [docs/REGRESSION.md](docs/REGRESSION.md).
 
