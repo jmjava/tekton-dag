@@ -202,7 +202,7 @@ concat:
 
 validation:
   max_drift_sec: 2.75
-  max_freeze_ratio: 0.85
+  max_freeze_ratio: 0.25
   ocr:
     error_patterns:
       - "command not found"
