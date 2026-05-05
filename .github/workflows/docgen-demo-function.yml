@@ -1,0 +1,46 @@
+# Smoke-test upstream `docgen demo-function` (issue #9): install from git pin, no docgen-shim / python -m demo_function.
+name: docgen demo-function
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    env:
+      # Pinned to jmjava/documentation-generator@main — bump when adopting new docgen features (see courseforge/infrastructure docs/tekton-dag-reuse.md).
+      DOCGEN_GIT_REF: b880ba7a96c35fa32672f217e68c3e3592fb2be1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install docgen from upstream
+        run: |
+          python -m pip install --upgrade pip
+          pip install "docgen @ git+https://github.com/jmjava/documentation-generator.git@${DOCGEN_GIT_REF}"
+
+      - name: docgen demo-function (neutral skip => success)
+        run: |
+          set +e
+          docgen demo-function \
+            --manifest ci/docgen-demo-function-smoke.docgen.yaml \
+            --output "${RUNNER_TEMP}/docgen-demo-out" \
+            --no-narration
+          code=$?
+          set -e
+          if [ "${code}" -eq 78 ]; then
+            echo "docgen demo-function exited 78 (neutral skip) — treating as success per Tekton/GitHub Actions convention."
+            exit 0
+          fi
+          exit "${code}"

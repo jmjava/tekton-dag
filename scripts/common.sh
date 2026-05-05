@@ -105,3 +105,48 @@ load_env() {
     set +a
   fi
 }
+
+# ── YAML processor (Mike Farah yq) ────────────────────────────────────
+# Some images ship the unrelated PyPI `yq` package on PATH (wrapper around jq).
+# Stack scripts require https://github.com/mikefarah/yq (`yq -o=json`, etc.).
+_mikefarah_yq_ok() {
+  local ver
+  command -v yq >/dev/null 2>&1 || return 1
+  ver=$(yq --version 2>&1 || true)
+  [[ "$ver" == *"mikefarah"* ]] || [[ "$ver" == *"github.com/mikefarah/yq"* ]]
+}
+
+# Install a static Mike Farah yq binary under REPO_ROOT/.tools and prepend to PATH.
+# Override version with MIKEFARAH_YQ_VERSION (default v4.45.4).
+ensure_mikefarah_yq() {
+  if _mikefarah_yq_ok; then
+    return 0
+  fi
+  local install_dir="${REPO_ROOT}/.tools"
+  local bin="${install_dir}/yq"
+  local want="${MIKEFARAH_YQ_VERSION:-v4.45.4}"
+  mkdir -p "$install_dir"
+  if [[ -x "$bin" ]]; then
+    local cached
+    cached=$("$bin" --version 2>&1 || true)
+    if [[ "$cached" == *"mikefarah"* ]] || [[ "$cached" == *"github.com/mikefarah/yq"* ]]; then
+      export PATH="${install_dir}:$PATH"
+      return 0
+    fi
+  fi
+  need curl
+  local arch
+  arch=$(uname -m)
+  case "$arch" in
+    x86_64) arch=amd64 ;;
+    aarch64 | arm64) arch=arm64 ;;
+    *) die "ensure_mikefarah_yq: unsupported uname -m: $arch (install yq manually)" ;;
+  esac
+  local url="https://github.com/mikefarah/yq/releases/download/${want}/yq_linux_${arch}"
+  info "Installing Mike Farah yq ${want} -> ${bin} (first on PATH for this process)"
+  curl -fsSL -o "$bin.tmp" "$url"
+  mv -f "$bin.tmp" "$bin"
+  chmod +x "$bin"
+  export PATH="${install_dir}:$PATH"
+  _mikefarah_yq_ok || die "ensure_mikefarah_yq: installed binary failed self-check"
+}

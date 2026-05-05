@@ -1,0 +1,10 @@
+# Placeholder manifest for CI: `docgen demo-function` exits 78 (neutral skip)
+# when kind=playwright has no URL/spec — see documentation-generator demo_function.
+identifier: ci/tekton-dag:docgen-demo-function-smoke
+intent: Verify the upstream docgen demo-function CLI is wired; neutral skip is success.
+demonstration:
+  kind: playwright
+  actions: []
+output_budget:
+  duration_seconds: 10
+  resolution: 1280x720
