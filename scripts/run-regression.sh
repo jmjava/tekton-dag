@@ -115,6 +115,7 @@ fi
 
 echo ""
 echo ">>> Phase 1: DAG verification (no cluster) — scripts/verify-dag-phase1.sh"
+ensure_mikefarah_yq
 need yq
 bash "$SCRIPT_DIR/verify-dag-phase1.sh"
 

@@ -1,3 +1,6 @@
+# Auto-downloaded Mike Farah yq (see scripts/common.sh ensure_mikefarah_yq)
+.tools/
+
 # Local overrides / env (never commit secrets)
 .env
 .env.*.local
