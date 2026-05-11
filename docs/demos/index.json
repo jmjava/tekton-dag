@@ -1,0 +1,346 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-05-11T12:00:00Z",
+  "docgen_version": "0.4.0",
+  "project": {
+    "name": "Tekton DAG",
+    "repo": "jmjava/tekton-dag",
+    "repo_url": "https://github.com/jmjava/tekton-dag",
+    "ref": "main"
+  },
+  "asset_sets": [
+    {
+      "id": "demos",
+      "type": "manim-demo",
+      "asset_count": 18,
+      "narration_mode": null,
+      "visual_mode": "mixed"
+    }
+  ],
+  "segments": [
+    {
+      "id": "demos-01-architecture",
+      "asset_set": "demos",
+      "asset_path": null,
+      "asset_path_url": null,
+      "name": "Architecture",
+      "kind": "segment",
+      "intent": "Tekton DAG demo 01: architecture.",
+      "fragment_id": "fn-td-01-architecture",
+      "rendered": {
+        "mp4": "recordings/01-architecture.mp4",
+        "poster": null,
+        "duration_seconds": null,
+        "resolution": "1280x720",
+        "narration": null
+      },
+      "validate": null
+    },
+    {
+      "id": "demos-02-quickstart",
+      "asset_set": "demos",
+      "asset_path": null,
+      "asset_path_url": null,
+      "name": "Quickstart",
+      "kind": "segment",
+      "intent": "Tekton DAG demo 02: quickstart.",
+      "fragment_id": "fn-td-02-quickstart",
+      "rendered": {
+        "mp4": "recordings/02-quickstart.mp4",
+        "poster": null,
+        "duration_seconds": null,
+        "resolution": "1280x720",
+        "narration": null
+      },
+      "validate": null
+    },
+    {
+      "id": "demos-03-bootstrap-dataflow",
+      "asset_set": "demos",
+      "asset_path": null,
+      "asset_path_url": null,
+      "name": "Bootstrap Dataflow",
+      "kind": "segment",
+      "intent": "Tekton DAG demo 03: bootstrap dataflow.",
+      "fragment_id": "fn-td-03-bootstrap-dataflow",
+      "rendered": {
+        "mp4": "recordings/03-bootstrap-dataflow.mp4",
+        "poster": null,
+        "duration_seconds": null,
+        "resolution": "1280x720",
+        "narration": null
+      },
+      "validate": null
+    },
+    {
+      "id": "demos-04-pr-pipeline",
+      "asset_set": "demos",
+      "asset_path": null,
+      "asset_path_url": null,
+      "name": "Pr Pipeline",
+      "kind": "segment",
+      "intent": "Tekton DAG demo 04: pr pipeline.",
+      "fragment_id": "fn-td-04-pr-pipeline",
+      "rendered": {
+        "mp4": "recordings/04-pr-pipeline.mp4",
+        "poster": null,
+        "duration_seconds": null,
+        "resolution": "1280x720",
+        "narration": null
+      },
+      "validate": null
+    },
+    {
+      "id": "demos-05-intercept-routing",
+      "asset_set": "demos",
+      "asset_path": null,
+      "asset_path_url": null,
+      "name": "Intercept Routing",
+      "kind": "segment",
+      "intent": "Tekton DAG demo 05: intercept routing.",
+      "fragment_id": "fn-td-05-intercept-routing",
+      "rendered": {
+        "mp4": "recordings/05-intercept-routing.mp4",
+        "poster": null,
+        "duration_seconds": null,
+        "resolution": "1280x720",
+        "narration": null
+      },
+      "validate": null
+    },
+    {
+      "id": "demos-06-local-debug",
+      "asset_set": "demos",
+      "asset_path": null,
+      "asset_path_url": null,
+      "name": "Local Debug",
+      "kind": "segment",
+      "intent": "Tekton DAG demo 06: local debug.",
+      "fragment_id": "fn-td-06-local-debug",
+      "rendered": {
+        "mp4": "recordings/06-local-debug.mp4",
+        "poster": null,
+        "duration_seconds": null,
+        "resolution": "1280x720",
+        "narration": null
+      },
+      "validate": null
+    },
+    {
+      "id": "demos-07-merge-release",
+      "asset_set": "demos",
+      "asset_path": null,
+      "asset_path_url": null,
+      "name": "Merge Release",
+      "kind": "segment",
+      "intent": "Tekton DAG demo 07: merge release.",
+      "fragment_id": "fn-td-07-merge-release",
+      "rendered": {
+        "mp4": "recordings/07-merge-release.mp4",
+        "poster": null,
+        "duration_seconds": null,
+        "resolution": "1280x720",
+        "narration": null
+      },
+      "validate": null
+    },
+    {
+      "id": "demos-08-orchestrator",
+      "asset_set": "demos",
+      "asset_path": null,
+      "asset_path_url": null,
+      "name": "Orchestrator",
+      "kind": "segment",
+      "intent": "Tekton DAG demo 08: orchestrator.",
+      "fragment_id": "fn-td-08-orchestrator",
+      "rendered": {
+        "mp4": "recordings/08-orchestrator.mp4",
+        "poster": null,
+        "duration_seconds": null,
+        "resolution": "1280x720",
+        "narration": null
+      },
+      "validate": null
+    },
+    {
+      "id": "demos-09-multi-team-helm",
+      "asset_set": "demos",
+      "asset_path": null,
+      "asset_path_url": null,
+      "name": "Multi Team Helm",
+      "kind": "segment",
+      "intent": "Tekton DAG demo 09: multi team helm.",
+      "fragment_id": "fn-td-09-multi-team-helm",
+      "rendered": {
+        "mp4": "recordings/09-multi-team-helm.mp4",
+        "poster": null,
+        "duration_seconds": null,
+        "resolution": "1280x720",
+        "narration": null
+      },
+      "validate": null
+    },
+    {
+      "id": "demos-10-baggage-middleware",
+      "asset_set": "demos",
+      "asset_path": null,
+      "asset_path_url": null,
+      "name": "Baggage Middleware",
+      "kind": "segment",
+      "intent": "Tekton DAG demo 10: baggage middleware.",
+      "fragment_id": "fn-td-10-baggage-middleware",
+      "rendered": {
+        "mp4": "recordings/10-baggage-middleware.mp4",
+        "poster": null,
+        "duration_seconds": null,
+        "resolution": "1280x720",
+        "narration": null
+      },
+      "validate": null
+    },
+    {
+      "id": "demos-11-testing-ecosystem",
+      "asset_set": "demos",
+      "asset_path": null,
+      "asset_path_url": null,
+      "name": "Testing Ecosystem",
+      "kind": "segment",
+      "intent": "Tekton DAG demo 11: testing ecosystem.",
+      "fragment_id": "fn-td-11-testing-ecosystem",
+      "rendered": {
+        "mp4": "recordings/11-testing-ecosystem.mp4",
+        "poster": null,
+        "duration_seconds": null,
+        "resolution": "1280x720",
+        "narration": null
+      },
+      "validate": null
+    },
+    {
+      "id": "demos-12-test-trace-graph",
+      "asset_set": "demos",
+      "asset_path": null,
+      "asset_path_url": null,
+      "name": "Test Trace Graph",
+      "kind": "segment",
+      "intent": "Tekton DAG demo 12: test trace graph.",
+      "fragment_id": "fn-td-12-test-trace-graph",
+      "rendered": {
+        "mp4": "recordings/12-test-trace-graph.mp4",
+        "poster": null,
+        "duration_seconds": null,
+        "resolution": "1280x720",
+        "narration": null
+      },
+      "validate": null
+    },
+    {
+      "id": "demos-13-results-db",
+      "asset_set": "demos",
+      "asset_path": null,
+      "asset_path_url": null,
+      "name": "Results Db",
+      "kind": "segment",
+      "intent": "Tekton DAG demo 13: results db.",
+      "fragment_id": "fn-td-13-results-db",
+      "rendered": {
+        "mp4": "recordings/13-results-db.mp4",
+        "poster": null,
+        "duration_seconds": null,
+        "resolution": "1280x720",
+        "narration": null
+      },
+      "validate": null
+    },
+    {
+      "id": "demos-14-customization",
+      "asset_set": "demos",
+      "asset_path": null,
+      "asset_path_url": null,
+      "name": "Customization",
+      "kind": "segment",
+      "intent": "Tekton DAG demo 14: customization.",
+      "fragment_id": "fn-td-14-customization",
+      "rendered": {
+        "mp4": "recordings/14-customization.mp4",
+        "poster": null,
+        "duration_seconds": null,
+        "resolution": "1280x720",
+        "narration": null
+      },
+      "validate": null
+    },
+    {
+      "id": "demos-15-regression-suite",
+      "asset_set": "demos",
+      "asset_path": null,
+      "asset_path_url": null,
+      "name": "Regression Suite",
+      "kind": "segment",
+      "intent": "Tekton DAG demo 15: regression suite.",
+      "fragment_id": "fn-td-15-regression-suite",
+      "rendered": {
+        "mp4": "recordings/15-regression-suite.mp4",
+        "poster": null,
+        "duration_seconds": null,
+        "resolution": "1280x720",
+        "narration": null
+      },
+      "validate": null
+    },
+    {
+      "id": "demos-16-management-gui",
+      "asset_set": "demos",
+      "asset_path": null,
+      "asset_path_url": null,
+      "name": "Management Gui",
+      "kind": "segment",
+      "intent": "Tekton DAG demo 16: management gui.",
+      "fragment_id": "fn-td-16-management-gui",
+      "rendered": {
+        "mp4": "recordings/16-management-gui.mp4",
+        "poster": null,
+        "duration_seconds": null,
+        "resolution": "1280x720",
+        "narration": null
+      },
+      "validate": null
+    },
+    {
+      "id": "demos-17-extending-gui",
+      "asset_set": "demos",
+      "asset_path": null,
+      "asset_path_url": null,
+      "name": "Extending Gui",
+      "kind": "segment",
+      "intent": "Tekton DAG demo 17: extending gui.",
+      "fragment_id": "fn-td-17-extending-gui",
+      "rendered": {
+        "mp4": "recordings/17-extending-gui.mp4",
+        "poster": null,
+        "duration_seconds": null,
+        "resolution": "1280x720",
+        "narration": null
+      },
+      "validate": null
+    },
+    {
+      "id": "demos-18-roadmap",
+      "asset_set": "demos",
+      "asset_path": null,
+      "asset_path_url": null,
+      "name": "Roadmap",
+      "kind": "segment",
+      "intent": "Tekton DAG demo 18: roadmap.",
+      "fragment_id": "fn-td-18-roadmap",
+      "rendered": {
+        "mp4": "recordings/18-roadmap.mp4",
+        "poster": null,
+        "duration_seconds": null,
+        "resolution": "1280x720",
+        "narration": null
+      },
+      "validate": null
+    }
+  ]
+}
