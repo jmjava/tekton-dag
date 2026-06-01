@@ -69,3 +69,4 @@ sample-repos/*/.venv/
 sample-repos/*/venv/
 sample-repos/*/output/
 sample-repos/*/.mvn/wrapper/maven-wrapper.jar
+docs/demos/media/
