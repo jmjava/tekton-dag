@@ -101,6 +101,91 @@
               },
               "php-version": {
                 "type": "string"
+              },
+              "resources": {
+                "type": "object",
+                "description": "Optional CPU/memory overrides for compile steps (M13).",
+                "properties": {
+                  "requests": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  },
+                  "limits": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "secrets": {
+            "type": "object",
+            "description": "Kubernetes Secrets injected into the app Deployment (M13).",
+            "additionalProperties": false,
+            "properties": {
+              "env-from": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": "Secret names mounted via envFrom.secretRef"
+              },
+              "volume-mounts": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["secret", "mount-path"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "secret": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "mount-path": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "config": {
+            "type": "object",
+            "description": "Kubernetes ConfigMaps injected into the app Deployment (M13).",
+            "additionalProperties": false,
+            "properties": {
+              "env-from": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": "ConfigMap names mounted via envFrom.configMapRef"
+              },
+              "volume-mounts": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["configmap", "mount-path"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "configmap": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "mount-path": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
               }
             }
           },
@@ -123,6 +208,30 @@
                 "type": "string"
               }
             }
+          }
+        }
+      }
+    },
+    "registries": {
+      "type": "array",
+      "description": "Optional remote registry targets for stack-promote (M13).",
+      "items": {
+        "type": "object",
+        "required": ["name", "url"],
+        "additionalProperties": true,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "credentials-secret": {
+            "type": "string"
+          },
+          "environment": {
+            "type": "string",
+            "description": "Logical environment (staging, production, dr)"
           }
         }
       }

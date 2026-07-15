@@ -13,8 +13,11 @@ import pytest
 from flask import Flask
 
 ORCH_ROOT = Path(__file__).resolve().parent.parent
+COMMON_ROOT = ORCH_ROOT.parent / "libs" / "tekton-dag-common"
 if str(ORCH_ROOT) not in sys.path:
     sys.path.insert(0, str(ORCH_ROOT))
+if COMMON_ROOT.is_dir() and str(COMMON_ROOT) not in sys.path:
+    sys.path.insert(0, str(COMMON_ROOT))
 
 
 @pytest.fixture
@@ -34,6 +37,10 @@ def flask_app():
         GIT_REVISION="main",
         STACK_FILE="stacks/stack-one.yaml",
         WEBHOOK_SECRET_NAME="github-webhook-secret",
+        WEBHOOK_SECRET="",
+        WEBHOOK_VERIFY_SIGNATURE=True,
+        PIPELINE_TIMEOUT="2h",
+        MAX_RETRIES=2,
     )
     resolver = MagicMock(name="StackResolver")
     resolver.list_stacks.return_value = [

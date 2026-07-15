@@ -7,12 +7,11 @@ Endpoints:
   POST /api/bootstrap    - Trigger bootstrap pipeline
   GET  /api/stacks       - List registered stacks
   GET  /api/runs         - List recent PipelineRuns
+  GET  /api/apps/<app>/injection-status - Secrets/config injection status
   GET  /healthz          - Liveness probe
   GET  /readyz           - Readiness probe
 """
 
-import hashlib
-import hmac
 import json
 import logging
 
@@ -21,8 +20,58 @@ from flask import Flask, request, jsonify, current_app
 import k8s_client
 import pipelinerun_builder as builder
 import graph_client
+import webhook_auth
 
 logger = logging.getLogger("orchestrator.routes")
+
+try:
+    from tekton_dag_common.deploy_injection import (
+        injection_summary,
+        validate_injection_refs,
+    )
+except ImportError:  # pragma: no cover
+    injection_summary = None
+    validate_injection_refs = None
+
+
+def _reliability_kwargs(cfg, data=None):
+    data = data or {}
+    timeout = data.get("timeout", cfg.get("PIPELINE_TIMEOUT", "2h"))
+    max_retries = data.get("max_retries", cfg.get("MAX_RETRIES", 2))
+    try:
+        max_retries = int(max_retries)
+    except (TypeError, ValueError):
+        max_retries = cfg.get("MAX_RETRIES", 2)
+    return {"timeout": timeout, "max_retries": max_retries}
+
+
+def _verify_webhook_or_reject():
+    """Return a Flask response tuple when verification fails, else None."""
+    cfg = current_app.config
+    if not cfg.get("WEBHOOK_VERIFY_SIGNATURE", True):
+        return None
+
+    def _safe_fetch(name, namespace="tekton-pipelines"):
+        try:
+            return k8s_client.get_secret_data(name, namespace=namespace)
+        except Exception as exc:  # ConfigException when no kubeconfig in unit tests
+            logger.debug("Webhook secret fetch skipped: %s", exc)
+            return None
+
+    secret = webhook_auth.resolve_webhook_secret(
+        configured_secret=cfg.get("WEBHOOK_SECRET", ""),
+        secret_name=cfg.get("WEBHOOK_SECRET_NAME", ""),
+        namespace=cfg.get("NAMESPACE", "tekton-pipelines"),
+        fetch_secret=_safe_fetch,
+    )
+    if not secret:
+        # No secret configured — allow (dev/Kind) but log once-level warning.
+        logger.debug("Webhook signature not enforced: no secret configured")
+        return None
+    header = request.headers.get("X-Hub-Signature-256", "")
+    if not webhook_auth.verify_signature(secret, request.get_data(), header):
+        return jsonify({"error": "invalid webhook signature"}), 401
+    return None
 
 
 def register_routes(app: Flask):
@@ -68,18 +117,24 @@ def register_routes(app: Flask):
         """
         Manual trigger. JSON body:
         {
-          "mode": "pr" | "bootstrap" | "merge",
+          "mode": "pr" | "bootstrap" | "merge" | "promote",
           "changed_app": "demo-fe",       (required for pr/merge)
           "pr_number": 42,                (required for pr)
           "stack_file": "stacks/...",     (optional, auto-resolved from changed_app)
           "intercept_backend": "...",     (optional)
-          "git_revision": "main"          (optional)
+          "git_revision": "main",         (optional)
+          "release_version": "0.1.0",     (required for promote)
+          "target_environment": "staging",(required for promote)
+          "target_registry": "...",       (optional for promote)
+          "timeout": "2h",                (optional)
+          "max_retries": 2                (optional)
         }
         """
         data = request.get_json(force=True)
         mode = data.get("mode", "pr")
         cfg = current_app.config
         resolver = cfg["RESOLVER"]
+        rel = _reliability_kwargs(cfg, data)
 
         stack_file = data.get("stack_file", cfg["STACK_FILE"])
         git_url = data.get("git_url", cfg["GIT_URL"])
@@ -94,6 +149,7 @@ def register_routes(app: Flask):
                 image_registry=cfg["IMAGE_REGISTRY"],
                 cache_repo=cfg["CACHE_REPO"],
                 namespace=cfg["NAMESPACE"],
+                **rel,
             )
         elif mode == "merge":
             changed_app = data.get("changed_app", "")
@@ -107,6 +163,38 @@ def register_routes(app: Flask):
                 image_registry=cfg["IMAGE_REGISTRY"],
                 cache_repo=cfg["CACHE_REPO"],
                 namespace=cfg["NAMESPACE"],
+                **rel,
+            )
+        elif mode == "promote":
+            release_version = data.get("release_version", "")
+            target_environment = data.get("target_environment", "")
+            changed_app = data.get("changed_app", "") or data.get("apps", "")
+            if not release_version or not target_environment:
+                return jsonify({
+                    "error": "release_version and target_environment required for promote",
+                }), 400
+            if not changed_app:
+                return jsonify({
+                    "error": "changed_app (or apps) required for promote",
+                }), 400
+            require_approval = bool(data.get("require_approval", False))
+            approved_by = data.get("approved_by", "")
+            if require_approval and not approved_by:
+                return jsonify({
+                    "error": "approved_by required when require_approval is true",
+                }), 400
+            run = builder.build_promote_pipelinerun(
+                stack_file=stack_file,
+                release_version=release_version,
+                target_environment=target_environment,
+                image_registry=cfg["IMAGE_REGISTRY"],
+                target_registry=data.get("target_registry", ""),
+                credentials_secret=data.get("credentials_secret", ""),
+                changed_app=changed_app,
+                namespace=cfg["NAMESPACE"],
+                require_approval=require_approval,
+                approved_by=approved_by,
+                **rel,
             )
         else:
             changed_app = data.get("changed_app", "")
@@ -125,6 +213,7 @@ def register_routes(app: Flask):
                 intercept_backend=intercept_backend,
                 app_revisions=app_revisions,
                 namespace=cfg["NAMESPACE"],
+                **rel,
             )
 
         try:
@@ -139,6 +228,7 @@ def register_routes(app: Flask):
         cfg = current_app.config
         data = request.get_json(silent=True) or {}
         stack_file = data.get("stack_file", cfg["STACK_FILE"])
+        rel = _reliability_kwargs(cfg, data)
 
         run = builder.build_bootstrap_pipelinerun(
             git_url=cfg["GIT_URL"],
@@ -147,6 +237,7 @@ def register_routes(app: Flask):
             image_registry=cfg["IMAGE_REGISTRY"],
             cache_repo=cfg["CACHE_REPO"],
             namespace=cfg["NAMESPACE"],
+            **rel,
         )
 
         try:
@@ -161,8 +252,13 @@ def register_routes(app: Flask):
         GitHub webhook handler.
         Validates signature, parses PR event, resolves stack, creates PipelineRun.
         """
+        rejected = _verify_webhook_or_reject()
+        if rejected is not None:
+            return rejected
+
         cfg = current_app.config
         resolver = cfg["RESOLVER"]
+        rel = _reliability_kwargs(cfg)
 
         event = request.headers.get("X-GitHub-Event", "")
         if event != "pull_request":
@@ -203,6 +299,7 @@ def register_routes(app: Flask):
                 app_revisions=app_rev_json,
                 namespace=cfg["NAMESPACE"],
                 pr_repo_url=pr.get("base", {}).get("repo", {}).get("ssh_url", ""),
+                **rel,
             )
             try:
                 name = k8s_client.create_pipelinerun(run, namespace=cfg["NAMESPACE"])
@@ -219,6 +316,7 @@ def register_routes(app: Flask):
                 image_registry=cfg["IMAGE_REGISTRY"],
                 cache_repo=cfg["CACHE_REPO"],
                 namespace=cfg["NAMESPACE"],
+                **rel,
             )
             try:
                 name = k8s_client.create_pipelinerun(run, namespace=cfg["NAMESPACE"])
@@ -234,6 +332,60 @@ def register_routes(app: Flask):
         resolver = current_app.config["RESOLVER"]
         resolver.reload()
         return jsonify({"status": "reloaded", "stacks": len(resolver.list_stacks())})
+
+    @app.route("/api/apps/<app_name>/injection-status", methods=["GET"])
+    def app_injection_status(app_name):
+        """
+        Report secrets/config injection plan and whether referenced
+        Secrets/ConfigMaps exist in the target namespace (M13).
+        """
+        if injection_summary is None or validate_injection_refs is None:
+            return jsonify({"error": "tekton_dag_common.deploy_injection unavailable"}), 501
+
+        cfg = current_app.config
+        resolver = cfg["RESOLVER"]
+        ns = request.args.get("namespace", cfg["NAMESPACE"])
+
+        app = None
+        for stack in resolver.list_stacks():
+            for candidate in stack.get("apps") or []:
+                if isinstance(candidate, dict) and candidate.get("name") == app_name:
+                    app = candidate
+                    break
+            if app:
+                break
+        if not isinstance(app, dict):
+            return jsonify({"error": f"unknown app: {app_name}"}), 404
+
+        summary = injection_summary(app)
+        try:
+            existing_secrets = k8s_client.list_secret_names(namespace=ns)
+            existing_cms = k8s_client.list_configmap_names(namespace=ns)
+        except Exception as exc:
+            logger.error("injection-status k8s lookup failed: %s", exc)
+            return jsonify({"error": f"kubernetes lookup failed: {exc}"}), 503
+        errors = validate_injection_refs(
+            app,
+            existing_secrets=existing_secrets,
+            existing_configmaps=existing_cms,
+        )
+        secret_status = {
+            name: ("present" if name in existing_secrets else "missing")
+            for name in summary["secrets"]
+        }
+        config_status = {
+            name: ("present" if name in existing_cms else "missing")
+            for name in summary["configmaps"]
+        }
+        return jsonify({
+            "app": app_name,
+            "namespace": ns,
+            "ok": len(errors) == 0,
+            "errors": errors,
+            "secrets": secret_status,
+            "configmaps": config_status,
+            "injection": summary,
+        })
 
     @app.route("/api/test-plan", methods=["GET"])
     def test_plan():

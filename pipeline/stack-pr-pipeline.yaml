@@ -88,6 +88,12 @@ spec:
     - name: post-test-task
       description: "Optional Tekton Task name to run in finally block after tests (e.g. slack-notify). Empty = skip."
       default: ""
+    - name: max-retries
+      description: >
+        Preferred retry count for infrastructure-sensitive tasks (compile/containerize).
+        Pipeline tasks use a fixed retries: 2 for those steps; test tasks stay at 0.
+        Orchestrator sets this param from MAX_RETRIES / request body for auditability.
+      default: "2"
 
   workspaces:
     - name: shared-workspace
@@ -208,7 +214,9 @@ spec:
         - build-select-tool-apps
 
     # Only the compile step for the app's tool runs (e.g. npm for demo-fe)
+    # retries: transient infra failures (spot eviction, registry blips); tests stay at 0
     - name: build-compile-npm
+      retries: 2
       when:
         - input: $(tasks.resolve-stack.results.run-compile-npm)
           operator: in
@@ -229,6 +237,7 @@ spec:
         - build-select-tool-apps
 
     - name: build-compile-maven
+      retries: 2
       when:
         - input: $(tasks.resolve-stack.results.run-compile-maven)
           operator: in
@@ -249,6 +258,7 @@ spec:
         - build-select-tool-apps
 
     - name: build-compile-gradle
+      retries: 2
       when:
         - input: $(tasks.resolve-stack.results.run-compile-gradle)
           operator: in
@@ -269,6 +279,7 @@ spec:
         - build-select-tool-apps
 
     - name: build-compile-pip
+      retries: 2
       when:
         - input: $(tasks.resolve-stack.results.run-compile-pip)
           operator: in
@@ -289,6 +300,7 @@ spec:
         - build-select-tool-apps
 
     - name: build-compile-composer
+      retries: 2
       when:
         - input: $(tasks.resolve-stack.results.run-compile-composer)
           operator: in
@@ -310,6 +322,7 @@ spec:
 
     # Containerize runs after select + whichever compile task(s) ran
     - name: build-containerize
+      retries: 2
       taskRef:
         name: build-containerize
       params:

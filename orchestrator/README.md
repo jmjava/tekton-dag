@@ -11,9 +11,10 @@ Flask service that runs in (or beside) the Kubernetes cluster: it receives **Git
 | GET | `/api/stacks` | List registered stacks from the resolver. |
 | GET | `/api/teams` | List teams discovered from team config. |
 | GET | `/api/runs` | Recent `PipelineRun` summary (`limit` query param, default 20). |
-| POST | `/api/run` | Manual trigger: JSON body with `mode` `pr` \| `bootstrap` \| `merge` and fields per mode (see `routes.py`). |
+| POST | `/api/run` | Manual trigger: JSON body with `mode` `pr` \| `bootstrap` \| `merge` \| `promote` and fields per mode (see `routes.py`). |
 | POST | `/api/bootstrap` | Trigger bootstrap pipeline (optional JSON `stack_file`). |
-| POST | `/webhook/github` | GitHub `pull_request` webhook: opens PR runs, merged close runs merge pipeline. |
+| POST | `/webhook/github` | GitHub `pull_request` webhook: HMAC-verified when secret configured; opens PR runs, merged close runs merge pipeline. |
+| GET | `/api/apps/<app>/injection-status` | Secrets/ConfigMap injection plan and present/missing status (M13). |
 | POST | `/api/reload` | Reload stack and team configs from disk. |
 | GET | `/api/test-plan` | Neo4j test plan: query params `app` (required), `radius` (optional, default 1). |
 | POST | `/api/graph/ingest` | Ingest traces or fixture file into Neo4j (see `routes.py`). |
@@ -36,7 +37,11 @@ Defined in `app.py` (with defaults). Common ones:
 | `STACK_FILE` | Default stack path in repo. |
 | `STACKS_DIR` | Directory mounted with stack YAML (default `/stacks`). |
 | `TEAMS_DIR` | Directory mounted with team YAML (default `/teams`). |
-| `WEBHOOK_SECRET_NAME` | Name of the GitHub webhook secret in config (Helm `triggers.webhookSecretName`); wire into signature validation if you add it. |
+| `WEBHOOK_SECRET_NAME` | K8s Secret name holding the GitHub webhook HMAC secret (keys: `secret`, `value`, or `webhook-secret`). |
+| `WEBHOOK_SECRET` | Optional direct HMAC secret (local/dev); preferred over fetching the K8s Secret when set. |
+| `WEBHOOK_VERIFY_SIGNATURE` | When `true` (default) and a secret is available, require valid `X-Hub-Signature-256`. |
+| `PIPELINE_TIMEOUT` | Default PipelineRun `spec.timeouts.pipeline` (default `2h`). |
+| `MAX_RETRIES` | Default `max-retries` PipelineRun param (default `2`). |
 
 Neo4j (used by graph endpoints) — see `graph_client.py`:
 
