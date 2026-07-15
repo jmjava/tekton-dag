@@ -16,6 +16,10 @@
     {
       "key": "prRunName",
       "value": ""
+    },
+    {
+      "key": "promoteRunName",
+      "value": ""
     }
   ],
   "item": [
@@ -248,6 +252,95 @@
                   "pm.test('body has error', () => {",
                   "  pm.expect(pm.response.json()).to.have.property('error');",
                   "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/run — promote dry-run",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/run",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"mode\": \"promote\", \"release_version\": \"0.0.1\", \"target_environment\": \"staging\", \"changed_app\": \"demo-fe\", \"target_registry\": \"\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('mode is promote', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.mode).to.eql('promote');",
+                  "  pm.expect(body).to.have.property('pipelinerun');",
+                  "  pm.collectionVariables.set('promoteRunName', body.pipelinerun);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/run — promote missing fields",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/run",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"mode\": \"promote\", \"release_version\": \"0.0.1\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('body has error', () => {",
+                  "  pm.expect(pm.response.json()).to.have.property('error');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Injection Status (M13)",
+      "item": [
+        {
+          "name": "GET /api/apps/demo-fe/injection-status",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/apps/demo-fe/injection-status"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200 or 404', () => {",
+                  "  pm.expect([200, 404]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "  pm.test('has secrets/configmaps maps', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('secrets');",
+                  "    pm.expect(body).to.have.property('configmaps');",
+                  "    pm.expect(body).to.have.property('ok');",
+                  "  });",
+                  "}"
                 ]
               }
             }

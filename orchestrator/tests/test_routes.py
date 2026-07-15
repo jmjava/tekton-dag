@@ -456,6 +456,59 @@ def test_api_run_promote_success(mock_build_promote, mock_create, client):
     assert mock_build_promote.call_args.kwargs["changed_app"] == "demo-fe"
 
 
+@patch("routes.k8s_client.create_pipelinerun")
+@patch("routes.builder.build_promote_pipelinerun")
+def test_api_run_promote_with_approval(mock_build_promote, mock_create, client):
+    mock_build_promote.return_value = {}
+    mock_create.return_value = "promote-approved"
+    rv = client.post(
+        "/api/run",
+        data=json.dumps(
+            {
+                "mode": "promote",
+                "release_version": "0.1.0",
+                "target_environment": "production",
+                "changed_app": "demo-fe",
+                "require_approval": True,
+                "approved_by": "alice@example.com",
+                "timeout": "30m",
+                "max_retries": 1,
+            }
+        ),
+        content_type="application/json",
+    )
+    assert rv.status_code == 200
+    kw = mock_build_promote.call_args.kwargs
+    assert kw["require_approval"] is True
+    assert kw["approved_by"] == "alice@example.com"
+    assert kw["timeout"] == "30m"
+    assert kw["max_retries"] == 1
+
+
+@patch("routes.k8s_client.create_pipelinerun")
+@patch("routes.builder.build_pr_pipelinerun")
+def test_api_run_pr_forwards_reliability(mock_build_pr, mock_create, client):
+    mock_build_pr.return_value = {}
+    mock_create.return_value = "pr-rel"
+    rv = client.post(
+        "/api/run",
+        data=json.dumps(
+            {
+                "mode": "pr",
+                "changed_app": "fe",
+                "pr_number": 7,
+                "timeout": "15m",
+                "max_retries": 0,
+            }
+        ),
+        content_type="application/json",
+    )
+    assert rv.status_code == 200
+    kw = mock_build_pr.call_args.kwargs
+    assert kw["timeout"] == "15m"
+    assert kw["max_retries"] == 0
+
+
 @patch("routes.builder.build_promote_pipelinerun")
 def test_api_run_promote_requires_fields(mock_build_promote, client):
     rv = client.post(

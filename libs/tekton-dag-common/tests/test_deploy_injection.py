@@ -97,3 +97,26 @@ def test_injection_summary():
     assert summary["secrets"] == ["s1"]
     assert summary["configmaps"] == ["c1"]
     assert summary["envFrom_count"] == 2
+
+
+def test_skips_incomplete_volume_mount_entries():
+    app = _app(
+        secrets={
+            "volume-mounts": [
+                {"secret": "ok", "mount-path": "/etc/ok"},
+                {"secret": "missing-path"},
+                {"mount-path": "/no-secret"},
+            ]
+        },
+        config={
+            "volume-mounts": [
+                {"configmap": "cm-ok", "mount-path": "/etc/cm"},
+                {"configmap": "no-path"},
+            ]
+        },
+    )
+    mounts, volumes = build_volume_mounts_and_volumes(app)
+    assert len(mounts) == 2
+    assert len(volumes) == 2
+    assert mounts[0]["mountPath"] == "/etc/ok"
+    assert mounts[1]["mountPath"] == "/etc/cm"
