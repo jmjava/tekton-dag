@@ -73,6 +73,28 @@ def test_list_stacks_filtered(stacks_dir):
     assert len(stacks) == 0
 
 
+def test_find_app_preserves_secrets_and_respects_allow_list(stacks_dir):
+    path = os.path.join(stacks_dir, "stack-one.yaml")
+    with open(path, "w") as f:
+        f.write(
+            "name: stack-one\n"
+            "apps:\n"
+            "  - name: demo-fe\n"
+            "    repo: jmjava/tekton-dag-vue-fe\n"
+            "    role: frontend\n"
+            "    secrets:\n"
+            "      env-from: [demo-fe-db]\n"
+            "    config:\n"
+            "      env-from: [demo-fe-config]\n"
+        )
+    resolver = StackResolver(stacks_dir)
+    found = resolver.find_app("demo-fe")
+    assert found is not None
+    assert found["app"]["secrets"]["env-from"] == ["demo-fe-db"]
+    assert resolver.find_app("demo-fe", allowed_stacks=["stacks/other.yaml"]) is None
+    assert resolver.find_app("demo-fe", allowed_stacks=["stacks/stack-one.yaml"]) is not None
+
+
 def test_get_dag(stacks_dir):
     resolver = StackResolver(stacks_dir)
     dag = resolver.get_dag("stacks/stack-one.yaml")

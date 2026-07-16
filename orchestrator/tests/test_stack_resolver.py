@@ -100,6 +100,33 @@ def test_list_stacks_summaries(stack_and_team_dirs):
     assert lst[0]["apps"] == [{"name": "app1", "repo": "r1", "role": "worker"}]
 
 
+def test_find_app_preserves_secrets_and_config(stack_and_team_dirs):
+    """list_stacks summaries omit secrets; find_app must keep them for injection-status."""
+    stacks, teams = stack_and_team_dirs
+    _write(
+        stacks / "sec.yaml",
+        """
+        name: Sec
+        apps:
+          - name: demo-bff
+            repo: org/bff
+            role: middleware
+            secrets:
+              env-from: [demo-bff-db]
+            config:
+              env-from: [demo-bff-config]
+        """,
+    )
+    r = StackResolver(stacks_dir=str(stacks), teams_dir=str(teams))
+    summary_apps = r.list_stacks()[0]["apps"][0]
+    assert "secrets" not in summary_apps
+    found = r.find_app("demo-bff")
+    assert found["stack_file"] == "stacks/sec.yaml"
+    assert found["app"]["secrets"]["env-from"] == ["demo-bff-db"]
+    assert found["app"]["config"]["env-from"] == ["demo-bff-config"]
+    assert r.find_app("missing") is None
+
+
 def test_get_build_apps(stack_and_team_dirs):
     stacks, teams = stack_and_team_dirs
     _write(

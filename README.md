@@ -2,6 +2,19 @@
 
 Standalone Tekton pipeline system for **local development and proof-of-concept**. Stack-aware CI/CD with header-based traffic interception, multi-framework support, and an in-cluster orchestration service.
 
+## What's new (M13 foundations)
+
+Production-hardening building blocks are in the tree (see [milestones/milestone-13.md](milestones/milestone-13.md) and [DO-THIS-LOCAL.md](DO-THIS-LOCAL.md) for cluster smoke):
+
+| Feature | What you get |
+|---------|----------------|
+| **Webhook HMAC** | GitHub `X-Hub-Signature-256` verification (`WEBHOOK_SECRET` or K8s Secret); unsigned allowed only when no secret is configured; named Secret missing → fail closed |
+| **Secrets & config injection** | Stack YAML `secrets` / `config` blocks → `deploy-full-stack` `envFrom` + volume mounts, pre-deploy validation, `GET /api/apps/<app>/injection-status` (orchestrator + Management GUI BFF) |
+| **Pipeline reliability** | PipelineRun timeouts + `max-retries` audit param, compile/containerize `retries: 2`, transient-failure classifier, per-tool resource profiles in `tekton-dag-common` |
+| **Promote pipeline** | `stack-promote` + `promote-images` (crane), `stacks/registries.yaml` target resolution, `POST /api/run` `mode=promote` with optional approval gate and dockerconfig credentials |
+
+Still open on M13: intercept deploy wiring, Helm `appConfig` / ESO templates, GUI status panels, Prometheus/observability, cross-cluster deploy, script-level retries driven by `max-retries`.
+
 ## Demo Videos
 
 🎬 **GitHub Pages (all segments + players):** [jmjava.github.io/tekton-dag/](https://jmjava.github.io/tekton-dag/)  
@@ -72,19 +85,19 @@ Each row links to the **in-browser player** on Pages (`#seg-…`) and to the **c
 | [M12](milestones/milestone-12.md) | **Completed** | Architecture customization: shared Python package, Helm ConfigMap/PVC templates, parameterized pipelines (no hardcoded `localhost:5000`), `scripts/common.sh`, build image variants (Java 11/17/21, Node 18/20/22, Python 3.10–3.12, PHP 8.1–8.3), custom pipeline hook tasks (pre/post build/test), stack JSON schema, 62 orchestrator pytest tests, 14 shared-package tests. Full docs: [CUSTOMIZATION.md](docs/CUSTOMIZATION.md), [TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md](docs/TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md), MAINTENANCE.md, Helm README. |
 | [M12.2](milestones/milestone-12.2.md) | **Partial** | **Part A done:** doc sync + archive. **Part B open:** regression + Management GUI [docs & demo plan](docs/TESTING-AND-REGRESSION-OVERVIEW.md) / [GUI extension](docs/MANAGEMENT-GUI-EXTENSION.md) / [video segments](docs/demos/segments-m12-2-regression-gui.md) |
 | [doc-generator](milestones/milestone-doc-generator.md) | **Completed** | Reusable Python library ([`docgen`](https://github.com/jmjava/documentation-generator)) extracting the demo pipeline (TTS, Manim, VHS, ffmpeg, validation, Pages). OCR validation, A/V sync, narration linting, auto-generated GitHub Pages. All 18 demo segments regenerated via `docgen`. |
-| [M13](milestones/milestone-13.md) | **Planned** | Production hardening: retry on transient failures, precise build image sizing, multi-cluster push, operational reliability, observability, secrets injection (ESO/Sealed Secrets), per-app config per environment. See [segment 18](https://jmjava.github.io/tekton-dag/#seg-18) for video walkthrough. |
+| [M13](milestones/milestone-13.md) | **Partial** | Production hardening foundations shipped: webhook HMAC, stack secrets/config + deploy wiring + injection-status APIs, PipelineRun timeouts / task retries / failure classifier / resource profiles, `stack-promote` + registries + approval gate. Open: intercept secret/config wiring, Helm `appConfig` / ESO, GUI panels, observability, cross-cluster deploy. Roadmap video: [segment 18](https://jmjava.github.io/tekton-dag/#seg-18). Local cluster checklist: [DO-THIS-LOCAL.md](DO-THIS-LOCAL.md). |
 
 Older milestones (M2, M3) are in [milestones/completed/](milestones/completed/).
 
-**Next up — [Milestone 13: Production Hardening](milestones/milestone-13.md):**
+**M13 remaining — [Milestone 13: Production Hardening](milestones/milestone-13.md):**
 
-1. **Retry on transient failures** — task-level retries for build/deploy (not tests), spot eviction handling, registry throttle backoff, configurable retry counts, structured retry annotations
-2. **Precise build image sizing** — per-tool resource profiles (Maven ≠ npm ≠ Kaniko), Helm-configurable, stack-level overrides, monitoring baseline
-3. **Multi-cluster push** — remote registry push, promotion pipeline, cross-cluster deploy task, environment gates (manual approval), promotion audit trail in Tekton Results
-4. **Operational reliability** — pipeline timeouts, graceful cleanup on timeout (`finally` block), health-check gates before tests, Results DB backup, Neo4j persistence
-5. **Observability** — Prometheus metrics (build duration, test pass rate, retry count, queue time), alerting rules, cost attribution labels (team/stack/app)
-6. **Secrets injection** — External Secrets Operator (ESO) integration, stack YAML `secrets` block (`env-from` + `volume-mounts`), deploy task wiring, ESO SecretStore per team, Sealed Secrets fallback, pre-deploy secret validation, Management GUI secret status panel
-7. **Per-app config per environment** — stack YAML `config` block, Helm-templated ConfigMaps from `appConfig` values, environment overlay pattern (`values-local.yaml` / `values-staging.yaml` / `values-prod.yaml`), `.env.<app>` support for local dev, config validation hook, Management GUI config view
+1. **Retry depth** — script-level / param-driven retries beyond fixed Tekton `retries: 2`; richer spot/registry backoff in task scripts
+2. **Build image sizing in Tasks** — apply `resource_profiles` / stack `build.resources` to compile & Kaniko pods; Helm `resources.compile-*` values
+3. **Multi-cluster deploy** — cross-cluster apply task, ArgoCD/Helm promotion hooks beyond registry copy
+4. **Operational reliability** — graceful cleanup on timeout, Results DB backup, Neo4j PVC/backup docs
+5. **Observability** — Prometheus metrics, alerting rules, cost attribution labels
+6. **Secrets provider** — ESO SecretStore templates, Sealed Secrets fallback docs, intercept deploy secret wiring, GUI secret status panel
+7. **Config per environment** — Helm `appConfig` ConfigMap templates, env overlay docs, `.env.<app>` for local, GUI config view
 
 **Regression (humans & Cursor agents):** run **`scripts/run-regression-agent.sh`** and iterate with fixes until green — see [AGENTS.md](AGENTS.md) and [docs/AGENT-REGRESSION.md](docs/AGENT-REGRESSION.md). Full tier list: [docs/REGRESSION.md](docs/REGRESSION.md).
 
@@ -103,6 +116,7 @@ flowchart LR
     PR[stack-pr-test]
     Bootstrap[stack-bootstrap]
     Merge[stack-merge-release]
+    Promote[stack-promote]
   end
   subgraph runtime [Runtime]
     Intercept[Intercept: Telepresence or mirrord]
@@ -113,18 +127,20 @@ flowchart LR
   Orchestrator --> PR
   Orchestrator --> Bootstrap
   Orchestrator --> Merge
+  Orchestrator --> Promote
   CLI --> PR
   CLI --> Bootstrap
   PR --> Intercept --> Validate --> Test
 ```
 
-**Three pipelines, one stack:**
+**Four pipelines, one stack:**
 
 | Pipeline | Purpose |
 |----------|---------|
-| **Bootstrap** (`stack-bootstrap`) | Deploy full stack once; prerequisite for PR runs. |
-| **PR** (`stack-pr-test`) | Build changed app with snapshot tag, deploy intercepts, validate, test, post PR comment. No version bump. |
+| **Bootstrap** (`stack-bootstrap`) | Deploy full stack once; prerequisite for PR runs. Injects stack `secrets` / `config` when declared. |
+| **PR** (`stack-pr-test`) | Build changed app with snapshot tag, deploy intercepts, validate, test, post PR comment. No version bump. Compile/containerize retry on infra flakes. |
 | **Merge** (`stack-merge-release`) | Promote RC to release, build, tag release images, push next dev cycle version commit. |
+| **Promote** (`stack-promote`) | Copy release-tagged images to a target registry/environment (`registries.yaml` or API overrides); optional approval gate. |
 
 **Intercept backends:** Telepresence (default) or mirrord, selected via pipeline param `intercept-backend`. Both E2E-verified.
 

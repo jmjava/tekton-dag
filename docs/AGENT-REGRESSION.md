@@ -54,3 +54,4 @@ Do **not** stop after only:
 
 - [REGRESSION.md](REGRESSION.md) — tiers, flags, env vars  
 - [GITHUB-PAGES.md](GITHUB-PAGES.md) — if work touches Pages  
+- [DO-THIS-LOCAL.md](../DO-THIS-LOCAL.md) — M13 cluster/E2E checklist when the cloud agent only ran `--local-only`

@@ -15,19 +15,47 @@ from kubernetes.client.rest import ApiException
 logger = logging.getLogger("mgmt.k8s")
 
 _clients = {}
+_core_clients = {}
+
+
+def _api_client(context=None):
+    try:
+        return config.new_client_from_config(context=context)
+    except config.ConfigException:
+        config.load_incluster_config()
+        return client.ApiClient()
 
 
 def get_api(context=None):
     """Return a CustomObjectsApi for the given kubeconfig context (cached)."""
     if context not in _clients:
-        try:
-            api_client = config.new_client_from_config(context=context)
-        except config.ConfigException:
-            config.load_incluster_config()
-            api_client = client.ApiClient()
+        api_client = _api_client(context)
         _clients[context] = client.CustomObjectsApi(api_client)
         logger.info("Created k8s client for context=%s", context or "(default)")
     return _clients[context]
+
+
+def get_core_api(context=None):
+    """Return a CoreV1Api for the given kubeconfig context (cached)."""
+    if context not in _core_clients:
+        api_client = _api_client(context)
+        _core_clients[context] = client.CoreV1Api(api_client)
+        logger.info("Created core k8s client for context=%s", context or "(default)")
+    return _core_clients[context]
+
+
+def list_secret_names(context, namespace):
+    """Return Secret names; raises ApiException on API/RBAC failure."""
+    api = get_core_api(context)
+    result = api.list_namespaced_secret(namespace=namespace)
+    return {item.metadata.name for item in result.items}
+
+
+def list_configmap_names(context, namespace):
+    """Return ConfigMap names; raises ApiException on API/RBAC failure."""
+    api = get_core_api(context)
+    result = api.list_namespaced_config_map(namespace=namespace)
+    return {item.metadata.name for item in result.items}
 
 
 def list_pipelineruns(context, namespace, limit=50, label_selector=""):

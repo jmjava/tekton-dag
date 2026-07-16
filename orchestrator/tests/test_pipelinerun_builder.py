@@ -103,13 +103,13 @@ def test_build_bootstrap_pipelinerun(fixed_suffix):
     assert run["metadata"]["labels"]["tekton.dev/pipeline"] == "stack-bootstrap"
     assert run["spec"]["pipelineRef"]["name"] == "stack-bootstrap"
     params = {p["name"]: p["value"] for p in run["spec"]["params"]}
-    assert params == {
-        "git-url": "https://g",
-        "git-revision": "main",
-        "stack-file": "stacks/stack-one.yaml",
-        "image-registry": "reg",
-        "cache-repo": "reg/c",
-    }
+    assert params["git-url"] == "https://g"
+    assert params["git-revision"] == "main"
+    assert params["stack-file"] == "stacks/stack-one.yaml"
+    assert params["image-registry"] == "reg"
+    assert params["cache-repo"] == "reg/c"
+    assert params["max-retries"] == "2"
+    assert run["spec"]["timeouts"]["pipeline"] == "2h"
 
 
 def test_build_bootstrap_compile_images_no_mirrord_key(fixed_suffix):
@@ -141,3 +141,67 @@ def test_build_merge_pipelinerun(fixed_suffix):
     params = {p["name"]: p["value"] for p in run["spec"]["params"]}
     assert params["changed-app"] == "api"
     assert params["git-revision"] == "release"
+    assert params["max-retries"] == "2"
+
+
+def test_build_pr_custom_reliability(fixed_suffix):
+    run = pb.build_pr_pipelinerun(
+        stack_file="stacks/s.yaml",
+        changed_app="a",
+        pr_number=2,
+        git_url="u",
+        git_revision="r",
+        image_registry="i",
+        timeout="45m",
+        max_retries=0,
+    )
+    assert run["spec"]["timeouts"]["pipeline"] == "45m"
+    params = {p["name"]: p["value"] for p in run["spec"]["params"]}
+    assert params["max-retries"] == "0"
+
+
+def test_build_promote_pipelinerun(fixed_suffix):
+    run = pb.build_promote_pipelinerun(
+        stack_file="stacks/stack-one.yaml",
+        release_version="0.2.0",
+        target_environment="staging",
+        image_registry="reg:5000",
+        target_registry="reg:5001",
+        credentials_secret="reg-creds",
+        changed_app="demo-fe,demo-api",
+        namespace="tekton-pipelines",
+        require_approval=True,
+        approved_by="alice",
+        timeout="30m",
+        max_retries=1,
+    )
+    assert run["metadata"]["name"] == "stack-promote-staging-ab12x"
+    assert run["metadata"]["labels"]["tekton.dev/pipeline"] == "stack-promote"
+    assert run["metadata"]["labels"]["tekton-dag.io/environment"] == "staging"
+    assert run["metadata"]["annotations"]["tekton-dag.io/approved-by"] == "alice"
+    assert run["spec"]["pipelineRef"]["name"] == "stack-promote"
+    params = {p["name"]: p["value"] for p in run["spec"]["params"]}
+    assert params["release-version"] == "0.2.0"
+    assert params["target-environment"] == "staging"
+    assert params["target-registry"] == "reg:5001"
+    assert params["changed-app"] == "demo-fe,demo-api"
+    assert params["apps"] == "demo-fe,demo-api"
+    assert params["max-retries"] == "1"
+    assert run["spec"]["timeouts"]["pipeline"] == "30m"
+    ws = {w["name"]: w for w in run["spec"]["workspaces"]}
+    assert "dockerconfig" in ws
+    assert ws["dockerconfig"]["secret"]["secretName"] == "reg-creds"
+    assert "max-retries" in run["metadata"]["annotations"]["tekton-dag.io/max-retries-note"]
+    assert "fixed at 2" in run["metadata"]["annotations"]["tekton-dag.io/max-retries-note"]
+
+
+def test_build_promote_without_creds_omits_dockerconfig(fixed_suffix):
+    run = pb.build_promote_pipelinerun(
+        stack_file="stacks/s.yaml",
+        release_version="1.0.0",
+        target_environment="staging",
+        image_registry="reg",
+        changed_app="a",
+    )
+    ws_names = {w["name"] for w in run["spec"]["workspaces"]}
+    assert "dockerconfig" not in ws_names

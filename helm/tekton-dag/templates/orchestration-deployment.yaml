@@ -46,6 +46,18 @@ spec:
               value: {{ .Values.stackFile }}
             - name: WEBHOOK_SECRET_NAME
               value: {{ .Values.triggers.webhookSecretName }}
+            - name: WEBHOOK_VERIFY_SIGNATURE
+              value: {{ .Values.orchestrationService.webhookVerifySignature | quote }}
+            - name: PIPELINE_TIMEOUT
+              value: {{ .Values.orchestrationService.pipelineTimeout | quote }}
+            - name: MAX_RETRIES
+              value: {{ .Values.orchestrationService.maxRetries | quote }}
+            - name: REGISTRIES_FILE
+              value: {{ .Values.orchestrationService.registriesFile | quote }}
+            - name: STACKS_DIR
+              value: /stacks
+            - name: TEAMS_DIR
+              value: /teams
           resources:
             {{- toYaml .Values.orchestrationService.resources | nindent 12 }}
           livenessProbe:
@@ -72,10 +84,24 @@ spec:
           configMap:
             name: tekton-dag-stacks
             optional: true
+        # Project per-team ConfigMaps (tekton-dag-teams-<name>) as /teams/<name>/team.yaml
         - name: teams
-          configMap:
-            name: tekton-dag-teams
-            optional: true
+{{- $teamFiles := .Files.Glob "raw/teams/**/team.yaml" }}
+{{- if $teamFiles }}
+          projected:
+            sources:
+{{- range $path, $_ := $teamFiles }}
+{{- $parts := splitList "/" $path }}
+{{- $teamName := index $parts (sub (len $parts) 2) }}
+              - configMap:
+                  name: tekton-dag-teams-{{ $teamName }}
+                  items:
+                    - key: team.yaml
+                      path: {{ $teamName }}/team.yaml
+{{- end }}
+{{- else }}
+          emptyDir: {}
+{{- end }}
 ---
 apiVersion: v1
 kind: Service

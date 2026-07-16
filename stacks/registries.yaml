@@ -1,0 +1,19 @@
+# Remote registry targets for stack-promote (M13 multi-cluster push).
+# Referenced by operators / Helm values; orchestrator accepts target_registry
+# and credentials_secret on POST /api/run mode=promote.
+#
+# Each entry:
+#   name:                 short id
+#   url:                  registry base (no trailing slash)
+#   credentials-secret:   K8s Secret with registry auth (optional for public)
+#   environment:          logical env (staging | production | dr)
+
+registries:
+  - name: staging
+    url: localhost:5001
+    credentials-secret: ""
+    environment: staging
+  - name: production
+    url: localhost:5002
+    credentials-secret: registry-prod-creds
+    environment: production

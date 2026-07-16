@@ -4,16 +4,18 @@ metadata:
   name: deploy-full-stack
   labels:
     app.kubernetes.io/part-of: tekton-job-standardization
-    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/version: "1.1.0"
 spec:
   description: >
     Deploys the full stack so every app has a Deployment and Service in the cluster.
     Used once (bootstrap) before running PR pipeline with intercepts. deploy-stack-intercepts
     expects these Services to exist; it only adds PR pods + Telepresence intercept for changed app(s).
+    M13: injects stack secrets/config blocks as envFrom and volume mounts; fails fast when
+    referenced Secrets are missing.
   params:
     - name: stack-json
       type: string
-      description: "Full stack graph JSON (apps, defaults.namespace, ports)"
+      description: "Full stack graph JSON (apps, defaults.namespace, ports, secrets, config)"
     - name: built-images
       type: string
       description: "JSON map of app name → image URI"
@@ -21,15 +23,20 @@ spec:
       type: string
       default: "staging"
       description: "Namespace for apps that do not specify one"
+    - name: validate-secrets
+      type: string
+      default: "true"
+      description: "When true, fail if referenced Secrets are missing before apply"
   steps:
     - name: deploy
       image: bitnami/kubectl:latest
       script: |
         #!/bin/bash
-        set -e
+        set -euo pipefail
         STACK_JSON='$(params.stack-json)'
         BUILT='$(params.built-images)'
         DEFAULT_NS="$(params.default-namespace)"
+        VALIDATE_SECRETS="$(params.validate-secrets)"
 
         echo "============================================="
         echo "  Deploy full stack (base for intercept E2E)"
@@ -48,40 +55,116 @@ spec:
           SPORT=$(echo "$STACK_JSON" | jq -r --arg a "$APP" \
             '(.defaults."service-port" // "80") as $dp | .apps[]|select(.name==$a)|."service-port" // $dp')
 
+          # Pre-deploy Secret + ConfigMap validation (M13)
+          if [ "$VALIDATE_SECRETS" = "true" ]; then
+            MISSING_SECRETS=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '
+              .apps[] | select(.name==$a) |
+              [(.secrets."env-from" // [])[], ((.secrets."volume-mounts" // [])[]?.secret // empty)] |
+              unique | .[]
+            ')
+            for S in $MISSING_SECRETS; do
+              if ! kubectl get secret "$S" -n "$NS" >/dev/null 2>&1; then
+                echo "ERROR: app $APP references Secret '$S' which is missing in namespace $NS"
+                exit 1
+              fi
+            done
+            MISSING_CMS=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '
+              .apps[] | select(.name==$a) |
+              [(.config."env-from" // [])[], ((.config."volume-mounts" // [])[]?.configmap // empty)] |
+              unique | .[]
+            ')
+            for C in $MISSING_CMS; do
+              if ! kubectl get configmap "$C" -n "$NS" >/dev/null 2>&1; then
+                echo "ERROR: app $APP references ConfigMap '$C' which is missing in namespace $NS"
+                exit 1
+              fi
+            done
+          fi
+
+          # Build Deployment JSON with optional envFrom / volumes from stack secrets+config
+          # Volume names are lowercased and sanitized for DNS-1123.
+          DEPLOY_JSON=$(echo "$STACK_JSON" | jq -c --arg a "$APP" --arg ns "$NS" \
+            --arg img "$IMAGE" --argjson cport "$CPORT" '
+            def volname($prefix; $i; $n):
+              (($prefix + "-" + ($i|tostring) + "-" + $n)
+               | ascii_downcase
+               | gsub("_"; "-")
+               | gsub("[^a-z0-9-]"; "-")
+               | gsub("-+"; "-")
+               | sub("^-+"; "")
+               | sub("-+$"; "")
+               | .[0:63]);
+            (.apps[] | select(.name==$a)) as $app |
+            ($app.secrets."env-from" // []) as $senv |
+            ($app.config."env-from" // []) as $cenv |
+            ($app.secrets."volume-mounts" // []) as $svm |
+            ($app.config."volume-mounts" // []) as $cvm |
+            [
+              ($senv[] | {secretRef: {name: .}}),
+              ($cenv[] | {configMapRef: {name: .}})
+            ] as $envFrom |
+            [
+              ($svm | to_entries[] | {
+                name: volname("secret"; .key; .value.secret),
+                mountPath: .value."mount-path",
+                readOnly: true
+              }),
+              ($cvm | to_entries[] | {
+                name: volname("cm"; .key; .value.configmap),
+                mountPath: .value."mount-path",
+                readOnly: true
+              })
+            ] as $mounts |
+            [
+              ($svm | to_entries[] | {
+                name: volname("secret"; .key; .value.secret),
+                secret: {secretName: .value.secret}
+              }),
+              ($cvm | to_entries[] | {
+                name: volname("cm"; .key; .value.configmap),
+                configMap: {name: .value.configmap}
+              })
+            ] as $vols |
+            {
+              apiVersion: "apps/v1",
+              kind: "Deployment",
+              metadata: {
+                name: $a,
+                namespace: $ns,
+                labels: {app: $a, "app.kubernetes.io/part-of": "tekton-stack"}
+              },
+              spec: {
+                replicas: 1,
+                selector: {matchLabels: {app: $a}},
+                template: {
+                  metadata: {labels: {app: $a}},
+                  spec: ({
+                    containers: [(
+                      {
+                        name: "app",
+                        image: $img,
+                        ports: [{containerPort: ($cport|tonumber)}],
+                        readinessProbe: {
+                          tcpSocket: {port: ($cport|tonumber)},
+                          initialDelaySeconds: 15,
+                          periodSeconds: 10
+                        }
+                      }
+                      + (if ($envFrom|length) > 0 then {envFrom: $envFrom} else {} end)
+                      + (if ($mounts|length) > 0 then {volumeMounts: $mounts} else {} end)
+                    )],
+                  } + (if ($vols|length) > 0 then {volumes: $vols} else {} end))
+                }
+              }
+            }
+          ')
+
           echo ""
           echo "  Deploying $APP -> $NS (image: $IMAGE)"
           kubectl create namespace "$NS" --dry-run=client -o yaml | kubectl apply -f -
+          echo "$DEPLOY_JSON" | kubectl apply -f -
 
           kubectl apply -f - <<EOF
-        apiVersion: apps/v1
-        kind: Deployment
-        metadata:
-          name: ${APP}
-          namespace: ${NS}
-          labels:
-            app: ${APP}
-            app.kubernetes.io/part-of: tekton-stack
-        spec:
-          replicas: 1
-          selector:
-            matchLabels:
-              app: ${APP}
-          template:
-            metadata:
-              labels:
-                app: ${APP}
-            spec:
-              containers:
-              - name: app
-                image: ${IMAGE}
-                ports:
-                - containerPort: ${CPORT}
-                readinessProbe:
-                  tcpSocket:
-                    port: ${CPORT}
-                  initialDelaySeconds: 15
-                  periodSeconds: 10
-        ---
         apiVersion: v1
         kind: Service
         metadata:

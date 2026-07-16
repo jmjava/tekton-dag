@@ -46,6 +46,16 @@ spec:
               value: /stacks
             - name: TEAMS_DIR
               value: /teams
+            - name: WEBHOOK_SECRET_NAME
+              value: github-webhook-secret
+            - name: WEBHOOK_VERIFY_SIGNATURE
+              value: "true"
+            - name: PIPELINE_TIMEOUT
+              value: "2h"
+            - name: MAX_RETRIES
+              value: "2"
+            - name: REGISTRIES_FILE
+              value: /stacks/registries.yaml
             - name: NEO4J_URI
               value: neo4j://graph-db:7687
             - name: NEO4J_USER

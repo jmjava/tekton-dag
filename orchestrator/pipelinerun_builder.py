@@ -10,9 +10,31 @@ import string
 
 logger = logging.getLogger("orchestrator.builder")
 
+try:
+    from tekton_dag_common.reliability import (
+        DEFAULT_MAX_RETRIES,
+        DEFAULT_PIPELINE_TIMEOUT,
+        apply_reliability,
+    )
+except ImportError:  # pragma: no cover - package may be absent in slim images
+    apply_reliability = None
+    DEFAULT_PIPELINE_TIMEOUT = "2h"
+    DEFAULT_MAX_RETRIES = 2
+
 
 def _random_suffix(length=5):
     return "".join(random.choices(string.ascii_lowercase + string.digits, k=length))
+
+
+def _with_reliability(run, timeout=None, max_retries=None):
+    """Attach pipeline timeout and max-retries (M13 defaults when unset)."""
+    if apply_reliability is None:
+        return run
+    return apply_reliability(
+        run,
+        timeout=DEFAULT_PIPELINE_TIMEOUT if timeout is None else timeout,
+        max_retries=DEFAULT_MAX_RETRIES if max_retries is None else max_retries,
+    )
 
 
 def build_pr_pipelinerun(
@@ -30,6 +52,8 @@ def build_pr_pipelinerun(
     compile_images=None,
     dashboard_url="",
     pr_repo_url="",
+    timeout=None,
+    max_retries=None,
 ):
     """Build a stack-pr-test PipelineRun manifest."""
     name = f"stack-pr-{pr_number}-{_random_suffix()}"
@@ -98,7 +122,7 @@ def build_pr_pipelinerun(
         if key in compile_images:
             run["spec"]["params"].append({"name": param_name, "value": compile_images[key]})
 
-    return run
+    return _with_reliability(run, timeout=timeout, max_retries=max_retries)
 
 
 def build_bootstrap_pipelinerun(
@@ -110,6 +134,8 @@ def build_bootstrap_pipelinerun(
     cache_repo="",
     namespace="tekton-pipelines",
     compile_images=None,
+    timeout=None,
+    max_retries=None,
 ):
     """Build a stack-bootstrap PipelineRun manifest."""
     name = f"stack-bootstrap-{_random_suffix()}"
@@ -170,7 +196,7 @@ def build_bootstrap_pipelinerun(
         if key in compile_images:
             run["spec"]["params"].append({"name": param_name, "value": compile_images[key]})
 
-    return run
+    return _with_reliability(run, timeout=timeout, max_retries=max_retries)
 
 
 def build_merge_pipelinerun(
@@ -182,6 +208,8 @@ def build_merge_pipelinerun(
     image_registry,
     cache_repo="",
     namespace="tekton-pipelines",
+    timeout=None,
+    max_retries=None,
 ):
     """Build a stack-merge-release PipelineRun manifest."""
     name = f"stack-merge-{_random_suffix()}"
@@ -232,4 +260,93 @@ def build_merge_pipelinerun(
         },
     }
 
-    return run
+    return _with_reliability(run, timeout=timeout, max_retries=max_retries)
+
+
+def build_promote_pipelinerun(
+    *,
+    stack_file,
+    release_version,
+    target_environment,
+    image_registry,
+    target_registry="",
+    credentials_secret="",
+    changed_app="",
+    namespace="tekton-pipelines",
+    timeout=None,
+    max_retries=None,
+    require_approval=False,
+    approved_by="",
+):
+    """
+    Build a stack-promote PipelineRun manifest (M13 multi-cluster push).
+
+    Pulls release-tagged images from the build registry and pushes them to a
+    target registry / environment.
+    """
+    name = f"stack-promote-{target_environment}-{_random_suffix()}"
+
+    workspaces = [
+        {
+            "name": "shared-workspace",
+            "volumeClaimTemplate": {
+                "spec": {
+                    "accessModes": ["ReadWriteOnce"],
+                    "resources": {"requests": {"storage": "1Gi"}},
+                }
+            },
+        },
+    ]
+    # Mount dockerconfigjson Secret for private registry auth (crane DOCKER_CONFIG).
+    if credentials_secret:
+        workspaces.append(
+            {
+                "name": "dockerconfig",
+                "secret": {
+                    "secretName": credentials_secret,
+                    "items": [{"key": ".dockerconfigjson", "path": "config.json"}],
+                },
+            }
+        )
+
+    run = {
+        "apiVersion": "tekton.dev/v1",
+        "kind": "PipelineRun",
+        "metadata": {
+            "name": name,
+            "namespace": namespace,
+            "labels": {
+                "tekton.dev/pipeline": "stack-promote",
+                "app.kubernetes.io/part-of": "tekton-job-standardization",
+                "tekton-dag.io/environment": target_environment,
+            },
+            "annotations": {
+                "tekton-dag.io/release-version": str(release_version),
+                "tekton-dag.io/approved-by": approved_by or "",
+                "tekton-dag.io/require-approval": "true" if require_approval else "false",
+                "tekton-dag.io/max-retries-note": (
+                    "PipelineRun param max-retries is for audit; Tekton task "
+                    "retries on promote remain fixed at 2"
+                ),
+            },
+        },
+        "spec": {
+            "pipelineRef": {"name": "stack-promote"},
+            "params": [
+                {"name": "stack-file", "value": stack_file},
+                {"name": "release-version", "value": str(release_version)},
+                {"name": "target-environment", "value": target_environment},
+                {"name": "image-registry", "value": image_registry},
+                {"name": "target-registry", "value": target_registry},
+                {"name": "credentials-secret", "value": credentials_secret},
+                {"name": "changed-app", "value": changed_app},
+                {"name": "apps", "value": changed_app},
+            ],
+            "workspaces": workspaces,
+            "taskRunTemplate": {
+                "serviceAccountName": "tekton-pr-sa",
+            },
+        },
+    }
+
+    return _with_reliability(run, timeout=timeout, max_retries=max_retries)

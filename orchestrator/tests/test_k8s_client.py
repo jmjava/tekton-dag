@@ -9,8 +9,10 @@ import k8s_client
 @pytest.fixture(autouse=True)
 def reset_k8s_singleton():
     k8s_client._api = None
+    k8s_client._core_api = None
     yield
     k8s_client._api = None
+    k8s_client._core_api = None
 
 
 def test_get_api_uses_incluster_then_caches():
@@ -150,3 +152,60 @@ def test_list_pipelineruns_api_error_returns_empty():
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr(k8s_client, "_get_api", lambda: api)
         assert k8s_client.list_pipelineruns(namespace="n") == []
+
+
+def test_get_secret_data_decodes():
+    import base64
+    from unittest.mock import MagicMock
+
+    secret = MagicMock()
+    secret.data = {
+        "secret": base64.b64encode(b"webhook-value").decode("ascii"),
+        "bin": base64.b64encode(b"\xff\xfe").decode("ascii"),
+    }
+    api = MagicMock()
+    api.read_namespaced_secret.return_value = secret
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(k8s_client, "_get_core_api", lambda: api)
+        data = k8s_client.get_secret_data("github-webhook-secret", namespace="ns")
+    assert data["secret"] == "webhook-value"
+    assert "bin" not in data
+
+
+def test_get_secret_data_404():
+    from unittest.mock import MagicMock
+
+    api = MagicMock()
+    api.read_namespaced_secret.side_effect = ApiException(status=404, reason="Not Found")
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(k8s_client, "_get_core_api", lambda: api)
+        assert k8s_client.get_secret_data("missing") is None
+
+
+def test_list_secret_and_configmap_names():
+    from unittest.mock import MagicMock
+
+    s1 = MagicMock()
+    s1.metadata.name = "a"
+    s2 = MagicMock()
+    s2.metadata.name = "b"
+    c1 = MagicMock()
+    c1.metadata.name = "c"
+    api = MagicMock()
+    api.list_namespaced_secret.return_value = MagicMock(items=[s1, s2])
+    api.list_namespaced_config_map.return_value = MagicMock(items=[c1])
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(k8s_client, "_get_core_api", lambda: api)
+        assert k8s_client.list_secret_names("ns") == {"a", "b"}
+        assert k8s_client.list_configmap_names("ns") == {"c"}
+
+
+def test_list_secret_names_propagates_api_error():
+    from unittest.mock import MagicMock
+
+    api = MagicMock()
+    api.list_namespaced_secret.side_effect = ApiException(status=403, reason="Forbidden")
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(k8s_client, "_get_core_api", lambda: api)
+        with pytest.raises(ApiException):
+            k8s_client.list_secret_names("ns")

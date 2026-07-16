@@ -92,6 +92,23 @@ class StackResolver:
         """Get raw stack definition by file path."""
         return self._stacks.get(stack_file)
 
+    def find_app(self, app_name, allowed_stacks=None):
+        """
+        Return full app dict (secrets/config/build) for an app name.
+
+        Returns:
+            {"stack_file": str, "app": dict} or None
+        """
+        if not app_name:
+            return None
+        for stack_file, stack in self._stacks.items():
+            if allowed_stacks and stack_file not in allowed_stacks:
+                continue
+            for app in stack.get("apps", []):
+                if app.get("name") == app_name:
+                    return {"stack_file": stack_file, "app": app}
+        return None
+
     def get_dag(self, stack_file):
         """
         Extract DAG nodes and edges for visualization.
