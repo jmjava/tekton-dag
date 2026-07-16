@@ -34,7 +34,9 @@ spec:
       description: "Comma-separated app names to promote (required unless changed-app is set)"
       default: ""
     - name: max-retries
-      description: "Hint for Task retries on promote-images (pipeline tasks use fixed retries)"
+      description: >
+        Audit/hint only. Tekton task retries on promote stay fixed at 2
+        (Tekton cannot parameterize retries from a PipelineRun param).
       default: "2"
   workspaces:
     - name: shared-workspace
@@ -56,6 +58,8 @@ spec:
           - name: changed-app
         results:
           - name: stack-json
+          - name: apps-csv
+            description: "Resolved comma-separated app list (apps or changed-app)"
         steps:
           - name: emit
             image: busybox:1.36
@@ -70,24 +74,32 @@ spec:
                 echo "ERROR: apps or changed-app required for stack-promote" >&2
                 exit 1
               fi
-              # Build minimal stack JSON: {"apps":[{"name":"a"},{"name":"b"}],...}
+              # Build minimal stack JSON + CSV (trim spaces; support comma-separated)
               JSON='{"stack-file":"'"$(params.stack-file)"'","apps":['
+              CSV=""
               FIRST=1
               OLD_IFS="$IFS"
               IFS=','
               for APP in $APPS; do
-                APP=$(echo "$APP" | tr -d ' ')
+                APP=$(printf '%s' "$APP" | tr -d ' ')
                 [ -z "$APP" ] && continue
                 if [ "$FIRST" -eq 1 ]; then
                   JSON="${JSON}{\"name\":\"${APP}\"}"
+                  CSV="$APP"
                   FIRST=0
                 else
                   JSON="${JSON},{\"name\":\"${APP}\"}"
+                  CSV="${CSV},${APP}"
                 fi
               done
               IFS="$OLD_IFS"
+              if [ "$FIRST" -eq 1 ]; then
+                echo "ERROR: apps or changed-app required for stack-promote" >&2
+                exit 1
+              fi
               JSON="${JSON}]}"
               printf '%s' "$JSON" > "$(results.stack-json.path)"
+              printf '%s' "$CSV" > "$(results.apps-csv.path)"
       params:
         - name: stack-file
           value: $(params.stack-file)
@@ -111,9 +123,9 @@ spec:
           value: $(params.image-registry)
         - name: target-registry
           value: $(params.target-registry)
-        # Prefer apps (comma-separated); fall back to changed-app
+        # Always the resolved CSV (works when only changed-app was set)
         - name: changed-app
-          value: $(params.apps)
+          value: $(tasks.resolve-stack-inline.results.apps-csv)
         - name: target-environment
           value: $(params.target-environment)
       workspaces:

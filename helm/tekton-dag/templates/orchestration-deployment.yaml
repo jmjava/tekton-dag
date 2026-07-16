@@ -84,10 +84,24 @@ spec:
           configMap:
             name: tekton-dag-stacks
             optional: true
+        # Project per-team ConfigMaps (tekton-dag-teams-<name>) as /teams/<name>/team.yaml
         - name: teams
-          configMap:
-            name: tekton-dag-teams
-            optional: true
+{{- $teamFiles := .Files.Glob "raw/teams/**/team.yaml" }}
+{{- if $teamFiles }}
+          projected:
+            sources:
+{{- range $path, $_ := $teamFiles }}
+{{- $parts := splitList "/" $path }}
+{{- $teamName := index $parts (sub (len $parts) 2) }}
+              - configMap:
+                  name: tekton-dag-teams-{{ $teamName }}
+                  items:
+                    - key: team.yaml
+                      path: {{ $teamName }}/team.yaml
+{{- end }}
+{{- else }}
+          emptyDir: {}
+{{- end }}
 ---
 apiVersion: v1
 kind: Service

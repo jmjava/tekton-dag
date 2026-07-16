@@ -558,6 +558,27 @@ def test_webhook_rejects_invalid_signature(mock_build_pr, mock_create, client, f
     mock_create.assert_not_called()
 
 
+@patch("routes.k8s_client.get_secret_data")
+@patch("routes.k8s_client.create_pipelinerun")
+@patch("routes.builder.build_pr_pipelinerun")
+def test_webhook_fail_closed_when_named_secret_missing(
+    mock_build_pr, mock_create, mock_get_secret, client, flask_app
+):
+    flask_app.config["WEBHOOK_SECRET"] = ""
+    flask_app.config["WEBHOOK_SECRET_NAME"] = "github-webhook-secret"
+    mock_get_secret.return_value = None
+    payload = _pr_payload("opened", repo_name="demo-fe", pr_number=1)
+    rv = client.post(
+        "/webhook/github",
+        data=json.dumps(payload),
+        content_type="application/json",
+        headers={"X-GitHub-Event": "pull_request"},
+    )
+    assert rv.status_code == 503
+    assert "webhook secret not found" in rv.get_json()["error"]
+    mock_create.assert_not_called()
+
+
 @patch("routes.k8s_client.create_pipelinerun")
 @patch("routes.builder.build_pr_pipelinerun")
 def test_webhook_accepts_valid_signature(mock_build_pr, mock_create, client, flask_app):
@@ -618,6 +639,70 @@ def test_injection_status_k8s_error_is_503(mock_secrets, mock_cms, client, flask
     rv = client.get("/api/apps/fe/injection-status")
     assert rv.status_code == 503
     assert "kubernetes lookup failed" in rv.get_json()["error"]
+
+
+@patch("routes.k8s_client.create_pipelinerun")
+@patch("routes.builder.build_promote_pipelinerun")
+def test_api_run_promote_resolves_registries_file(
+    mock_build_promote, mock_create, client, flask_app
+):
+    from pathlib import Path
+
+    registries = Path(__file__).resolve().parents[2] / "stacks" / "registries.yaml"
+    flask_app.config["REGISTRIES_FILE"] = str(registries)
+    mock_build_promote.return_value = {}
+    mock_create.return_value = "promote-from-file"
+    rv = client.post(
+        "/api/run",
+        data=json.dumps(
+            {
+                "mode": "promote",
+                "release_version": "0.1.0",
+                "target_environment": "production",
+                "changed_app": "demo-fe",
+            }
+        ),
+        content_type="application/json",
+    )
+    assert rv.status_code == 200
+    kw = mock_build_promote.call_args.kwargs
+    assert kw["target_registry"] == "localhost:5002"
+    assert kw["credentials_secret"] == "registry-prod-creds"
+
+
+@patch("routes.k8s_client.list_configmap_names")
+@patch("routes.k8s_client.list_secret_names")
+def test_injection_status_with_real_stack_resolver(
+    mock_secrets, mock_cms, client, flask_app, tmp_path
+):
+    """Regression: list_stacks summaries omit secrets; find_app must supply them."""
+    from stack_resolver import StackResolver
+
+    stacks = tmp_path / "stacks"
+    stacks.mkdir()
+    (stacks / "demo.yaml").write_text(
+        "name: demo\n"
+        "apps:\n"
+        "  - name: demo-bff\n"
+        "    repo: org/bff\n"
+        "    role: middleware\n"
+        "    secrets:\n"
+        "      env-from: [demo-bff-db]\n"
+        "    config:\n"
+        "      env-from: [demo-bff-config]\n",
+        encoding="utf-8",
+    )
+    flask_app.config["RESOLVER"] = StackResolver(
+        stacks_dir=str(stacks), teams_dir=str(tmp_path / "noteams")
+    )
+    mock_secrets.return_value = set()
+    mock_cms.return_value = {"demo-bff-config"}
+    rv = client.get("/api/apps/demo-bff/injection-status")
+    assert rv.status_code == 200
+    body = rv.get_json()
+    assert body["secrets"]["demo-bff-db"] == "missing"
+    assert body["configmaps"]["demo-bff-config"] == "present"
+    assert body["ok"] is False
 
 
 def _pr_payload(action, repo_name, pr_number=1, head_sha="deadbeef", merged=False):

@@ -9,6 +9,12 @@ from typing import Optional
 
 logger = logging.getLogger("orchestrator.webhook_auth")
 
+# Resolution outcomes for webhook secret lookup.
+STATUS_OK = "ok"
+STATUS_UNSET = "unset"  # no env secret and no secret name configured
+STATUS_MISSING = "missing"  # named Secret not found / empty keys
+STATUS_UNAVAILABLE = "unavailable"  # fetch failed (e.g. no kubeconfig)
+
 
 def compute_signature(secret: str, body: bytes) -> str:
     """Return GitHub-style ``sha256=<hex>`` signature for body."""
@@ -34,6 +40,13 @@ def verify_signature(secret: str, body: bytes, header_value: Optional[str]) -> b
     return True
 
 
+def _extract_secret_value(data: dict) -> str:
+    for key in ("secret", "value", "webhook-secret"):
+        if key in data and data[key]:
+            return data[key]
+    return ""
+
+
 def resolve_webhook_secret(
     *,
     configured_secret: str = "",
@@ -42,18 +55,48 @@ def resolve_webhook_secret(
     fetch_secret=None,
 ) -> str:
     """
-    Resolve the webhook HMAC secret.
+    Resolve the webhook HMAC secret (legacy helper).
 
     Preference order:
-      1. ``configured_secret`` (env WEBHOOK_SECRET) — for local/tests
+      1. ``configured_secret`` (env WEBHOOK_SECRET)
       2. Kubernetes Secret ``secret_name`` key ``secret`` (or ``value``)
     """
+    secret, _status = resolve_webhook_secret_status(
+        configured_secret=configured_secret,
+        secret_name=secret_name,
+        namespace=namespace,
+        fetch_secret=fetch_secret,
+    )
+    return secret
+
+
+def resolve_webhook_secret_status(
+    *,
+    configured_secret: str = "",
+    secret_name: str = "",
+    namespace: str = "tekton-pipelines",
+    fetch_secret=None,
+) -> tuple[str, str]:
+    """
+    Resolve webhook secret and a status code.
+
+    Returns:
+      (secret, status) where status is one of STATUS_* constants.
+    """
     if configured_secret:
-        return configured_secret
-    if not secret_name or fetch_secret is None:
-        return ""
-    data = fetch_secret(secret_name, namespace=namespace) or {}
-    for key in ("secret", "value", "webhook-secret"):
-        if key in data and data[key]:
-            return data[key]
-    return ""
+        return configured_secret, STATUS_OK
+    if not secret_name:
+        return "", STATUS_UNSET
+    if fetch_secret is None:
+        return "", STATUS_UNAVAILABLE
+    try:
+        data = fetch_secret(secret_name, namespace=namespace)
+    except Exception as exc:
+        logger.debug("Webhook secret fetch failed: %s", exc)
+        return "", STATUS_UNAVAILABLE
+    if not data:
+        return "", STATUS_MISSING
+    value = _extract_secret_value(data)
+    if not value:
+        return "", STATUS_MISSING
+    return value, STATUS_OK

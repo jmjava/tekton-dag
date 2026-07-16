@@ -107,6 +107,29 @@ def test_sanitize_volume_name_dns1123():
     assert name == name.lower()
 
 
+def test_sanitize_volume_name_truncates_long_names():
+    long = "x" * 80
+    name = sanitize_volume_name("secret", 0, long)
+    assert len(name) <= 63
+    assert name.startswith("secret-0-")
+
+
+def test_unique_volume_name_disambiguates_collisions():
+    from tekton_dag_common.deploy_injection import _unique_volume_name
+
+    seen: set[str] = set()
+    first = _unique_volume_name("secret", 0, "shared", seen)
+    seen.add(first)
+    # Pre-seed the natural name for index 1 so uniqueness kicks in
+    natural_second = sanitize_volume_name("secret", 1, "shared")
+    seen.add(natural_second)
+    second = _unique_volume_name("secret", 1, "shared", seen)
+    assert second != first
+    assert second != natural_second
+    assert len(second) <= 63
+    assert second not in {first, natural_second} or second == natural_second + "-1" or "-1" in second
+
+
 def test_skips_incomplete_volume_mount_entries():
     app = _app(
         secrets={

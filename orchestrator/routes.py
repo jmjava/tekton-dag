@@ -52,22 +52,27 @@ def _verify_webhook_or_reject():
     if not cfg.get("WEBHOOK_VERIFY_SIGNATURE", True):
         return None
 
-    def _safe_fetch(name, namespace="tekton-pipelines"):
-        try:
-            return k8s_client.get_secret_data(name, namespace=namespace)
-        except Exception as exc:  # ConfigException when no kubeconfig in unit tests
-            logger.debug("Webhook secret fetch skipped: %s", exc)
-            return None
+    def _fetch(name, namespace="tekton-pipelines"):
+        return k8s_client.get_secret_data(name, namespace=namespace)
 
-    secret = webhook_auth.resolve_webhook_secret(
+    secret, status = webhook_auth.resolve_webhook_secret_status(
         configured_secret=cfg.get("WEBHOOK_SECRET", ""),
         secret_name=cfg.get("WEBHOOK_SECRET_NAME", ""),
         namespace=cfg.get("NAMESPACE", "tekton-pipelines"),
-        fetch_secret=_safe_fetch,
+        fetch_secret=_fetch,
     )
-    if not secret:
-        # No secret configured — allow (dev/Kind) but log once-level warning.
+    if status == webhook_auth.STATUS_UNSET:
+        # No secret configured at all — allow for local/Kind without HMAC.
         logger.debug("Webhook signature not enforced: no secret configured")
+        return None
+    if status == webhook_auth.STATUS_MISSING:
+        # Named Secret expected but absent/empty — fail closed in-cluster.
+        logger.warning("Webhook rejected: secret %s missing or empty", cfg.get("WEBHOOK_SECRET_NAME"))
+        return jsonify({"error": "webhook secret not found"}), 503
+    if status == webhook_auth.STATUS_UNAVAILABLE:
+        # No kubeconfig / API error — allow for unit tests & broken local kube;
+        # operators should mount WEBHOOK_SECRET or ensure the Secret exists.
+        logger.warning("Webhook signature not enforced: secret lookup unavailable")
         return None
     header = request.headers.get("X-Hub-Signature-256", "")
     if not webhook_auth.verify_signature(secret, request.get_data(), header):

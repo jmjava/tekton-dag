@@ -37,7 +37,7 @@ def test_pr_pipeline_exposes_max_retries_param():
 def test_promote_pipeline_structure():
     pipe = _load("pipeline/stack-promote-pipeline.yaml")
     assert pipe["metadata"]["name"] == "stack-promote"
-    params = {p["name"] for p in pipe["spec"]["params"]}
+    params = {p["name"]: p for p in pipe["spec"]["params"]}
     for required in (
         "release-version",
         "target-environment",
@@ -48,11 +48,20 @@ def test_promote_pipeline_structure():
         "max-retries",
     ):
         assert required in params
+    assert "audit" in params["max-retries"]["description"].lower() or "fixed" in params[
+        "max-retries"
+    ]["description"].lower()
     ws = {w["name"]: w for w in pipe["spec"]["workspaces"]}
     assert ws["dockerconfig"].get("optional") is True
     tasks = {t["name"]: t for t in pipe["spec"]["tasks"]}
     assert tasks["promote"].get("retries") == 2
     assert tasks["promote"]["taskRef"]["name"] == "promote-images"
+    # Resolved apps-csv (not raw params.apps) feeds promote so changed-app-only works
+    promote_params = {p["name"]: p["value"] for p in tasks["promote"]["params"]}
+    assert "apps-csv" in promote_params["changed-app"]
+    resolve = tasks["resolve-stack-inline"]
+    result_names = {r["name"] for r in resolve["taskSpec"]["results"]}
+    assert "apps-csv" in result_names
 
 
 def test_promote_images_task_has_results_and_splits_apps():

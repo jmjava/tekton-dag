@@ -27,11 +27,13 @@ kubectl apply -f pipeline/stack-promote-pipeline.yaml -n tekton-pipelines
 kubectl apply -f pipeline/stack-pr-pipeline.yaml -n tekton-pipelines   # retries + max-retries param
 ```
 
-Rebuild/republish the orchestrator image so in-cluster pods pick up webhook HMAC, promote mode, and injection-status:
+Rebuild/republish images so in-cluster pods pick up webhook HMAC, promote mode, and injection-status:
 
 ```bash
 ./scripts/publish-orchestrator-image.sh
-# then restart the orchestrator Deployment / Helm release
+# optional: GUI BFF (injection-status proxy)
+./scripts/publish-management-gui-image.sh
+# then restart the orchestrator / management-gui Deployments / Helm release
 ```
 
 ## 2. Platform regression (required)

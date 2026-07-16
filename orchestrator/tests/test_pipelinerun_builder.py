@@ -191,6 +191,8 @@ def test_build_promote_pipelinerun(fixed_suffix):
     ws = {w["name"]: w for w in run["spec"]["workspaces"]}
     assert "dockerconfig" in ws
     assert ws["dockerconfig"]["secret"]["secretName"] == "reg-creds"
+    assert "max-retries" in run["metadata"]["annotations"]["tekton-dag.io/max-retries-note"]
+    assert "fixed at 2" in run["metadata"]["annotations"]["tekton-dag.io/max-retries-note"]
 
 
 def test_build_promote_without_creds_omits_dockerconfig(fixed_suffix):

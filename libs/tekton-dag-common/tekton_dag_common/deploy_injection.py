@@ -21,6 +21,23 @@ def sanitize_volume_name(prefix: str, index: int, resource_name: str) -> str:
     return cleaned[:63].strip("-") or f"{prefix}-{index}"
 
 
+def _unique_volume_name(prefix: str, index: int, resource_name: str, seen: set[str]) -> str:
+    """Sanitize and disambiguate volume names that collide after truncation."""
+    candidate = sanitize_volume_name(prefix, index, resource_name)
+    if candidate not in seen:
+        return candidate
+    suffix = f"-{index}"
+    base = sanitize_volume_name(prefix, index, resource_name)
+    disambiguated = (base[: max(1, 63 - len(suffix))] + suffix).strip("-")
+    # Last resort if still colliding
+    n = 0
+    while disambiguated in seen:
+        n += 1
+        extra = f"-{index}-{n}"
+        disambiguated = (base[: max(1, 63 - len(extra))] + extra).strip("-")
+    return disambiguated
+
+
 def _env_from_secret(name: str) -> dict[str, Any]:
     return {"secretRef": {"name": name}}
 
@@ -57,9 +74,7 @@ def build_volume_mounts_and_volumes(
         mount_path = entry.get("mount-path") if isinstance(entry, dict) else None
         if not secret_name or not mount_path:
             continue
-        vol_name = sanitize_volume_name("secret", i, str(secret_name))
-        if vol_name in seen:
-            continue
+        vol_name = _unique_volume_name("secret", i, str(secret_name), seen)
         seen.add(vol_name)
         mounts.append({"name": vol_name, "mountPath": mount_path, "readOnly": True})
         volumes.append({"name": vol_name, "secret": {"secretName": secret_name}})
@@ -70,9 +85,7 @@ def build_volume_mounts_and_volumes(
         mount_path = entry.get("mount-path") if isinstance(entry, dict) else None
         if not cm_name or not mount_path:
             continue
-        vol_name = sanitize_volume_name("cm", i, str(cm_name))
-        if vol_name in seen:
-            continue
+        vol_name = _unique_volume_name("cm", i, str(cm_name), seen)
         seen.add(vol_name)
         mounts.append({"name": vol_name, "mountPath": mount_path, "readOnly": True})
         volumes.append({"name": vol_name, "configMap": {"name": cm_name}})
