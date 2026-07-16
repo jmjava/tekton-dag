@@ -1,5 +1,7 @@
 # Milestone 13 — Production Hardening
 
+**Status:** Partial — foundations shipped (webhook HMAC, secrets/config injection + status APIs, reliability params/retries/classifier/profiles, stack-promote + registries). Remaining items are still unchecked below.
+
 **Goal:** Make tekton-dag reliable and cost-effective on real infrastructure — spot instances, shared clusters, multi-environment promotion.
 
 ---
