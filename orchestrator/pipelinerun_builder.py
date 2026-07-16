@@ -286,6 +286,29 @@ def build_promote_pipelinerun(
     """
     name = f"stack-promote-{target_environment}-{_random_suffix()}"
 
+    workspaces = [
+        {
+            "name": "shared-workspace",
+            "volumeClaimTemplate": {
+                "spec": {
+                    "accessModes": ["ReadWriteOnce"],
+                    "resources": {"requests": {"storage": "1Gi"}},
+                }
+            },
+        },
+    ]
+    # Mount dockerconfigjson Secret for private registry auth (crane DOCKER_CONFIG).
+    if credentials_secret:
+        workspaces.append(
+            {
+                "name": "dockerconfig",
+                "secret": {
+                    "secretName": credentials_secret,
+                    "items": [{"key": ".dockerconfigjson", "path": "config.json"}],
+                },
+            }
+        )
+
     run = {
         "apiVersion": "tekton.dev/v1",
         "kind": "PipelineRun",
@@ -301,6 +324,10 @@ def build_promote_pipelinerun(
                 "tekton-dag.io/release-version": str(release_version),
                 "tekton-dag.io/approved-by": approved_by or "",
                 "tekton-dag.io/require-approval": "true" if require_approval else "false",
+                "tekton-dag.io/max-retries-note": (
+                    "PipelineRun param max-retries is for audit; Tekton task "
+                    "retries on promote remain fixed at 2"
+                ),
             },
         },
         "spec": {
@@ -315,17 +342,7 @@ def build_promote_pipelinerun(
                 {"name": "changed-app", "value": changed_app},
                 {"name": "apps", "value": changed_app},
             ],
-            "workspaces": [
-                {
-                    "name": "shared-workspace",
-                    "volumeClaimTemplate": {
-                        "spec": {
-                            "accessModes": ["ReadWriteOnce"],
-                            "resources": {"requests": {"storage": "1Gi"}},
-                        }
-                    },
-                },
-            ],
+            "workspaces": workspaces,
             "taskRunTemplate": {
                 "serviceAccountName": "tekton-pr-sa",
             },

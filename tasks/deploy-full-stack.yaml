@@ -55,24 +55,45 @@ spec:
           SPORT=$(echo "$STACK_JSON" | jq -r --arg a "$APP" \
             '(.defaults."service-port" // "80") as $dp | .apps[]|select(.name==$a)|."service-port" // $dp')
 
-          # Pre-deploy Secret validation (M13)
-          MISSING=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '
-            .apps[] | select(.name==$a) |
-            [(.secrets."env-from" // [])[], ((.secrets."volume-mounts" // [])[]?.secret // empty)] |
-            unique | .[]
-          ')
-          if [ "$VALIDATE_SECRETS" = "true" ] && [ -n "$MISSING" ]; then
-            for S in $MISSING; do
+          # Pre-deploy Secret + ConfigMap validation (M13)
+          if [ "$VALIDATE_SECRETS" = "true" ]; then
+            MISSING_SECRETS=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '
+              .apps[] | select(.name==$a) |
+              [(.secrets."env-from" // [])[], ((.secrets."volume-mounts" // [])[]?.secret // empty)] |
+              unique | .[]
+            ')
+            for S in $MISSING_SECRETS; do
               if ! kubectl get secret "$S" -n "$NS" >/dev/null 2>&1; then
                 echo "ERROR: app $APP references Secret '$S' which is missing in namespace $NS"
+                exit 1
+              fi
+            done
+            MISSING_CMS=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '
+              .apps[] | select(.name==$a) |
+              [(.config."env-from" // [])[], ((.config."volume-mounts" // [])[]?.configmap // empty)] |
+              unique | .[]
+            ')
+            for C in $MISSING_CMS; do
+              if ! kubectl get configmap "$C" -n "$NS" >/dev/null 2>&1; then
+                echo "ERROR: app $APP references ConfigMap '$C' which is missing in namespace $NS"
                 exit 1
               fi
             done
           fi
 
           # Build Deployment JSON with optional envFrom / volumes from stack secrets+config
+          # Volume names are lowercased and sanitized for DNS-1123.
           DEPLOY_JSON=$(echo "$STACK_JSON" | jq -c --arg a "$APP" --arg ns "$NS" \
             --arg img "$IMAGE" --argjson cport "$CPORT" '
+            def volname($prefix; $i; $n):
+              (($prefix + "-" + ($i|tostring) + "-" + $n)
+               | ascii_downcase
+               | gsub("_"; "-")
+               | gsub("[^a-z0-9-]"; "-")
+               | gsub("-+"; "-")
+               | sub("^-+"; "")
+               | sub("-+$"; "")
+               | .[0:63]);
             (.apps[] | select(.name==$a)) as $app |
             ($app.secrets."env-from" // []) as $senv |
             ($app.config."env-from" // []) as $cenv |
@@ -84,23 +105,23 @@ spec:
             ] as $envFrom |
             [
               ($svm | to_entries[] | {
-                name: ("secret-" + (.key|tostring) + "-" + .value.secret),
+                name: volname("secret"; .key; .value.secret),
                 mountPath: .value."mount-path",
                 readOnly: true
               }),
               ($cvm | to_entries[] | {
-                name: ("cm-" + (.key|tostring) + "-" + .value.configmap),
+                name: volname("cm"; .key; .value.configmap),
                 mountPath: .value."mount-path",
                 readOnly: true
               })
             ] as $mounts |
             [
               ($svm | to_entries[] | {
-                name: ("secret-" + (.key|tostring) + "-" + .value.secret),
+                name: volname("secret"; .key; .value.secret),
                 secret: {secretName: .value.secret}
               }),
               ($cvm | to_entries[] | {
-                name: ("cm-" + (.key|tostring) + "-" + .value.configmap),
+                name: volname("cm"; .key; .value.configmap),
                 configMap: {name: .value.configmap}
               })
             ] as $vols |

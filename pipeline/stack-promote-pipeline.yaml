@@ -39,6 +39,9 @@ spec:
   workspaces:
     - name: shared-workspace
       description: "Shared PVC for resolved stack JSON"
+    - name: dockerconfig
+      description: "Optional docker config for private target registries"
+      optional: true
   results:
     - name: promoted-images
       value: $(tasks.promote.results.promoted-images)
@@ -108,7 +111,11 @@ spec:
           value: $(params.image-registry)
         - name: target-registry
           value: $(params.target-registry)
+        # Prefer apps (comma-separated); fall back to changed-app
         - name: changed-app
-          value: $(params.changed-app)
+          value: $(params.apps)
         - name: target-environment
           value: $(params.target-environment)
+      workspaces:
+        - name: dockerconfig
+          workspace: dockerconfig

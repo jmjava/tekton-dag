@@ -46,6 +46,18 @@ spec:
               value: {{ .Values.stackFile }}
             - name: WEBHOOK_SECRET_NAME
               value: {{ .Values.triggers.webhookSecretName }}
+            - name: WEBHOOK_VERIFY_SIGNATURE
+              value: {{ .Values.orchestrationService.webhookVerifySignature | quote }}
+            - name: PIPELINE_TIMEOUT
+              value: {{ .Values.orchestrationService.pipelineTimeout | quote }}
+            - name: MAX_RETRIES
+              value: {{ .Values.orchestrationService.maxRetries | quote }}
+            - name: REGISTRIES_FILE
+              value: {{ .Values.orchestrationService.registriesFile | quote }}
+            - name: STACKS_DIR
+              value: /stacks
+            - name: TEAMS_DIR
+              value: /teams
           resources:
             {{- toYaml .Values.orchestrationService.resources | nindent 12 }}
           livenessProbe:

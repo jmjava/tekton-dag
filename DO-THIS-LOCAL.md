@@ -93,6 +93,9 @@ kubectl -n tekton-pipelines create secret generic github-webhook-secret \
 
 ### 3c. Promote pipeline (dry-run)
 
+`target_environment: staging` resolves URL/creds from `stacks/registries.yaml` when
+`target_registry` / `credentials_secret` are omitted. Multi-app: `"changed_app": "demo-fe,demo-api"`.
+
 ```bash
 curl -s -X POST http://localhost:9091/api/run \
   -H 'Content-Type: application/json' \
@@ -106,6 +109,8 @@ curl -s -X POST http://localhost:9091/api/run \
 # Empty target_registry → promote-images dry-run (no crane copy)
 kubectl get pipelinerun -n tekton-pipelines -l tekton.dev/pipeline=stack-promote
 ```
+
+Management GUI BFF: `GET /api/teams/<team>/apps/<app>/injection-status` (same shape as orchestrator).
 
 Approval gate:
 

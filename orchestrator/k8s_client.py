@@ -123,22 +123,23 @@ def get_secret_data(name, namespace="tekton-pipelines"):
 
 
 def list_secret_names(namespace="tekton-pipelines"):
-    """Return a set of Secret names in the namespace."""
+    """
+    Return a set of Secret names in the namespace.
+
+    Raises ApiException on API/RBAC failures so callers do not treat errors
+    as an empty namespace (which would mark every ref as missing).
+    """
     api = _get_core_api()
-    try:
-        result = api.list_namespaced_secret(namespace=namespace)
-        return {item.metadata.name for item in result.items}
-    except ApiException as e:
-        logger.error("Failed to list Secrets: %s", e.reason)
-        return set()
+    result = api.list_namespaced_secret(namespace=namespace)
+    return {item.metadata.name for item in result.items}
 
 
 def list_configmap_names(namespace="tekton-pipelines"):
-    """Return a set of ConfigMap names in the namespace."""
+    """
+    Return a set of ConfigMap names in the namespace.
+
+    Raises ApiException on API/RBAC failures (same rationale as list_secret_names).
+    """
     api = _get_core_api()
-    try:
-        result = api.list_namespaced_config_map(namespace=namespace)
-        return {item.metadata.name for item in result.items}
-    except ApiException as e:
-        logger.error("Failed to list ConfigMaps: %s", e.reason)
-        return set()
+    result = api.list_namespaced_config_map(namespace=namespace)
+    return {item.metadata.name for item in result.items}

@@ -11,7 +11,7 @@ Pipeline tasks that fail due to infrastructure problems — not test failures �
 - [x] **Task-level retry policy** — add `retries: N` to build, deploy, and containerize tasks; leave test/validation tasks at `retries: 0` so real failures surface immediately *(PR pipeline compile + containerize: `retries: 2`)*
 - [x] **Spot instance preemption handling** — detect `node lost` / `pod evicted` / `DeadlineExceeded` exit codes and retry only those; distinguish from OOMKilled (which needs sizing, not retry) *(`tekton_dag_common.reliability.classify_failure`)*
 - [ ] **Registry throttle / timeout retry** — Kaniko push and crane tag can hit rate limits or transient DNS failures; add retry with exponential backoff to `build-containerize` and `tag-release-images` *(classifier recognizes registry 429; Task-level retries cover containerize)*
-- [x] **Configurable retry counts** — expose `max-retries` as a pipeline parameter so teams can tune per environment (e.g. 3 retries on spot, 0 on dedicated nodes) *(PipelineRun param + `MAX_RETRIES` env / API body)*
+- [x] **Configurable retry counts** — expose `max-retries` as a pipeline parameter so teams can tune per environment (e.g. 3 retries on spot, 0 on dedicated nodes) *(PipelineRun param + `MAX_RETRIES` env / API body for audit; Tekton `retries:` on compile/containerize/promote remain fixed at 2 — Tekton cannot parameterize retries)*
 - [x] **Retry logging** — emit structured annotations on TaskRuns showing retry attempt number and original failure reason for post-mortem *(`retry_annotation` helper; promote/PR builders attach reliability metadata)*
 
 ## 2. Precise build image sizing

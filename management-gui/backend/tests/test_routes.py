@@ -22,7 +22,15 @@ def client(tmp_path):
     stacks_dir = tmp_path / "stacks"
     stacks_dir.mkdir()
     (stacks_dir / "stack-one.yaml").write_text(
-        "name: stack-one\napps:\n  - name: demo-fe\n    repo: https://github.com/jmjava/tekton-dag-vue-fe.git\n"
+        "name: stack-one\n"
+        "apps:\n"
+        "  - name: demo-fe\n"
+        "    repo: https://github.com/jmjava/tekton-dag-vue-fe.git\n"
+        "    role: frontend\n"
+        "    secrets:\n"
+        "      env-from: [demo-fe-db]\n"
+        "    config:\n"
+        "      env-from: [demo-fe-config]\n"
     )
 
     os.environ["TEAMS_DIR"] = str(tmp_path / "teams")
@@ -67,6 +75,25 @@ def test_get_dag(client):
     assert resp.status_code == 200
     data = resp.get_json()
     assert "apps" in data or "nodes" in data or "name" in data
+
+
+@patch("k8s_client.list_configmap_names")
+@patch("k8s_client.list_secret_names")
+def test_injection_status(mock_secrets, mock_cms, client):
+    mock_secrets.return_value = {"demo-fe-db"}
+    mock_cms.return_value = set()
+    resp = client.get("/api/teams/default/apps/demo-fe/injection-status")
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body["ok"] is False
+    assert body["secrets"]["demo-fe-db"] == "present"
+    assert body["configmaps"]["demo-fe-config"] == "missing"
+    assert body["stack_file"] == "stacks/stack-one.yaml"
+
+
+def test_injection_status_unknown_app(client):
+    resp = client.get("/api/teams/default/apps/nope/injection-status")
+    assert resp.status_code == 404
 
 
 @patch("k8s_client.list_pipelineruns")

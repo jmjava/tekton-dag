@@ -21,6 +21,7 @@ import k8s_client
 import pipelinerun_builder as builder
 import graph_client
 import webhook_auth
+import registry_resolver
 
 logger = logging.getLogger("orchestrator.routes")
 
@@ -183,13 +184,20 @@ def register_routes(app: Flask):
                 return jsonify({
                     "error": "approved_by required when require_approval is true",
                 }), 400
+            registries = registry_resolver.load_registries(cfg.get("REGISTRIES_FILE", ""))
+            target = registry_resolver.resolve_promote_target(
+                target_environment=target_environment,
+                target_registry=data.get("target_registry", ""),
+                credentials_secret=data.get("credentials_secret", ""),
+                registries=registries,
+            )
             run = builder.build_promote_pipelinerun(
                 stack_file=stack_file,
                 release_version=release_version,
-                target_environment=target_environment,
+                target_environment=target["target_environment"],
                 image_registry=cfg["IMAGE_REGISTRY"],
-                target_registry=data.get("target_registry", ""),
-                credentials_secret=data.get("credentials_secret", ""),
+                target_registry=target["target_registry"],
+                credentials_secret=target["credentials_secret"],
                 changed_app=changed_app,
                 namespace=cfg["NAMESPACE"],
                 require_approval=require_approval,
@@ -338,6 +346,9 @@ def register_routes(app: Flask):
         """
         Report secrets/config injection plan and whether referenced
         Secrets/ConfigMaps exist in the target namespace (M13).
+
+        Uses StackResolver.find_app() so secrets/config blocks from stack YAML
+        are preserved (list_stacks() only returns summary fields).
         """
         if injection_summary is None or validate_injection_refs is None:
             return jsonify({"error": "tekton_dag_common.deploy_injection unavailable"}), 501
@@ -346,14 +357,10 @@ def register_routes(app: Flask):
         resolver = cfg["RESOLVER"]
         ns = request.args.get("namespace", cfg["NAMESPACE"])
 
-        app = None
-        for stack in resolver.list_stacks():
-            for candidate in stack.get("apps") or []:
-                if isinstance(candidate, dict) and candidate.get("name") == app_name:
-                    app = candidate
-                    break
-            if app:
-                break
+        found = None
+        if hasattr(resolver, "find_app"):
+            found = resolver.find_app(app_name)
+        app = found.get("app") if isinstance(found, dict) else None
         if not isinstance(app, dict):
             return jsonify({"error": f"unknown app: {app_name}"}), 404
 
@@ -380,6 +387,7 @@ def register_routes(app: Flask):
         return jsonify({
             "app": app_name,
             "namespace": ns,
+            "stack_file": found.get("stack_file", ""),
             "ok": len(errors) == 0,
             "errors": errors,
             "secrets": secret_status,

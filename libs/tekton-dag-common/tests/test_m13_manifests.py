@@ -48,17 +48,23 @@ def test_promote_pipeline_structure():
         "max-retries",
     ):
         assert required in params
+    ws = {w["name"]: w for w in pipe["spec"]["workspaces"]}
+    assert ws["dockerconfig"].get("optional") is True
     tasks = {t["name"]: t for t in pipe["spec"]["tasks"]}
     assert tasks["promote"].get("retries") == 2
     assert tasks["promote"]["taskRef"]["name"] == "promote-images"
 
 
-def test_promote_images_task_has_results():
+def test_promote_images_task_has_results_and_splits_apps():
     task = _load("tasks/promote-images.yaml")
     assert task["metadata"]["name"] == "promote-images"
     result_names = {r["name"] for r in task["spec"]["results"]}
     assert "promoted-images" in result_names
     assert "promote-audit" in result_names
+    script = task["spec"]["steps"][0]["script"]
+    assert "tr ','" in script
+    ws = {w["name"]: w for w in task["spec"].get("workspaces", [])}
+    assert "dockerconfig" in ws
 
 
 def test_deploy_full_stack_has_validate_secrets_param():
@@ -69,6 +75,8 @@ def test_deploy_full_stack_has_validate_secrets_param():
     script = task["spec"]["steps"][0]["script"]
     assert "envFrom" in script or "secretRef" in script
     assert "missing Secret" in script or "VALIDATE_SECRETS" in script
+    assert "ConfigMap" in script
+    assert "volname" in script or "ascii_downcase" in script
 
 
 def test_registries_yaml_loads():

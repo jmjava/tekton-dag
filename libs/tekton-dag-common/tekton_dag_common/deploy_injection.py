@@ -6,7 +6,19 @@ M13 pillars 6–7: stack YAML ``secrets`` and ``config`` blocks are converted in
 
 from __future__ import annotations
 
+import re
 from typing import Any
+
+_DNS1123_RE = re.compile(r"[^a-z0-9-]+")
+
+
+def sanitize_volume_name(prefix: str, index: int, resource_name: str) -> str:
+    """Build a DNS-1123-ish volume name (lowercase, alnum/dash, <= 63 chars)."""
+    raw = f"{prefix}-{index}-{resource_name}".lower().replace("_", "-")
+    cleaned = _DNS1123_RE.sub("-", raw).strip("-")
+    if not cleaned:
+        cleaned = f"{prefix}-{index}"
+    return cleaned[:63].strip("-") or f"{prefix}-{index}"
 
 
 def _env_from_secret(name: str) -> dict[str, Any]:
@@ -45,7 +57,7 @@ def build_volume_mounts_and_volumes(
         mount_path = entry.get("mount-path") if isinstance(entry, dict) else None
         if not secret_name or not mount_path:
             continue
-        vol_name = f"secret-{i}-{secret_name}".replace("_", "-")[:63]
+        vol_name = sanitize_volume_name("secret", i, str(secret_name))
         if vol_name in seen:
             continue
         seen.add(vol_name)
@@ -58,7 +70,7 @@ def build_volume_mounts_and_volumes(
         mount_path = entry.get("mount-path") if isinstance(entry, dict) else None
         if not cm_name or not mount_path:
             continue
-        vol_name = f"cm-{i}-{cm_name}".replace("_", "-")[:63]
+        vol_name = sanitize_volume_name("cm", i, str(cm_name))
         if vol_name in seen:
             continue
         seen.add(vol_name)

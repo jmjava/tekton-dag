@@ -168,7 +168,7 @@ def test_build_promote_pipelinerun(fixed_suffix):
         image_registry="reg:5000",
         target_registry="reg:5001",
         credentials_secret="reg-creds",
-        changed_app="demo-fe",
+        changed_app="demo-fe,demo-api",
         namespace="tekton-pipelines",
         require_approval=True,
         approved_by="alice",
@@ -184,7 +184,22 @@ def test_build_promote_pipelinerun(fixed_suffix):
     assert params["release-version"] == "0.2.0"
     assert params["target-environment"] == "staging"
     assert params["target-registry"] == "reg:5001"
-    assert params["changed-app"] == "demo-fe"
-    assert params["apps"] == "demo-fe"
+    assert params["changed-app"] == "demo-fe,demo-api"
+    assert params["apps"] == "demo-fe,demo-api"
     assert params["max-retries"] == "1"
     assert run["spec"]["timeouts"]["pipeline"] == "30m"
+    ws = {w["name"]: w for w in run["spec"]["workspaces"]}
+    assert "dockerconfig" in ws
+    assert ws["dockerconfig"]["secret"]["secretName"] == "reg-creds"
+
+
+def test_build_promote_without_creds_omits_dockerconfig(fixed_suffix):
+    run = pb.build_promote_pipelinerun(
+        stack_file="stacks/s.yaml",
+        release_version="1.0.0",
+        target_environment="staging",
+        image_registry="reg",
+        changed_app="a",
+    )
+    ws_names = {w["name"] for w in run["spec"]["workspaces"]}
+    assert "dockerconfig" not in ws_names

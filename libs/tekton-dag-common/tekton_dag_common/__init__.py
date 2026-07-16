@@ -6,6 +6,7 @@ from tekton_dag_common.deploy_injection import (
     injection_summary,
     referenced_configmap_names,
     referenced_secret_names,
+    sanitize_volume_name,
     validate_injection_refs,
 )
 from tekton_dag_common.k8s_constants import (
@@ -62,6 +63,7 @@ __all__ = [
     "referenced_configmap_names",
     "referenced_secret_names",
     "resources_for_app",
+    "sanitize_volume_name",
     "should_retry",
     "validate_injection_refs",
 ]

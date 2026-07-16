@@ -6,6 +6,7 @@ from tekton_dag_common.deploy_injection import (
     injection_summary,
     referenced_configmap_names,
     referenced_secret_names,
+    sanitize_volume_name,
     validate_injection_refs,
 )
 
@@ -97,6 +98,13 @@ def test_injection_summary():
     assert summary["secrets"] == ["s1"]
     assert summary["configmaps"] == ["c1"]
     assert summary["envFrom_count"] == 2
+
+
+def test_sanitize_volume_name_dns1123():
+    name = sanitize_volume_name("secret", 0, "My_TLS.Cert")
+    assert name == "secret-0-my-tls-cert"
+    assert len(name) <= 63
+    assert name == name.lower()
 
 
 def test_skips_incomplete_volume_mount_entries():

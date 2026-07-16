@@ -106,8 +106,23 @@ class StackResolver:
         """Get a loaded stack definition by its file path."""
         return self._stacks.get(stack_file)
 
+    def find_app(self, app_name):
+        """
+        Return the full app dict (including secrets/config/build) for an app name.
+
+        Returns:
+            {"stack_file": str, "app": dict} or None
+        """
+        if not app_name:
+            return None
+        for stack_file, stack in self._stacks.items():
+            for app in stack.get("apps", []):
+                if app.get("name") == app_name:
+                    return {"stack_file": stack_file, "app": app}
+        return None
+
     def list_stacks(self):
-        """Return all loaded stacks with their apps."""
+        """Return all loaded stacks with their apps (summary fields for listing)."""
         result = []
         for stack_file, stack in self._stacks.items():
             apps = [

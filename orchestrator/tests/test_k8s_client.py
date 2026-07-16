@@ -198,3 +198,14 @@ def test_list_secret_and_configmap_names():
         mp.setattr(k8s_client, "_get_core_api", lambda: api)
         assert k8s_client.list_secret_names("ns") == {"a", "b"}
         assert k8s_client.list_configmap_names("ns") == {"c"}
+
+
+def test_list_secret_names_propagates_api_error():
+    from unittest.mock import MagicMock
+
+    api = MagicMock()
+    api.list_namespaced_secret.side_effect = ApiException(status=403, reason="Forbidden")
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(k8s_client, "_get_core_api", lambda: api)
+        with pytest.raises(ApiException):
+            k8s_client.list_secret_names("ns")

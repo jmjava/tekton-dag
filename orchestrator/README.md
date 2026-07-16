@@ -41,7 +41,8 @@ Defined in `app.py` (with defaults). Common ones:
 | `WEBHOOK_SECRET` | Optional direct HMAC secret (local/dev); preferred over fetching the K8s Secret when set. |
 | `WEBHOOK_VERIFY_SIGNATURE` | When `true` (default) and a secret is available, require valid `X-Hub-Signature-256`. |
 | `PIPELINE_TIMEOUT` | Default PipelineRun `spec.timeouts.pipeline` (default `2h`). |
-| `MAX_RETRIES` | Default `max-retries` PipelineRun param (default `2`). |
+| `MAX_RETRIES` | Default `max-retries` PipelineRun param (default `2`). Audit/hint only — Tekton task `retries:` stay fixed at 2. |
+| `REGISTRIES_FILE` | Path to `registries.yaml` for promote target resolution (default `$STACKS_DIR/registries.yaml`). |
 
 Neo4j (used by graph endpoints) — see `graph_client.py`:
 

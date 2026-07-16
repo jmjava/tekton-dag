@@ -41,6 +41,11 @@ def create_app():
         in ("1", "true", "yes"),
         PIPELINE_TIMEOUT=os.environ.get("PIPELINE_TIMEOUT", "2h"),
         MAX_RETRIES=int(os.environ.get("MAX_RETRIES", "2")),
+        # Path to stacks/registries.yaml (or Helm-mounted copy) for promote targets.
+        REGISTRIES_FILE=os.environ.get(
+            "REGISTRIES_FILE",
+            os.path.join(os.environ.get("STACKS_DIR", "/stacks"), "registries.yaml"),
+        ),
     )
 
     stacks_dir = os.environ.get("STACKS_DIR", "/stacks")

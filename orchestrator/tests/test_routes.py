@@ -586,35 +586,38 @@ def test_webhook_accepts_valid_signature(mock_build_pr, mock_create, client, fla
 def test_injection_status_reports_missing_secret(
     mock_secrets, mock_cms, client, flask_app
 ):
-    flask_app.config["RESOLVER"].list_stacks.return_value = [
-        {
-            "stack_file": "stacks/demo.yaml",
-            "name": "demo",
-            "apps": [
-                {
-                    "name": "fe",
-                    "secrets": {"env-from": ["fe-db"]},
-                    "config": {"env-from": ["fe-config"]},
-                }
-            ],
-        }
-    ]
+    flask_app.config["RESOLVER"].find_app.return_value = {
+        "stack_file": "stacks/demo.yaml",
+        "app": {
+            "name": "fe",
+            "secrets": {"env-from": ["fe-db"]},
+            "config": {"env-from": ["fe-config"]},
+        },
+    }
     mock_secrets.return_value = set()
     mock_cms.return_value = {"fe-config"}
     rv = client.get("/api/apps/fe/injection-status")
     assert rv.status_code == 200
     body = rv.get_json()
     assert body["ok"] is False
+    assert body["stack_file"] == "stacks/demo.yaml"
     assert body["secrets"]["fe-db"] == "missing"
     assert body["configmaps"]["fe-config"] == "present"
 
 
 def test_injection_status_unknown_app(client, flask_app):
-    flask_app.config["RESOLVER"].list_stacks.return_value = [
-        {"stack_file": "s.yaml", "apps": [{"name": "other"}]}
-    ]
+    flask_app.config["RESOLVER"].find_app.return_value = None
     rv = client.get("/api/apps/nope/injection-status")
     assert rv.status_code == 404
+
+
+@patch("routes.k8s_client.list_configmap_names")
+@patch("routes.k8s_client.list_secret_names")
+def test_injection_status_k8s_error_is_503(mock_secrets, mock_cms, client, flask_app):
+    mock_secrets.side_effect = RuntimeError("rbac denied")
+    rv = client.get("/api/apps/fe/injection-status")
+    assert rv.status_code == 503
+    assert "kubernetes lookup failed" in rv.get_json()["error"]
 
 
 def _pr_payload(action, repo_name, pr_number=1, head_sha="deadbeef", merged=False):
