@@ -17,6 +17,13 @@ echo "  Context: ${REPO_ROOT}/orchestrator"
 echo "  Image:   ${IMAGE}"
 echo ""
 
+STAGE_DIR="${REPO_ROOT}/orchestrator/tekton_dag_common_pkg"
+rm -rf "${STAGE_DIR}"
+mkdir -p "${STAGE_DIR}"
+cp -a "${REPO_ROOT}/libs/tekton-dag-common/." "${STAGE_DIR}/"
+cleanup_stage() { rm -rf "${STAGE_DIR}"; mkdir -p "${STAGE_DIR}"; touch "${STAGE_DIR}/.gitkeep"; }
+trap cleanup_stage EXIT
+
 docker build -t "$IMAGE" "${REPO_ROOT}/orchestrator"
 
 echo ""

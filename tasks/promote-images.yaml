@@ -1,0 +1,108 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: promote-images
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+    app.kubernetes.io/version: "1.1.0"
+spec:
+  description: >
+    Promote release-tagged images from the build registry to a target registry
+    (M13 multi-cluster push). Uses crane copy. When target-registry is empty,
+    records a dry-run audit entry without copying. Supports comma-separated
+    app lists. Optional dockerconfig workspace supplies registry credentials.
+  params:
+    - name: stack-json
+      type: string
+      description: "Resolved stack JSON (apps list)"
+    - name: release-version
+      type: string
+      description: "Release semver without leading v (e.g. 0.1.0)"
+    - name: image-registry
+      type: string
+      description: "Source / build registry base"
+    - name: target-registry
+      type: string
+      default: ""
+      description: "Destination registry base; empty = dry-run audit only"
+    - name: changed-app
+      type: string
+      default: ""
+      description: "Comma-separated app names when set; otherwise apps from stack-json"
+    - name: target-environment
+      type: string
+      default: ""
+      description: "Logical environment label for audit output"
+  workspaces:
+    - name: dockerconfig
+      description: "Optional docker config.json for private registries (crane)"
+      optional: true
+      mountPath: /root/.docker
+  results:
+    - name: promoted-images
+      description: "JSON map of app → destination image URI (or dry-run source URI)"
+    - name: promote-audit
+      description: "One-line audit summary"
+  steps:
+    - name: promote
+      image: gcr.io/go-containerregistry/crane:debug
+      env:
+        - name: DOCKER_CONFIG
+          value: /root/.docker
+      script: |
+        #!/busybox/sh
+        set -eu
+        STACK_JSON='$(params.stack-json)'
+        VERSION="$(params.release-version)"
+        SRC_REG="$(params.image-registry)"
+        DST_REG="$(params.target-registry)"
+        ONLY="$(params.changed-app)"
+        ENV="$(params.target-environment)"
+
+        echo "============================================="
+        echo "  Promote images → env=${ENV} version=${VERSION}"
+        echo "============================================="
+
+        # Prefer explicit app list (supports comma-separated names).
+        APPS=""
+        if [ -n "$ONLY" ]; then
+          APPS=$(printf '%s' "$ONLY" | tr ',' ' ')
+        else
+          APPS=$(printf '%s' "$STACK_JSON" | sed -n 's/.*"name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | tr '\n' ' ')
+        fi
+
+        OUT="{"
+        FIRST=1
+        COUNT=0
+        for APP in $APPS; do
+          APP=$(printf '%s' "$APP" | tr -d ' ')
+          [ -z "$APP" ] && continue
+          COUNT=$((COUNT + 1))
+          SRC="${SRC_REG}/${APP}:v${VERSION}"
+          if [ -n "$DST_REG" ]; then
+            DST="${DST_REG}/${APP}:v${VERSION}"
+            echo "  crane copy $SRC → $DST"
+            crane copy "$SRC" "$DST"
+            VAL="$DST"
+          else
+            echo "  DRY-RUN: would promote $SRC (no target-registry)"
+            VAL="$SRC"
+          fi
+          if [ "$FIRST" -eq 1 ]; then
+            OUT="${OUT}\"${APP}\":\"${VAL}\""
+            FIRST=0
+          else
+            OUT="${OUT},\"${APP}\":\"${VAL}\""
+          fi
+        done
+        if [ "$COUNT" -eq 0 ]; then
+          echo "ERROR: no apps to promote (set changed-app/apps or stack-json apps)" >&2
+          exit 1
+        fi
+        OUT="${OUT}}"
+        printf '%s' "$OUT" > "$(results.promoted-images.path)"
+        printf 'env=%s version=%s apps=%s dry_run=%s count=%s' \
+          "$ENV" "$VERSION" "$(printf '%s' "$APPS" | tr -s ' ' ',')" \
+          "$([ -z "$DST_REG" ] && echo true || echo false)" "$COUNT" \
+          > "$(results.promote-audit.path)"
+        echo "  Promote complete: $OUT"

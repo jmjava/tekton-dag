@@ -419,12 +419,290 @@ def test_create_app_env_overrides(monkeypatch, tmp_path):
     monkeypatch.setenv("IMAGE_REGISTRY", "my.registry")
     monkeypatch.setenv("STACKS_DIR", str(tmp_path))
     monkeypatch.setenv("TEAMS_DIR", str(tmp_path))
+    monkeypatch.setenv("PIPELINE_TIMEOUT", "90m")
+    monkeypatch.setenv("MAX_RETRIES", "3")
     from app import create_app
 
     app = create_app()
     assert app.config["NAMESPACE"] == "prod"
     assert app.config["MAX_PARALLEL_BUILDS"] == 12
     assert app.config["IMAGE_REGISTRY"] == "my.registry"
+    assert app.config["PIPELINE_TIMEOUT"] == "90m"
+    assert app.config["MAX_RETRIES"] == 3
+
+
+@patch("routes.k8s_client.create_pipelinerun")
+@patch("routes.builder.build_promote_pipelinerun")
+def test_api_run_promote_success(mock_build_promote, mock_create, client):
+    mock_build_promote.return_value = {}
+    mock_create.return_value = "promote-1"
+    rv = client.post(
+        "/api/run",
+        data=json.dumps(
+            {
+                "mode": "promote",
+                "release_version": "0.1.0",
+                "target_environment": "staging",
+                "changed_app": "demo-fe",
+                "target_registry": "reg:5001",
+            }
+        ),
+        content_type="application/json",
+    )
+    assert rv.status_code == 200
+    assert rv.get_json()["mode"] == "promote"
+    mock_build_promote.assert_called_once()
+    assert mock_build_promote.call_args.kwargs["release_version"] == "0.1.0"
+    assert mock_build_promote.call_args.kwargs["changed_app"] == "demo-fe"
+
+
+@patch("routes.k8s_client.create_pipelinerun")
+@patch("routes.builder.build_promote_pipelinerun")
+def test_api_run_promote_with_approval(mock_build_promote, mock_create, client):
+    mock_build_promote.return_value = {}
+    mock_create.return_value = "promote-approved"
+    rv = client.post(
+        "/api/run",
+        data=json.dumps(
+            {
+                "mode": "promote",
+                "release_version": "0.1.0",
+                "target_environment": "production",
+                "changed_app": "demo-fe",
+                "require_approval": True,
+                "approved_by": "alice@example.com",
+                "timeout": "30m",
+                "max_retries": 1,
+            }
+        ),
+        content_type="application/json",
+    )
+    assert rv.status_code == 200
+    kw = mock_build_promote.call_args.kwargs
+    assert kw["require_approval"] is True
+    assert kw["approved_by"] == "alice@example.com"
+    assert kw["timeout"] == "30m"
+    assert kw["max_retries"] == 1
+
+
+@patch("routes.k8s_client.create_pipelinerun")
+@patch("routes.builder.build_pr_pipelinerun")
+def test_api_run_pr_forwards_reliability(mock_build_pr, mock_create, client):
+    mock_build_pr.return_value = {}
+    mock_create.return_value = "pr-rel"
+    rv = client.post(
+        "/api/run",
+        data=json.dumps(
+            {
+                "mode": "pr",
+                "changed_app": "fe",
+                "pr_number": 7,
+                "timeout": "15m",
+                "max_retries": 0,
+            }
+        ),
+        content_type="application/json",
+    )
+    assert rv.status_code == 200
+    kw = mock_build_pr.call_args.kwargs
+    assert kw["timeout"] == "15m"
+    assert kw["max_retries"] == 0
+
+
+@patch("routes.builder.build_promote_pipelinerun")
+def test_api_run_promote_requires_fields(mock_build_promote, client):
+    rv = client.post(
+        "/api/run",
+        data=json.dumps({"mode": "promote", "release_version": "0.1.0"}),
+        content_type="application/json",
+    )
+    assert rv.status_code == 400
+    mock_build_promote.assert_not_called()
+
+
+@patch("routes.builder.build_promote_pipelinerun")
+def test_api_run_promote_requires_approval_actor(mock_build_promote, client):
+    rv = client.post(
+        "/api/run",
+        data=json.dumps(
+            {
+                "mode": "promote",
+                "release_version": "0.1.0",
+                "target_environment": "production",
+                "changed_app": "demo-fe",
+                "require_approval": True,
+            }
+        ),
+        content_type="application/json",
+    )
+    assert rv.status_code == 400
+    assert "approved_by" in rv.get_json()["error"]
+    mock_build_promote.assert_not_called()
+
+
+@patch("routes.k8s_client.create_pipelinerun")
+@patch("routes.builder.build_pr_pipelinerun")
+def test_webhook_rejects_invalid_signature(mock_build_pr, mock_create, client, flask_app):
+    flask_app.config["WEBHOOK_SECRET"] = "s3cr3t"
+    payload = _pr_payload("opened", repo_name="demo-fe", pr_number=1)
+    rv = client.post(
+        "/webhook/github",
+        data=json.dumps(payload),
+        content_type="application/json",
+        headers={
+            "X-GitHub-Event": "pull_request",
+            "X-Hub-Signature-256": "sha256=00",
+        },
+    )
+    assert rv.status_code == 401
+    mock_create.assert_not_called()
+
+
+@patch("routes.k8s_client.get_secret_data")
+@patch("routes.k8s_client.create_pipelinerun")
+@patch("routes.builder.build_pr_pipelinerun")
+def test_webhook_fail_closed_when_named_secret_missing(
+    mock_build_pr, mock_create, mock_get_secret, client, flask_app
+):
+    flask_app.config["WEBHOOK_SECRET"] = ""
+    flask_app.config["WEBHOOK_SECRET_NAME"] = "github-webhook-secret"
+    mock_get_secret.return_value = None
+    payload = _pr_payload("opened", repo_name="demo-fe", pr_number=1)
+    rv = client.post(
+        "/webhook/github",
+        data=json.dumps(payload),
+        content_type="application/json",
+        headers={"X-GitHub-Event": "pull_request"},
+    )
+    assert rv.status_code == 503
+    assert "webhook secret not found" in rv.get_json()["error"]
+    mock_create.assert_not_called()
+
+
+@patch("routes.k8s_client.create_pipelinerun")
+@patch("routes.builder.build_pr_pipelinerun")
+def test_webhook_accepts_valid_signature(mock_build_pr, mock_create, client, flask_app):
+    import webhook_auth
+
+    flask_app.config["WEBHOOK_SECRET"] = "s3cr3t"
+    mock_create.return_value = "signed-pr"
+    payload = _pr_payload("opened", repo_name="demo-fe", pr_number=1, head_sha="abc")
+    body = json.dumps(payload).encode("utf-8")
+    sig = webhook_auth.compute_signature("s3cr3t", body)
+    rv = client.post(
+        "/webhook/github",
+        data=body,
+        content_type="application/json",
+        headers={
+            "X-GitHub-Event": "pull_request",
+            "X-Hub-Signature-256": sig,
+        },
+    )
+    assert rv.status_code == 200
+    assert rv.get_json()["pipelinerun"] == "signed-pr"
+
+
+@patch("routes.k8s_client.list_configmap_names")
+@patch("routes.k8s_client.list_secret_names")
+def test_injection_status_reports_missing_secret(
+    mock_secrets, mock_cms, client, flask_app
+):
+    flask_app.config["RESOLVER"].find_app.return_value = {
+        "stack_file": "stacks/demo.yaml",
+        "app": {
+            "name": "fe",
+            "secrets": {"env-from": ["fe-db"]},
+            "config": {"env-from": ["fe-config"]},
+        },
+    }
+    mock_secrets.return_value = set()
+    mock_cms.return_value = {"fe-config"}
+    rv = client.get("/api/apps/fe/injection-status")
+    assert rv.status_code == 200
+    body = rv.get_json()
+    assert body["ok"] is False
+    assert body["stack_file"] == "stacks/demo.yaml"
+    assert body["secrets"]["fe-db"] == "missing"
+    assert body["configmaps"]["fe-config"] == "present"
+
+
+def test_injection_status_unknown_app(client, flask_app):
+    flask_app.config["RESOLVER"].find_app.return_value = None
+    rv = client.get("/api/apps/nope/injection-status")
+    assert rv.status_code == 404
+
+
+@patch("routes.k8s_client.list_configmap_names")
+@patch("routes.k8s_client.list_secret_names")
+def test_injection_status_k8s_error_is_503(mock_secrets, mock_cms, client, flask_app):
+    mock_secrets.side_effect = RuntimeError("rbac denied")
+    rv = client.get("/api/apps/fe/injection-status")
+    assert rv.status_code == 503
+    assert "kubernetes lookup failed" in rv.get_json()["error"]
+
+
+@patch("routes.k8s_client.create_pipelinerun")
+@patch("routes.builder.build_promote_pipelinerun")
+def test_api_run_promote_resolves_registries_file(
+    mock_build_promote, mock_create, client, flask_app
+):
+    from pathlib import Path
+
+    registries = Path(__file__).resolve().parents[2] / "stacks" / "registries.yaml"
+    flask_app.config["REGISTRIES_FILE"] = str(registries)
+    mock_build_promote.return_value = {}
+    mock_create.return_value = "promote-from-file"
+    rv = client.post(
+        "/api/run",
+        data=json.dumps(
+            {
+                "mode": "promote",
+                "release_version": "0.1.0",
+                "target_environment": "production",
+                "changed_app": "demo-fe",
+            }
+        ),
+        content_type="application/json",
+    )
+    assert rv.status_code == 200
+    kw = mock_build_promote.call_args.kwargs
+    assert kw["target_registry"] == "localhost:5002"
+    assert kw["credentials_secret"] == "registry-prod-creds"
+
+
+@patch("routes.k8s_client.list_configmap_names")
+@patch("routes.k8s_client.list_secret_names")
+def test_injection_status_with_real_stack_resolver(
+    mock_secrets, mock_cms, client, flask_app, tmp_path
+):
+    """Regression: list_stacks summaries omit secrets; find_app must supply them."""
+    from stack_resolver import StackResolver
+
+    stacks = tmp_path / "stacks"
+    stacks.mkdir()
+    (stacks / "demo.yaml").write_text(
+        "name: demo\n"
+        "apps:\n"
+        "  - name: demo-bff\n"
+        "    repo: org/bff\n"
+        "    role: middleware\n"
+        "    secrets:\n"
+        "      env-from: [demo-bff-db]\n"
+        "    config:\n"
+        "      env-from: [demo-bff-config]\n",
+        encoding="utf-8",
+    )
+    flask_app.config["RESOLVER"] = StackResolver(
+        stacks_dir=str(stacks), teams_dir=str(tmp_path / "noteams")
+    )
+    mock_secrets.return_value = set()
+    mock_cms.return_value = {"demo-bff-config"}
+    rv = client.get("/api/apps/demo-bff/injection-status")
+    assert rv.status_code == 200
+    body = rv.get_json()
+    assert body["secrets"]["demo-bff-db"] == "missing"
+    assert body["configmaps"]["demo-bff-config"] == "present"
+    assert body["ok"] is False
 
 
 def _pr_payload(action, repo_name, pr_number=1, head_sha="deadbeef", merged=False):

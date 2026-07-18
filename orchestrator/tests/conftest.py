@@ -13,8 +13,11 @@ import pytest
 from flask import Flask
 
 ORCH_ROOT = Path(__file__).resolve().parent.parent
+COMMON_ROOT = ORCH_ROOT.parent / "libs" / "tekton-dag-common"
 if str(ORCH_ROOT) not in sys.path:
     sys.path.insert(0, str(ORCH_ROOT))
+if COMMON_ROOT.is_dir() and str(COMMON_ROOT) not in sys.path:
+    sys.path.insert(0, str(COMMON_ROOT))
 
 
 @pytest.fixture
@@ -34,6 +37,11 @@ def flask_app():
         GIT_REVISION="main",
         STACK_FILE="stacks/stack-one.yaml",
         WEBHOOK_SECRET_NAME="github-webhook-secret",
+        WEBHOOK_SECRET="",
+        WEBHOOK_VERIFY_SIGNATURE=True,
+        PIPELINE_TIMEOUT="2h",
+        MAX_RETRIES=2,
+        REGISTRIES_FILE="",
     )
     resolver = MagicMock(name="StackResolver")
     resolver.list_stacks.return_value = [
@@ -49,6 +57,17 @@ def flask_app():
         "stack_file": "stacks/demo.yaml",
         "app_name": "fe",
         "repo": "org/demo-fe",
+    }
+    # Default find_app for injection-status; tests may override.
+    resolver.find_app.return_value = {
+        "stack_file": "stacks/demo.yaml",
+        "app": {
+            "name": "fe",
+            "repo": "org/fe",
+            "role": "frontend",
+            "secrets": {"env-from": ["fe-db"]},
+            "config": {"env-from": ["fe-config"]},
+        },
     }
     app.config["RESOLVER"] = resolver
     register_routes(app)

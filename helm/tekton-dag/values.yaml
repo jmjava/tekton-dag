@@ -61,6 +61,12 @@ orchestrationService:
   image: "localhost:5000/tekton-dag-orchestrator:latest"
   replicas: 1
   port: 8080
+  # M13 reliability defaults (PipelineRun timeouts / max-retries audit param)
+  pipelineTimeout: "2h"
+  maxRetries: 2
+  # Verify GitHub webhooks when the named Secret exists (key: secret|value|webhook-secret)
+  webhookVerifySignature: true
+  registriesFile: "/stacks/registries.yaml"
   resources:
     requests:
       cpu: "100m"

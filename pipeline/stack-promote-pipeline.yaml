@@ -1,0 +1,133 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: stack-promote
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+    app.kubernetes.io/version: "1.0.0"
+spec:
+  description: >
+    Promote release-tagged images from the build registry to a target registry /
+    environment (M13 multi-cluster push). Optionally scopes to a single app.
+    Approval is enforced by the orchestrator before creating this PipelineRun
+    (require_approval + approved_by on POST /api/run mode=promote).
+  params:
+    - name: stack-file
+      description: "Path to the stack YAML relative to repo root"
+      default: "stacks/stack-one.yaml"
+    - name: release-version
+      description: "Release semver without leading v (e.g. 0.1.0)"
+    - name: target-environment
+      description: "Logical environment (staging, production, dr)"
+    - name: image-registry
+      description: "Source / build registry base"
+    - name: target-registry
+      description: "Destination registry base; empty = dry-run"
+      default: ""
+    - name: credentials-secret
+      description: "Optional Secret name with registry credentials (documented for operators)"
+      default: ""
+    - name: changed-app
+      description: "Promote only this app when set (alias of apps when single)"
+      default: ""
+    - name: apps
+      description: "Comma-separated app names to promote (required unless changed-app is set)"
+      default: ""
+    - name: max-retries
+      description: >
+        Audit/hint only. Tekton task retries on promote stay fixed at 2
+        (Tekton cannot parameterize retries from a PipelineRun param).
+      default: "2"
+  workspaces:
+    - name: shared-workspace
+      description: "Shared PVC for resolved stack JSON"
+    - name: dockerconfig
+      description: "Optional docker config for private target registries"
+      optional: true
+  results:
+    - name: promoted-images
+      value: $(tasks.promote.results.promoted-images)
+    - name: promote-audit
+      value: $(tasks.promote.results.promote-audit)
+  tasks:
+    - name: resolve-stack-inline
+      taskSpec:
+        params:
+          - name: stack-file
+          - name: apps
+          - name: changed-app
+        results:
+          - name: stack-json
+          - name: apps-csv
+            description: "Resolved comma-separated app list (apps or changed-app)"
+        steps:
+          - name: emit
+            image: busybox:1.36
+            script: |
+              #!/bin/sh
+              set -eu
+              APPS="$(params.apps)"
+              if [ -z "$APPS" ]; then
+                APPS="$(params.changed-app)"
+              fi
+              if [ -z "$APPS" ]; then
+                echo "ERROR: apps or changed-app required for stack-promote" >&2
+                exit 1
+              fi
+              # Build minimal stack JSON + CSV (trim spaces; support comma-separated)
+              JSON='{"stack-file":"'"$(params.stack-file)"'","apps":['
+              CSV=""
+              FIRST=1
+              OLD_IFS="$IFS"
+              IFS=','
+              for APP in $APPS; do
+                APP=$(printf '%s' "$APP" | tr -d ' ')
+                [ -z "$APP" ] && continue
+                if [ "$FIRST" -eq 1 ]; then
+                  JSON="${JSON}{\"name\":\"${APP}\"}"
+                  CSV="$APP"
+                  FIRST=0
+                else
+                  JSON="${JSON},{\"name\":\"${APP}\"}"
+                  CSV="${CSV},${APP}"
+                fi
+              done
+              IFS="$OLD_IFS"
+              if [ "$FIRST" -eq 1 ]; then
+                echo "ERROR: apps or changed-app required for stack-promote" >&2
+                exit 1
+              fi
+              JSON="${JSON}]}"
+              printf '%s' "$JSON" > "$(results.stack-json.path)"
+              printf '%s' "$CSV" > "$(results.apps-csv.path)"
+      params:
+        - name: stack-file
+          value: $(params.stack-file)
+        - name: apps
+          value: $(params.apps)
+        - name: changed-app
+          value: $(params.changed-app)
+
+    - name: promote
+      retries: 2
+      runAfter:
+        - resolve-stack-inline
+      taskRef:
+        name: promote-images
+      params:
+        - name: stack-json
+          value: $(tasks.resolve-stack-inline.results.stack-json)
+        - name: release-version
+          value: $(params.release-version)
+        - name: image-registry
+          value: $(params.image-registry)
+        - name: target-registry
+          value: $(params.target-registry)
+        # Always the resolved CSV (works when only changed-app was set)
+        - name: changed-app
+          value: $(tasks.resolve-stack-inline.results.apps-csv)
+        - name: target-environment
+          value: $(params.target-environment)
+      workspaces:
+        - name: dockerconfig
+          workspace: dockerconfig

@@ -34,6 +34,18 @@ def create_app():
         GIT_REVISION=os.environ.get("GIT_REVISION", "main"),
         STACK_FILE=os.environ.get("STACK_FILE", "stacks/stack-one.yaml"),
         WEBHOOK_SECRET_NAME=os.environ.get("WEBHOOK_SECRET_NAME", "github-webhook-secret"),
+        # Direct secret for local/dev; in-cluster prefer WEBHOOK_SECRET_NAME K8s Secret.
+        WEBHOOK_SECRET=os.environ.get("WEBHOOK_SECRET", ""),
+        # Require valid X-Hub-Signature-256 when a secret is configured (default on).
+        WEBHOOK_VERIFY_SIGNATURE=os.environ.get("WEBHOOK_VERIFY_SIGNATURE", "true").lower()
+        in ("1", "true", "yes"),
+        PIPELINE_TIMEOUT=os.environ.get("PIPELINE_TIMEOUT", "2h"),
+        MAX_RETRIES=int(os.environ.get("MAX_RETRIES", "2")),
+        # Path to stacks/registries.yaml (or Helm-mounted copy) for promote targets.
+        REGISTRIES_FILE=os.environ.get(
+            "REGISTRIES_FILE",
+            os.path.join(os.environ.get("STACKS_DIR", "/stacks"), "registries.yaml"),
+        ),
     )
 
     stacks_dir = os.environ.get("STACKS_DIR", "/stacks")

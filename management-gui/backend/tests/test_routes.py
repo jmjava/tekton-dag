@@ -22,7 +22,15 @@ def client(tmp_path):
     stacks_dir = tmp_path / "stacks"
     stacks_dir.mkdir()
     (stacks_dir / "stack-one.yaml").write_text(
-        "name: stack-one\napps:\n  - name: demo-fe\n    repo: https://github.com/jmjava/tekton-dag-vue-fe.git\n"
+        "name: stack-one\n"
+        "apps:\n"
+        "  - name: demo-fe\n"
+        "    repo: https://github.com/jmjava/tekton-dag-vue-fe.git\n"
+        "    role: frontend\n"
+        "    secrets:\n"
+        "      env-from: [demo-fe-db]\n"
+        "    config:\n"
+        "      env-from: [demo-fe-config]\n"
     )
 
     os.environ["TEAMS_DIR"] = str(tmp_path / "teams")
@@ -67,6 +75,66 @@ def test_get_dag(client):
     assert resp.status_code == 200
     data = resp.get_json()
     assert "apps" in data or "nodes" in data or "name" in data
+
+
+@patch("k8s_client.list_configmap_names")
+@patch("k8s_client.list_secret_names")
+def test_injection_status(mock_secrets, mock_cms, client):
+    mock_secrets.return_value = {"demo-fe-db"}
+    mock_cms.return_value = set()
+    resp = client.get("/api/teams/default/apps/demo-fe/injection-status")
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body["ok"] is False
+    assert body["secrets"]["demo-fe-db"] == "present"
+    assert body["configmaps"]["demo-fe-config"] == "missing"
+    assert body["stack_file"] == "stacks/stack-one.yaml"
+
+
+def test_injection_status_unknown_app(client):
+    resp = client.get("/api/teams/default/apps/nope/injection-status")
+    assert resp.status_code == 404
+
+
+def test_injection_status_unknown_team(client):
+    resp = client.get("/api/teams/nosuch/apps/demo-fe/injection-status")
+    assert resp.status_code == 404
+
+
+@patch("k8s_client.list_configmap_names")
+@patch("k8s_client.list_secret_names")
+def test_injection_status_respects_team_stack_allow_list(
+    mock_secrets, mock_cms, tmp_path
+):
+    """App in a stack not listed for the team must 404."""
+    import os
+    from app import create_app
+
+    teams_dir = tmp_path / "teams" / "default"
+    teams_dir.mkdir(parents=True)
+    (teams_dir / "team.yaml").write_text(
+        "name: default\nnamespace: tekton-pipelines\ncluster: kind-kind\n"
+        "stacks:\n  - stacks/other.yaml\n"
+    )
+    stacks_dir = tmp_path / "stacks"
+    stacks_dir.mkdir()
+    (stacks_dir / "stack-one.yaml").write_text(
+        "name: stack-one\napps:\n  - name: demo-fe\n    repo: o/r\n"
+    )
+    (stacks_dir / "other.yaml").write_text(
+        "name: other\napps:\n  - name: other-app\n    repo: o/o\n"
+    )
+    os.environ["TEAMS_DIR"] = str(tmp_path / "teams")
+    os.environ["STACKS_DIR"] = str(stacks_dir)
+    os.environ["TEAM_NAME"] = "*"
+    app = create_app()
+    app.config["TESTING"] = True
+    with app.test_client() as c:
+        resp = c.get("/api/teams/default/apps/demo-fe/injection-status")
+        assert resp.status_code == 404
+    os.environ.pop("TEAMS_DIR", None)
+    os.environ.pop("STACKS_DIR", None)
+    os.environ.pop("TEAM_NAME", None)
 
 
 @patch("k8s_client.list_pipelineruns")
