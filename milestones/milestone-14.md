@@ -22,7 +22,7 @@ Stack CR     ──►  validation / topo status only
 | CRD | Purpose |
 |-----|---------|
 | **Stack** | Desired app DAG (mirrors `stacks/schema.json` fields) |
-| **StackRun** | One execution: `mode` = `pr` \| `bootstrap` \| `merge` \| `promote` |
+| **StackRun** | One execution: `mode` = `pr` \| `bootstrap` \| `merge` \| `promote` \| `platform-upgrade` |
 
 **Garbage collection:** PipelineRuns are **orphaned** when StackRuns are deleted (no cascading delete) so Tekton Results history is retained. StackRuns are labeled `tektondag.io/stackrun=<name>`.
 
@@ -46,9 +46,11 @@ Regenerate goldens: `python scripts/generate-pipelinerun-goldens.py`
 - [x] StackRun reconciler (create PipelineRun, sync status) + Stack validation
 - [x] Flask `STACKRUN_VIA_CRD` path + Helm wiring
 - [x] Milestone / README / DO-THIS-LOCAL smoke notes
-- [ ] Kind: build/push operator image + live StackRun → PipelineRun create
+- [ ] Kind: build/push operator image + live StackRun → PipelineRun create (`scripts/kind-operator-smoke.sh`)
+- [x] `StackRun.mode=platform-upgrade` builder + CRD fields (`gateTaskRefs`, slots) — Task names only; no CourseForge tools in-core
 - [ ] Newman with `STACKRUN_VIA_CRD=true` against cluster
 - [ ] Default `operator.enabled=true` after soak
+- [ ] Tekton `Pipeline` named `platform-upgrade` (warm → gates → cutover) installed via Helm/infra pin
 
 ## Exit criteria
 

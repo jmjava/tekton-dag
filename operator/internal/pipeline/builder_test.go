@@ -42,6 +42,13 @@ func TestBuildersMatchGolden(t *testing.T) {
 	promoteOpt.RequireApproval = true
 	promoteOpt.ApprovedBy = "alice"
 
+	upgradeOpt := optBase
+	upgradeOpt.ReleaseVersion = "2026.07.19"
+	upgradeOpt.ActiveSlot = "blue"
+	upgradeOpt.TargetSlot = "green"
+	upgradeOpt.GateTaskRefs = []string{"suite-ready", "volcano-drain"}
+	upgradeOpt.GateRegistry = "platform-release-gates"
+
 	tests := []struct {
 		file  string
 		build func() (map[string]any, error)
@@ -69,6 +76,13 @@ func TestBuildersMatchGolden(t *testing.T) {
 		}},
 		{"promote.json", func() (map[string]any, error) {
 			u, err := BuildPromote(promoteOpt)
+			if err != nil {
+				return nil, err
+			}
+			return u.Object, nil
+		}},
+		{"platform-upgrade.json", func() (map[string]any, error) {
+			u, err := BuildPlatformUpgrade(upgradeOpt)
 			if err != nil {
 				return nil, err
 			}

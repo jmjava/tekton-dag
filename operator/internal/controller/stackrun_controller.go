@@ -204,6 +204,10 @@ func (r *StackRunReconciler) optionsFromStackRun(ctx context.Context, run *tekto
 		CredentialsSecret:  run.Spec.CredentialsSecret,
 		RequireApproval:    run.Spec.RequireApproval,
 		ApprovedBy:         run.Spec.ApprovedBy,
+		ActiveSlot:         run.Spec.ActiveSlot,
+		TargetSlot:         run.Spec.TargetSlot,
+		GateTaskRefs:       run.Spec.GateTaskRefs,
+		GateRegistry:       run.Spec.GateRegistry,
 		Timeout:            run.Spec.Timeout,
 		ServiceAccountName: run.Spec.ServiceAccountName,
 	}
@@ -233,8 +237,19 @@ func (r *StackRunReconciler) optionsFromStackRun(ctx context.Context, run *tekto
 			opt.ImageRegistry = stack.Spec.Defaults.ImageRegistry
 		}
 	}
-	if opt.StackFile == "" {
-		return opt, fmt.Errorf("stackFile or stackRef required")
+	switch run.Spec.Mode {
+	case tektondagv1alpha1.StackRunModePlatformUpgrade:
+		// Platform upgrades compose warm→gates→cutover; no app stackFile required.
+		if opt.ReleaseVersion == "" {
+			return opt, fmt.Errorf("releaseVersion required for mode=platform-upgrade")
+		}
+		if opt.StackFile == "" {
+			opt.StackFile = "platform-upgrade"
+		}
+	default:
+		if opt.StackFile == "" {
+			return opt, fmt.Errorf("stackFile or stackRef required")
+		}
 	}
 	switch run.Spec.Mode {
 	case tektondagv1alpha1.StackRunModePR:
@@ -254,6 +269,8 @@ func (r *StackRunReconciler) optionsFromStackRun(ctx context.Context, run *tekto
 		}
 	case tektondagv1alpha1.StackRunModeBootstrap:
 		// ok
+	case tektondagv1alpha1.StackRunModePlatformUpgrade:
+		// validated above
 	default:
 		return opt, fmt.Errorf("unknown mode %q", run.Spec.Mode)
 	}
@@ -270,6 +287,8 @@ func buildFromMode(mode tektondagv1alpha1.StackRunMode, opt pipeline.Options) (*
 		return pipeline.BuildMerge(opt)
 	case tektondagv1alpha1.StackRunModePromote:
 		return pipeline.BuildPromote(opt)
+	case tektondagv1alpha1.StackRunModePlatformUpgrade:
+		return pipeline.BuildPlatformUpgrade(opt)
 	default:
 		return nil, fmt.Errorf("unsupported mode %q", mode)
 	}

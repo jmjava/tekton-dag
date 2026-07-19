@@ -21,14 +21,15 @@ import (
 )
 
 // StackRunMode is the pipeline mode for a StackRun.
-// +kubebuilder:validation:Enum=pr;bootstrap;merge;promote
+// +kubebuilder:validation:Enum=pr;bootstrap;merge;promote;platform-upgrade
 type StackRunMode string
 
 const (
-	StackRunModePR        StackRunMode = "pr"
-	StackRunModeBootstrap StackRunMode = "bootstrap"
-	StackRunModeMerge     StackRunMode = "merge"
-	StackRunModePromote   StackRunMode = "promote"
+	StackRunModePR              StackRunMode = "pr"
+	StackRunModeBootstrap       StackRunMode = "bootstrap"
+	StackRunModeMerge           StackRunMode = "merge"
+	StackRunModePromote         StackRunMode = "promote"
+	StackRunModePlatformUpgrade StackRunMode = "platform-upgrade"
 )
 
 // StackRunSpec defines one desired pipeline execution.
@@ -75,6 +76,19 @@ type StackRunSpec struct {
 	CredentialsSecret string `json:"credentialsSecret,omitempty"`
 	RequireApproval   bool   `json:"requireApproval,omitempty"`
 	ApprovedBy        string `json:"approvedBy,omitempty"`
+
+	// Platform-upgrade fields (mode=platform-upgrade).
+	// ActiveSlot / TargetSlot are blue|green style labels for dual-slot cutover.
+	ActiveSlot string `json:"activeSlot,omitempty"`
+	TargetSlot string `json:"targetSlot,omitempty"`
+	// GateTaskRefs is an ordered list of Tekton Task names to run as registry
+	// gates (e.g. suite-ready, volcano-drain). Core never embeds tool logic —
+	// consumers install Tasks and pass names here.
+	GateTaskRefs []string `json:"gateTaskRefs,omitempty"`
+	// GateRegistry is an optional ConfigMap name holding the per-release gate list.
+	// When set, the platform-upgrade pipeline may load gates from it; GateTaskRefs
+	// still wins when non-empty.
+	GateRegistry string `json:"gateRegistry,omitempty"`
 
 	// Reliability (M13).
 	Timeout    string `json:"timeout,omitempty"`

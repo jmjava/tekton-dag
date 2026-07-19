@@ -1,0 +1,17 @@
+apiVersion: tektondag.io/v1alpha1
+kind: StackRun
+metadata:
+  name: platform-upgrade-example
+  namespace: tekton-pipelines
+spec:
+  mode: platform-upgrade
+  releaseVersion: "2026.07.19"
+  activeSlot: blue
+  targetSlot: green
+  imageRegistry: localhost:5000
+  # Task names only — install these Tasks in-cluster (e.g. courseforge-gates/).
+  gateTaskRefs:
+    - suite-ready
+    - volcano-drain
+  gateRegistry: platform-release-gates
+  timeout: 2h

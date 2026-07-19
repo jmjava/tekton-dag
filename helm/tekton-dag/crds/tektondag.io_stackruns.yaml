@@ -88,6 +88,24 @@ spec:
                 - bootstrap
                 - merge
                 - promote
+                - platform-upgrade
+                type: string
+              activeSlot:
+                description: ActiveSlot is the currently serving slot (blue|green)
+                  for mode=platform-upgrade.
+                type: string
+              targetSlot:
+                description: TargetSlot is the warm/green slot for mode=platform-upgrade.
+                type: string
+              gateTaskRefs:
+                description: GateTaskRefs is an ordered list of Tekton Task names
+                  used as registry gates (no tool logic in-core).
+                items:
+                  type: string
+                type: array
+              gateRegistry:
+                description: GateRegistry is an optional ConfigMap name holding the
+                  per-release gate list.
                 type: string
               pipelineNamespace:
                 description: 'PipelineNamespace overrides where PipelineRuns are created

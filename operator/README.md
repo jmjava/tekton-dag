@@ -24,7 +24,9 @@ kubectl apply -f config/samples/
 ## Controllers
 
 - **Stack** — structural validation + topo order in status (no PipelineRuns).
-- **StackRun** — builds a Tekton PipelineRun (PR/bootstrap/merge/promote), syncs phase; PipelineRuns are **orphaned** on delete.
+- **StackRun** — builds a Tekton PipelineRun (`pr` / `bootstrap` / `merge` / `promote` / `platform-upgrade`), syncs phase; PipelineRuns are **orphaned** on delete.
+
+`platform-upgrade` composes warm → registry gates → cutover via `pipelineRef: platform-upgrade`. Gate Task names come from `spec.gateTaskRefs` (or a ConfigMap named in `spec.gateRegistry`). Core never embeds Volcano/Chaos/Trivy/kdigger logic.
 
 ## Contract with Python
 

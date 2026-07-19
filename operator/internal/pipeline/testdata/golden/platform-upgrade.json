@@ -1,0 +1,88 @@
+{
+  "apiVersion": "tekton.dev/v1",
+  "kind": "PipelineRun",
+  "metadata": {
+    "annotations": {
+      "tekton-dag.io/active-slot": "blue",
+      "tekton-dag.io/release-version": "2026.07.19",
+      "tekton-dag.io/target-slot": "green"
+    },
+    "labels": {
+      "app.kubernetes.io/part-of": "tekton-job-standardization",
+      "tektondag.io/mode": "platform-upgrade",
+      "tekton.dev/pipeline": "platform-upgrade"
+    },
+    "name": "platform-upgrade-2026.07.19-fixed",
+    "namespace": "tekton-pipelines"
+  },
+  "spec": {
+    "params": [
+      {
+        "name": "release-version",
+        "value": "2026.07.19"
+      },
+      {
+        "name": "active-slot",
+        "value": "blue"
+      },
+      {
+        "name": "target-slot",
+        "value": "green"
+      },
+      {
+        "name": "gate-task-refs",
+        "value": "[\"suite-ready\",\"volcano-drain\"]"
+      },
+      {
+        "name": "gate-registry",
+        "value": "platform-release-gates"
+      },
+      {
+        "name": "image-registry",
+        "value": "localhost:5000"
+      },
+      {
+        "name": "max-retries",
+        "value": "2"
+      }
+    ],
+    "pipelineRef": {
+      "name": "platform-upgrade"
+    },
+    "taskRunTemplate": {
+      "serviceAccountName": "tekton-pr-sa"
+    },
+    "timeouts": {
+      "pipeline": "2h"
+    },
+    "workspaces": [
+      {
+        "name": "shared-workspace",
+        "volumeClaimTemplate": {
+          "spec": {
+            "accessModes": [
+              "ReadWriteOnce"
+            ],
+            "resources": {
+              "requests": {
+                "storage": "1Gi"
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "ssh-key",
+        "secret": {
+          "secretName": "ssh-key-secret"
+        }
+      },
+      {
+        "name": "build-cache",
+        "persistentVolumeClaim": {
+          "claimName": "build-cache-pvc"
+        }
+      }
+    ]
+  }
+}

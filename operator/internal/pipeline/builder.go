@@ -52,6 +52,11 @@ type Options struct {
 	Timeout            string
 	MaxRetries         *int
 	ServiceAccountName string
+	// Platform-upgrade
+	ActiveSlot   string
+	TargetSlot   string
+	GateTaskRefs []string
+	GateRegistry string
 }
 
 func randomSuffix(length int) string {
@@ -361,6 +366,66 @@ func BuildPromote(opt Options) (*unstructured.Unstructured, error) {
 			"pipelineRef": map[string]any{"name": "stack-promote"},
 			"params":      params,
 			"workspaces":  workspaces,
+			"taskRunTemplate": map[string]any{
+				"serviceAccountName": sa(opt),
+			},
+		},
+	}
+	applyReliability(obj, opt)
+	return toUnstructured(obj)
+}
+
+// BuildPlatformUpgrade builds a platform-upgrade PipelineRun.
+//
+// Composition is warm → gates → cutover via pipelineRef "platform-upgrade".
+// Gate Task names are params only — no Volcano/Chaos/Trivy knowledge in-core.
+func BuildPlatformUpgrade(opt Options) (*unstructured.Unstructured, error) {
+	name := fmt.Sprintf("platform-upgrade-%s-%s", opt.ReleaseVersion, suffix(opt))
+	gates := opt.GateTaskRefs
+	if gates == nil {
+		gates = []string{}
+	}
+	gatesJSON, err := json.Marshal(gates)
+	if err != nil {
+		return nil, err
+	}
+	active := opt.ActiveSlot
+	if active == "" {
+		active = "blue"
+	}
+	target := opt.TargetSlot
+	if target == "" {
+		target = "green"
+	}
+	params := []any{
+		param("release-version", opt.ReleaseVersion),
+		param("active-slot", active),
+		param("target-slot", target),
+		param("gate-task-refs", string(gatesJSON)),
+		param("gate-registry", opt.GateRegistry),
+		param("image-registry", opt.ImageRegistry),
+	}
+	obj := map[string]any{
+		"apiVersion": TektonAPIVersion,
+		"kind":       "PipelineRun",
+		"metadata": map[string]any{
+			"name":      name,
+			"namespace": ns(opt),
+			"labels": map[string]any{
+				"tekton.dev/pipeline":       "platform-upgrade",
+				"app.kubernetes.io/part-of": StandardPartOf,
+				"tektondag.io/mode":         "platform-upgrade",
+			},
+			"annotations": map[string]any{
+				"tekton-dag.io/release-version": opt.ReleaseVersion,
+				"tekton-dag.io/active-slot":     active,
+				"tekton-dag.io/target-slot":     target,
+			},
+		},
+		"spec": map[string]any{
+			"pipelineRef": map[string]any{"name": "platform-upgrade"},
+			"params":      params,
+			"workspaces":  defaultWorkspaces("1Gi"),
 			"taskRunTemplate": map[string]any{
 				"serviceAccountName": sa(opt),
 			},
