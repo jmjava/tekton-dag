@@ -1,0 +1,154 @@
+segment_id: '12'
+class_name: BlastRadiusScene
+title:
+  text: Test Trace Graph
+  font_size: 32
+  color: C_WHITE
+pages:
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Test Trace Graph
+      color: C_BLUE
+      width: 4.5
+      height: 0.8
+      font_size: 16
+      wait_word: 1
+    - label: Analyze relationships
+      color: C_GREEN
+      width: 5.0
+      height: 0.8
+      font_size: 16
+  - run_time: 1.5
+    boxes:
+    - label: Neo4j visual representation
+      color: C_ORANGE
+      width: 6.0
+      height: 0.8
+      font_size: 16
+    - label: Service interactions
+      color: C_TEAL
+      width: 5.5
+      height: 0.8
+      font_size: 16
+      wait_word: 37
+  - run_time: 1.5
+    boxes:
+    - label: Test dependencies
+      color: C_PURPLE
+      width: 5.0
+      height: 0.8
+      font_size: 16
+      wait_word: 40
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Ingest data into Neo4j
+      color: C_RED
+      width: 5.5
+      height: 0.8
+      font_size: 16
+    - label: Orchestrator compiles map
+      color: C_BLUE
+      width: 6.0
+      height: 0.8
+      font_size: 16
+  - run_time: 1.5
+    boxes:
+    - label: Understand blast radius
+      color: C_GREEN
+      width: 5.5
+      height: 0.8
+      font_size: 16
+    - label: Identify affected tests
+      color: C_ORANGE
+      width: 5.0
+      height: 0.8
+      font_size: 16
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Graph-guided test selection
+      color: C_TEAL
+      width: 5.5
+      height: 0.8
+      font_size: 16
+    - label: Optimize testing efforts
+      color: C_PURPLE
+      width: 5.5
+      height: 0.8
+      font_size: 16
+      wait_word: 121
+  - run_time: 1.5
+    boxes:
+    - label: Select relevant tests
+      color: C_RED
+      width: 5.0
+      height: 0.8
+      font_size: 16
+    - label: Speed up testing process
+      color: C_BLUE
+      width: 5.5
+      height: 0.8
+      font_size: 16
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Useful in large architectures
+      color: C_GREEN
+      width: 6.0
+      height: 0.8
+      font_size: 16
+    - label: Improve CI/CD efficiency
+      color: C_ORANGE
+      width: 5.5
+      height: 0.8
+      font_size: 16
+  - run_time: 1.5
+    boxes:
+    - label: Enhance visibility
+      color: C_TEAL
+      width: 5.0
+      height: 0.8
+      font_size: 16
+      wait_word: 198
+    - label: Aid in decision-making
+      color: C_PURPLE
+      width: 5.5
+      height: 0.8
+      font_size: 16
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Informed testing choices
+      color: C_RED
+      width: 5.5
+      height: 0.8
+      font_size: 16
+    - label: Sophisticated testing method
+      color: C_BLUE
+      width: 6.0
+      height: 0.8
+      font_size: 16
+  - run_time: 1.5
+    boxes:
+    - label: Maintain high-quality code
+      color: C_GREEN
+      width: 5.5
+      height: 0.8
+      font_size: 16
+    - label: Accelerate development cycles
+      color: C_ORANGE
+      width: 5.5
+      height: 0.8
+      font_size: 16
+  transition: fade
+layout:
+  first_row_title_buff: 0.45
+  row_gap: 0.4
+  column_gap: 0.3
+  page_transition: fade
+  page_transition_run_time: 0.45

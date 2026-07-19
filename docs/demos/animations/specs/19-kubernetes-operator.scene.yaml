@@ -1,0 +1,177 @@
+segment_id: '19'
+class_name: OperatorCRDScene
+title:
+  text: Kubernetes Operator for Tekton DAG
+  font_size: 32
+  color: C_WHITE
+pages:
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Primary interface
+      color: C_BLUE
+      width: 3.5
+      height: 0.9
+      font_size: 16
+      wait_word: 11
+    - label: Stack-based pipelines
+      color: C_GREEN
+      width: 3.5
+      height: 0.9
+      font_size: 16
+  - run_time: 1.5
+    boxes:
+    - label: Custom resources
+      color: C_ORANGE
+      width: 3.5
+      height: 0.9
+      font_size: 16
+      wait_word: 20
+    - label: Desired state
+      color: C_TEAL
+      width: 3.5
+      height: 0.9
+      font_size: 16
+      wait_word: 25
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Stack CRD
+      color: C_PURPLE
+      width: 3.5
+      height: 0.9
+      font_size: 16
+    - label: StackRun CRD
+      color: C_RED
+      width: 3.5
+      height: 0.9
+      font_size: 16
+  - run_time: 1.5
+    boxes:
+    - label: GitHub webhook
+      color: C_BLUE
+      width: 3.5
+      height: 0.9
+      font_size: 16
+      wait_word: 80
+    - label: Flask orchestrator
+      color: C_GREEN
+      width: 3.5
+      height: 0.9
+      font_size: 16
+      wait_word: 89
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: StackRun resource
+      color: C_ORANGE
+      width: 3.5
+      height: 0.9
+      font_size: 16
+    - label: Tekton DAG operator
+      color: C_TEAL
+      width: 3.5
+      height: 0.9
+      font_size: 16
+      wait_word: 111
+  - run_time: 1.5
+    boxes:
+    - label: PipelineRun conversion
+      color: C_PURPLE
+      width: 3.5
+      height: 0.9
+      font_size: 16
+    - label: Lifecycle management
+      color: C_RED
+      width: 3.5
+      height: 0.9
+      font_size: 16
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Orphaning PipelineRuns
+      color: C_BLUE
+      width: 3.5
+      height: 0.9
+      font_size: 16
+    - label: History preservation
+      color: C_GREEN
+      width: 3.5
+      height: 0.9
+      font_size: 16
+  - run_time: 1.5
+    boxes:
+    - label: Built with Go
+      color: C_ORANGE
+      width: 3.5
+      height: 0.9
+      font_size: 16
+    - label: Kubebuilder foundation
+      color: C_TEAL
+      width: 3.5
+      height: 0.9
+      font_size: 16
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Validation features
+      color: C_PURPLE
+      width: 3.5
+      height: 0.9
+      font_size: 16
+    - label: Pipeline orchestration
+      color: C_RED
+      width: 3.5
+      height: 0.9
+      font_size: 16
+  - run_time: 1.5
+    boxes:
+    - label: Integration with Helm
+      color: C_BLUE
+      width: 3.5
+      height: 0.9
+      font_size: 16
+      wait_word: 226
+    - label: Flask orchestrator
+      color: C_GREEN
+      width: 3.5
+      height: 0.9
+      font_size: 16
+      wait_word: 231
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Not default runtime
+      color: C_ORANGE
+      width: 3.5
+      height: 0.9
+      font_size: 16
+    - label: Enable with env vars
+      color: C_TEAL
+      width: 3.5
+      height: 0.9
+      font_size: 16
+  - run_time: 1.5
+    boxes:
+    - label: GitOps-friendly
+      color: C_PURPLE
+      width: 3.5
+      height: 0.9
+      font_size: 16
+    - label: Custom resources
+      color: C_RED
+      width: 3.5
+      height: 0.9
+      font_size: 16
+      wait_word: 288
+  transition: fade
+layout:
+  first_row_title_buff: 0.45
+  row_gap: 0.4
+  column_gap: 0.4
+  page_transition: fade
+  page_transition_run_time: 0.45

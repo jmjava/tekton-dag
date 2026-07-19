@@ -1,15 +1,17 @@
-The orchestrator is the brain of tekton-dag — a Flask service running on port 8080 that translates events into pipeline runs.
+The orchestrator is a central component of the Tekton DAG system, designed to manage and execute CI/CD pipelines effectively.
 
-Let's call its API endpoints. First, a health check — HTTP GET slash healthz confirms the service is alive, and HTTP GET slash readyz confirms it has loaded the stack definitions.
+It serves as an in-cluster service that receives GitHub webhooks, dynamically resolving the appropriate stack for each repository. This orchestration enables seamless integration with various pipelines, including bootstrap, pull request, merge, and promote workflows.
 
-GET slash api slash stacks returns every stack the system knows about — stack one with its three-tier demo graph, stack two with the five-app polyglot stack, and any test stacks for Flask, PHP, or multi-hop scenarios.
+When a webhook is triggered, the orchestrator processes the request and creates the corresponding PipelineRuns. This includes handling the stack's secrets and configuration, ensuring that each application receives the necessary environment variables and resource profiles for successful deployment.
 
-Now the interesting part. POST slash api slash run accepts a mode — pull request, bootstrap, or merge — along with the stack name, changed app, and pull request number. The orchestrator resolves the stack YAML, builds a complete PipelineRun manifest with all the correct parameters — image registry, compile images, intercept backend, version overrides — and submits it to the Kubernetes API.
+One of the key features of the orchestrator is its ability to perform health checks and readiness probes, which confirm that all applications are operational before any tests are executed. This minimizes the risk of failures during the testing phase.
 
-POST slash webhook slash github is the webhook URL GitHub calls — the orchestrator endpoint exposed on whichever cluster hosts your automation, typically validation or CI, not your separate production cluster. When GitHub sends a pull request event, the orchestrator extracts the repo name, looks it up in the registry mapping to find the containing stack, determines the changed app, and triggers the appropriate pipeline. All automatic, no manual intervention.
+The orchestrator also supports advanced features such as webhook HMAC verification for security. If a required secret is missing, the system fails closed, preventing unauthorized access.
 
-The orchestrator also bridges to the test-trace graph. GET slash api slash test-plan takes a changed app name and a blast radius, queries Neo4j for the relevant tests, and returns the test plan. POST slash api slash graph slash ingest loads trace data — which services called which during a test run — into the Neo4j graph. GET slash api slash graph slash stats returns the current node and edge counts.
+With the recent updates, the orchestrator now includes support for Kubernetes custom resources. When the environment variable STACKRUN_VIA_CRD is set to true, it creates StackRun custom resources instead of direct PipelineRuns. This allows for more structured management of the pipeline executions and better integration with the Kubernetes ecosystem.
 
-GET slash api slash runs lists recent PipelineRuns with their status. GET slash api slash teams lists the configured team namespaces. POST slash api slash reload refreshes the in-memory stack and team configuration without restarting the service.
+Additionally, the orchestrator facilitates the promotion of images across different environments. Using the stack-promote pipeline, it can push images to various registries, ensuring that applications are consistently deployed across development, staging, and production environments.
 
-The orchestrator is deployed by the Helm chart as a Kubernetes Deployment with a matching Service, and it reads its stack configuration from a ConfigMap generated from the stacks directory.
+As the system matures, the operator foundations are being integrated to enhance the capabilities of the orchestrator. This transition aims to make the orchestration service even more robust and capable of handling complex deployment scenarios with ease.
+
+The orchestrator's design and functionality are pivotal for achieving reliable and efficient CI/CD processes, making it an essential part of the Tekton DAG ecosystem.

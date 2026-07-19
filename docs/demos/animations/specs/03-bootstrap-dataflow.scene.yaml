@@ -1,0 +1,191 @@
+segment_id: '03'
+class_name: HeaderPropagationScene
+title:
+  text: Bootstrap Dataflow
+  font_size: 32
+  color: C_WHITE
+layout:
+  first_row_title_buff: 0.45
+  row_gap: 0.3
+  column_gap: 0.2
+  page_transition: fade
+  page_transition_run_time: 0.45
+pages:
+- rows:
+  - run_time: 2.0
+    boxes:
+    - label: Bootstrap Dataflow
+      color: C_BLUE
+      width: 5.0
+      height: 0.8
+      font_size: 18
+      wait_word: 0
+    - label: Initializes stack
+      color: C_GREEN
+      width: 4.0
+      height: 0.8
+      font_size: 16
+  - run_time: 2.0
+    boxes:
+    - label: Executes bootstrap pipeline
+      color: C_ORANGE
+      width: 6.0
+      height: 0.8
+      font_size: 16
+    - label: Resolves dependencies
+      color: C_TEAL
+      width: 4.5
+      height: 0.8
+      font_size: 16
+      wait_word: 21
+  - run_time: 2.0
+    boxes:
+    - label: Prepares environment
+      color: C_PURPLE
+      width: 5.5
+      height: 0.8
+      font_size: 16
+    - label: For subsequent operations
+      color: C_RED
+      width: 5.5
+      height: 0.8
+      font_size: 16
+      wait_word: 27
+- rows:
+  - run_time: 2.0
+    boxes:
+    - label: Trigger from GitHub webhook
+      color: C_GREEN
+      width: 6.5
+      height: 0.8
+      font_size: 16
+  - run_time: 2.0
+    boxes:
+    - label: Resolves stack configuration
+      color: C_ORANGE
+      width: 6.0
+      height: 0.8
+      font_size: 16
+    - label: Injects secrets
+      color: C_TEAL
+      width: 3.5
+      height: 0.8
+      font_size: 16
+  - run_time: 2.0
+    boxes:
+    - label: Injects configurations
+      color: C_PURPLE
+      width: 5.0
+      height: 0.8
+      font_size: 16
+  transition: fade
+- rows:
+  - run_time: 2.0
+    boxes:
+    - label: Handles secrets injection
+      color: C_BLUE
+      width: 6.0
+      height: 0.8
+      font_size: 16
+    - label: Critical for security
+      color: C_RED
+      width: 4.5
+      height: 0.8
+      font_size: 16
+  - run_time: 2.0
+    boxes:
+    - label: Cloning repositories
+      color: C_ORANGE
+      width: 5.5
+      height: 0.8
+      font_size: 16
+      wait_word: 114
+    - label: Compiling application
+      color: C_TEAL
+      width: 5.0
+      height: 0.8
+      font_size: 16
+  - run_time: 2.0
+    boxes:
+    - label: Pushing images to registry
+      color: C_PURPLE
+      width: 6.0
+      height: 0.8
+      font_size: 16
+  transition: fade
+- rows:
+  - run_time: 2.0
+    boxes:
+    - label: Header propagation
+      color: C_GREEN
+      width: 5.5
+      height: 0.8
+      font_size: 16
+      wait_word: 151
+    - label: Vital role
+      color: C_BLUE
+      width: 3.5
+      height: 0.8
+      font_size: 16
+      wait_word: 155
+  - run_time: 2.0
+    boxes:
+    - label: Flow of headers
+      color: C_ORANGE
+      width: 5.0
+      height: 0.8
+      font_size: 16
+      wait_word: 165
+    - label: Originator -> Forwarder
+      color: C_TEAL
+      width: 6.0
+      height: 0.8
+      font_size: 16
+  - run_time: 2.0
+    boxes:
+    - label: To terminal
+      color: C_PURPLE
+      width: 4.0
+      height: 0.8
+      font_size: 16
+    - label: Metadata preserved
+      color: C_RED
+      width: 5.5
+      height: 0.8
+      font_size: 16
+  transition: fade
+- rows:
+  - run_time: 2.0
+    boxes:
+    - label: Foundation for other pipelines
+      color: C_GREEN
+      width: 7.0
+      height: 0.8
+      font_size: 16
+      wait_word: 203
+  - run_time: 2.0
+    boxes:
+    - label: Pull request pipeline
+      color: C_BLUE
+      width: 5.5
+      height: 0.8
+      font_size: 16
+    - label: Merge pipeline
+      color: C_ORANGE
+      width: 4.5
+      height: 0.8
+      font_size: 16
+      wait_word: 213
+  - run_time: 2.0
+    boxes:
+    - label: Dependencies resolved
+      color: C_TEAL
+      width: 6.0
+      height: 0.8
+      font_size: 16
+    - label: Environment configured
+      color: C_PURPLE
+      width: 6.5
+      height: 0.8
+      font_size: 16
+  transition: fade

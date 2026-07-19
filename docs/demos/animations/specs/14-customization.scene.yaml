@@ -1,0 +1,227 @@
+segment_id: '14'
+class_name: CustomizationScene
+title:
+  text: Tekton DAG Customization
+  font_size: 36
+  color: C_WHITE
+layout:
+  first_row_title_buff: 0.5
+  row_gap: 0.4
+  column_gap: 0.3
+page_transition: fade
+pages:
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Customization in Tekton
+      color: C_BLUE
+      width: 5.0
+      height: 0.9
+      font_size: 18
+  - run_time: 1.5
+    boxes:
+    - label: Stack schema foundation
+      color: C_GREEN
+      width: 4.5
+      height: 0.8
+      font_size: 16
+    - label: Application structure
+      color: C_GREEN
+      width: 4.5
+      height: 0.8
+      font_size: 16
+  - run_time: 1.5
+    boxes:
+    - label: Build variants
+      color: C_ORANGE
+      width: 3.5
+      height: 0.7
+      font_size: 14
+      wait_word: 40
+    - label: Dependencies
+      color: C_ORANGE
+      width: 3.5
+      height: 0.7
+      font_size: 14
+      wait_word: 42
+    - label: Deployment tools
+      color: C_ORANGE
+      width: 3.5
+      height: 0.7
+      font_size: 14
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Hook tasks
+      color: C_PURPLE
+      width: 4.0
+      height: 0.8
+      font_size: 16
+      wait_word: 49
+    - label: Pipeline flexibility
+      color: C_PURPLE
+      width: 4.0
+      height: 0.8
+      font_size: 16
+  - run_time: 1.5
+    boxes:
+    - label: Pre-build logic
+      color: C_RED
+      width: 3.5
+      height: 0.7
+      font_size: 14
+    - label: Post-build logic
+      color: C_RED
+      width: 3.5
+      height: 0.7
+      font_size: 14
+    - label: Test stages
+      color: C_RED
+      width: 3.5
+      height: 0.7
+      font_size: 14
+      wait_word: 79
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Team onboarding
+      color: C_TEAL
+      width: 4.5
+      height: 0.8
+      font_size: 16
+      wait_word: 87
+    - label: Helm values
+      color: C_TEAL
+      width: 4.5
+      height: 0.8
+      font_size: 16
+      wait_word: 95
+  - run_time: 1.5
+    boxes:
+    - label: Environment configs
+      color: C_BLUE
+      width: 4.0
+      height: 0.7
+      font_size: 14
+    - label: Secrets management
+      color: C_BLUE
+      width: 4.0
+      height: 0.7
+      font_size: 14
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Secrets & Config Injection
+      color: C_GREEN
+      width: 5.0
+      height: 0.8
+      font_size: 16
+  - run_time: 1.5
+    boxes:
+    - label: Stack YAML
+      color: C_ORANGE
+      width: 4.5
+      height: 0.7
+      font_size: 14
+      wait_word: 145
+    - label: Sensitive info injection
+      color: C_ORANGE
+      width: 4.5
+      height: 0.7
+      font_size: 14
+  - run_time: 1.5
+    boxes:
+    - label: Environment-specific configs
+      color: C_ORANGE
+      width: 5.0
+      height: 0.7
+      font_size: 14
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Production hardening
+      color: C_PURPLE
+      width: 5.0
+      height: 0.8
+      font_size: 16
+      wait_word: 169
+  - run_time: 1.5
+    boxes:
+    - label: Webhook HMAC verification
+      color: C_RED
+      width: 4.5
+      height: 0.7
+      font_size: 14
+      wait_word: 175
+    - label: Pipeline reliability
+      color: C_RED
+      width: 4.5
+      height: 0.7
+      font_size: 14
+      wait_word: 179
+  - run_time: 1.5
+    boxes:
+    - label: Retries on failures
+      color: C_RED
+      width: 5.0
+      height: 0.7
+      font_size: 14
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Kubernetes operator
+      color: C_TEAL
+      width: 5.0
+      height: 0.8
+      font_size: 16
+      wait_word: 207
+  - run_time: 1.5
+    boxes:
+    - label: Custom resources
+      color: C_BLUE
+      width: 4.5
+      height: 0.7
+      font_size: 14
+      wait_word: 219
+    - label: Stack & StackRun
+      color: C_BLUE
+      width: 4.5
+      height: 0.7
+      font_size: 14
+  - run_time: 1.5
+    boxes:
+    - label: Source of truth
+      color: C_BLUE
+      width: 5.0
+      height: 0.7
+      font_size: 14
+      wait_word: 230
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Streamlined management
+      color: C_GREEN
+      width: 5.0
+      height: 0.8
+      font_size: 16
+  - run_time: 1.5
+    boxes:
+    - label: Multi-cluster environments
+      color: C_ORANGE
+      width: 5.0
+      height: 0.7
+      font_size: 14
+  - run_time: 1.5
+    boxes:
+    - label: Robust framework
+      color: C_PURPLE
+      width: 5.0
+      height: 0.7
+      font_size: 14
+      wait_word: 262
+  transition: fade

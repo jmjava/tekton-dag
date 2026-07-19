@@ -1,13 +1,11 @@
-Every pipeline run in tekton-dag is recorded. Tekton Results — an official Tekton component — watches for completed PipelineRuns and TaskRuns and stores them in a Postgres database.
+Tekton Results DB is an essential component for managing the outcomes of your CI/CD pipelines. It provides a structured way to store and retrieve the history of PipelineRuns and TaskRuns, ensuring that important data is preserved for future reference.
 
-The setup is straightforward. The install Postgres Kind script deploys a Postgres instance into the cluster. Then install Tekton Results deploys the Results API server and the watcher. From that point on, every pipeline run is automatically persisted.
+The Results DB operates with a Postgres backing, which allows for efficient logging and retrieval of run history. This means that you can quickly access past results, analyze trends, and debug issues arising from previous builds.
 
-Let's verify. The verify results in database script queries the Tekton Results API and shows stored records. Here you can see our bootstrap run and two pull-request runs with their start times, durations, and outcomes.
+One of the key features of the Results DB is its ability to persist logs and other relevant information related to each run. This capability enhances the overall reliability of your CI/CD workflows by enabling teams to track performance metrics and identify areas for improvement.
 
-This matters for auditability — you have a permanent record of every build, every test result, every deployment. But it also powers the run full test and verify results workflow, which triggers a pipeline, waits for completion, and confirms the results appear in the database.
+Integrating the Results DB into your Tekton pipelines is straightforward. You can set it up as part of your local development environment or within a production cluster. The setup process ensures that all pipeline executions are properly logged, providing a comprehensive view of your deployment history.
 
-The management GUI surfaces this data through the pipeline monitor view. You can browse runs by team, filter by status, and drill into individual TaskRun logs — all backed by the same Tekton Results API.
+Additionally, the Results DB supports various retrieval methods, allowing you to query for specific runs or filter results based on different criteria. This flexibility is crucial for teams looking to maintain high-quality standards in their software delivery processes.
 
-The GET slash api slash runs endpoint on the orchestrator also reads from the Kubernetes API to show recent runs, giving you both live status and historical data.
-
-Persistent pipeline history. Queryable results. Full audit trail. That is Tekton Results integrated into tekton-dag.
+In summary, the Tekton Results DB is a powerful tool for enhancing the observability and reliability of your CI/CD pipelines. By providing a robust mechanism for logging and retrieving run data, it empowers teams to make informed decisions and continuously improve their workflows.

@@ -1,0 +1,192 @@
+segment_id: '18'
+class_name: RoadmapScene
+title:
+  text: What's Next
+  font_size: 36
+  color: C_WHITE
+pages:
+- rows:
+  - run_time: 3.0
+    boxes:
+    - label: Future direction
+      color: C_BLUE
+      width: 3.5
+      height: 0.8
+      font_size: 18
+      wait_word: 4
+    - label: Enhancing reliability
+      color: C_GREEN
+      width: 3.5
+      height: 0.8
+      font_size: 18
+      wait_word: 13
+    - label: Observability
+      color: C_ORANGE
+      width: 3.5
+      height: 0.8
+      font_size: 18
+      wait_word: 15
+  - run_time: 3.0
+    boxes:
+    - label: Operational efficiency
+      color: C_PURPLE
+      width: 3.5
+      height: 0.8
+      font_size: 18
+      wait_word: 17
+  - run_time: 3.0
+    boxes:
+    - label: Milestone 13 shipped
+      color: C_BLUE
+      width: 4.5
+      height: 0.8
+      font_size: 18
+    - label: Webhook HMAC
+      color: C_GREEN
+      width: 3.0
+      height: 0.8
+      font_size: 18
+      wait_word: 30
+    - label: Secrets and Config
+      color: C_ORANGE
+      width: 3.0
+      height: 0.8
+      font_size: 18
+      wait_word: 36
+- rows:
+  - run_time: 3.0
+    boxes:
+    - label: Enhanced pipeline reliability
+      color: C_PURPLE
+      width: 4.0
+      height: 0.8
+      font_size: 18
+      wait_word: 44
+    - label: Promote pipeline
+      color: C_TEAL
+      width: 3.5
+      height: 0.8
+      font_size: 18
+      wait_word: 53
+    - label: Image promotion
+      color: C_RED
+      width: 3.5
+      height: 0.8
+      font_size: 18
+      wait_word: 56
+  - run_time: 3.0
+    boxes:
+    - label: Intercept secret wiring
+      color: C_BLUE
+      width: 4.0
+      height: 0.8
+      font_size: 18
+      wait_word: 74
+    - label: Helm app config
+      color: C_GREEN
+      width: 3.5
+      height: 0.8
+      font_size: 18
+    - label: External Secrets Operator
+      color: C_ORANGE
+      width: 3.5
+      height: 0.8
+      font_size: 18
+      wait_word: 93
+  transition: fade
+- rows:
+  - run_time: 3.0
+    boxes:
+    - label: Prometheus metrics
+      color: C_PURPLE
+      width: 4.0
+      height: 0.8
+      font_size: 18
+      wait_word: 116
+    - label: Cost attribution labels
+      color: C_TEAL
+      width: 3.5
+      height: 0.8
+      font_size: 18
+      wait_word: 119
+  - run_time: 3.0
+    boxes:
+    - label: Cross-cluster deployment
+      color: C_RED
+      width: 4.5
+      height: 0.8
+      font_size: 18
+    - label: Application promotion
+      color: C_BLUE
+      width: 3.5
+      height: 0.8
+      font_size: 18
+      wait_word: 139
+  transition: fade
+- rows:
+  - run_time: 3.0
+    boxes:
+    - label: Milestone 14 focus
+      color: C_GREEN
+      width: 4.5
+      height: 0.8
+      font_size: 18
+    - label: Kubernetes operator
+      color: C_ORANGE
+      width: 4.0
+      height: 0.8
+      font_size: 18
+      wait_word: 161
+  - run_time: 3.0
+    boxes:
+    - label: Custom resources
+      color: C_PURPLE
+      width: 4.0
+      height: 0.8
+      font_size: 18
+      wait_word: 179
+    - label: Dynamic orchestration
+      color: C_TEAL
+      width: 4.0
+      height: 0.8
+      font_size: 18
+  transition: fade
+- rows:
+  - run_time: 3.0
+    boxes:
+    - label: Post-Milestone 14
+      color: C_RED
+      width: 4.5
+      height: 0.8
+      font_size: 18
+    - label: Operator enabled by default
+      color: C_BLUE
+      width: 4.5
+      height: 0.8
+      font_size: 18
+  - run_time: 3.0
+    boxes:
+    - label: Team-specific resources
+      color: C_GREEN
+      width: 4.0
+      height: 0.8
+      font_size: 18
+    - label: GUI views for stack runs
+      color: C_ORANGE
+      width: 4.0
+      height: 0.8
+      font_size: 18
+      wait_word: 218
+    - label: Admission webhook
+      color: C_PURPLE
+      width: 4.0
+      height: 0.8
+      font_size: 18
+      wait_word: 225
+  transition: fade
+layout:
+  first_row_title_buff: 0.5
+  row_gap: 0.4
+  column_gap: 0.3
+  page_transition: fade
+  page_transition_run_time: 0.45

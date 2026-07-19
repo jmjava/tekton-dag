@@ -1,0 +1,205 @@
+segment_id: '15'
+class_name: RegressionSuiteScene
+title:
+  text: Regression Suite Overview
+  font_size: 32
+  color: C_WHITE
+pages:
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Comprehensive approach
+      color: C_BLUE
+      width: 3.5
+      height: 0.8
+      font_size: 16
+      wait_word: 5
+    - label: Testing integrity
+      color: C_GREEN
+      width: 3.5
+      height: 0.8
+      font_size: 16
+  - run_time: 1.5
+    boxes:
+    - label: Tekton DAG system
+      color: C_TEAL
+      width: 4.0
+      height: 0.8
+      font_size: 16
+      wait_word: 15
+    - label: Components work together
+      color: C_ORANGE
+      width: 4.0
+      height: 0.8
+      font_size: 16
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Testing tiers
+      color: C_PURPLE
+      width: 3.0
+      height: 0.8
+      font_size: 16
+      wait_word: 38
+    - label: Local static checks
+      color: C_RED
+      width: 3.0
+      height: 0.8
+      font_size: 16
+      wait_word: 48
+  - run_time: 1.5
+    boxes:
+    - label: Python unit tests
+      color: C_BLUE
+      width: 3.0
+      height: 0.8
+      font_size: 16
+      wait_word: 51
+    - label: JavaScript tests
+      color: C_GREEN
+      width: 3.0
+      height: 0.8
+      font_size: 16
+      wait_word: 55
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Playwright tests
+      color: C_TEAL
+      width: 3.5
+      height: 0.8
+      font_size: 16
+    - label: UI behaves as expected
+      color: C_ORANGE
+      width: 3.5
+      height: 0.8
+      font_size: 16
+  - run_time: 1.5
+    boxes:
+    - label: Cluster environment
+      color: C_PURPLE
+      width: 3.5
+      height: 0.8
+      font_size: 16
+      wait_word: 79
+    - label: Additional tests
+      color: C_RED
+      width: 3.5
+      height: 0.8
+      font_size: 16
+      wait_word: 85
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Validate orchestration
+      color: C_BLUE
+      width: 4.0
+      height: 0.8
+      font_size: 16
+    - label: Tekton PipelineRuns
+      color: C_GREEN
+      width: 4.0
+      height: 0.8
+      font_size: 16
+  - run_time: 1.5
+    boxes:
+    - label: Stack DAG Verify check
+      color: C_TEAL
+      width: 4.0
+      height: 0.8
+      font_size: 16
+      wait_word: 109
+    - label: Graph accuracy
+      color: C_ORANGE
+      width: 4.0
+      height: 0.8
+      font_size: 16
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Strict agent
+      color: C_PURPLE
+      width: 3.5
+      height: 0.8
+      font_size: 16
+      wait_word: 136
+    - label: Iterates through tests
+      color: C_RED
+      width: 3.5
+      height: 0.8
+      font_size: 16
+      wait_word: 139
+  - run_time: 1.5
+    boxes:
+    - label: Full regression
+      color: C_BLUE
+      width: 3.5
+      height: 0.8
+      font_size: 16
+      wait_word: 163
+    - label: Local-only tests
+      color: C_GREEN
+      width: 3.5
+      height: 0.8
+      font_size: 16
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Identify issues early
+      color: C_TEAL
+      width: 4.0
+      height: 0.8
+      font_size: 16
+      wait_word: 214
+    - label: Proactive testing
+      color: C_ORANGE
+      width: 4.0
+      height: 0.8
+      font_size: 16
+  - run_time: 1.5
+    boxes:
+    - label: Production hardening
+      color: C_PURPLE
+      width: 4.0
+      height: 0.8
+      font_size: 16
+      wait_word: 238
+    - label: Retrying tasks
+      color: C_RED
+      width: 4.0
+      height: 0.8
+      font_size: 16
+      wait_word: 256
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Resource sizing
+      color: C_BLUE
+      width: 4.0
+      height: 0.8
+      font_size: 16
+      wait_word: 263
+    - label: Cost-effective
+      color: C_GREEN
+      width: 4.0
+      height: 0.8
+      font_size: 16
+  - run_time: 1.5
+    boxes:
+    - label: Adapting to changes
+      color: C_TEAL
+      width: 4.0
+      height: 0.8
+      font_size: 16
+    - label: Quality assurance
+      color: C_ORANGE
+      width: 4.0
+      height: 0.8
+      font_size: 16
+      wait_word: 310
+  transition: fade

@@ -1,17 +1,13 @@
-Here is where tekton-dag really shines — the pull request pipeline.
+The PR pipeline is a critical component of the Tekton DAG system, designed to streamline the process of building, testing, and validating changes made in pull requests.
 
-When a developer opens a pull request against an application repo, a GitHub webhook fires. The orchestrator identifies which stack contains that repo using the registry mapping, determines the changed app, and generates a PipelineRun in pull-request mode. Unlike the bootstrap, the pull-request pipeline only builds the changed service — not the entire stack.
+When a pull request is created, a GitHub webhook triggers the orchestrator service. The orchestrator then resolves the affected application and initiates the PR pipeline. This pipeline is responsible for building the application with a snapshot tag, allowing for easy identification of changes.
 
-Let's watch it execute. The generate-run script accepts the mode, the repo name, and the pull request number. It produces a complete PipelineRun manifest.
+Once the application is built, the pipeline deploys intercepts that enable validation of the changes in a controlled environment. This means that incoming traffic can be routed to the new build without affecting the production version. The system verifies that the application behaves as expected under real-world conditions.
 
-The pipeline starts with fetch source — cloning the platform repo to get the stack definitions. Then resolve stack parses the DAG and identifies the build apps and propagation chain. Next, clone app repos checks out each app repo, using the pull-request branch for the changed app.
+After the intercepts are set up, the pipeline runs a series of tests. These tests can include various frameworks such as Newman for API testing, Playwright for end-to-end testing, and Artillery for load testing. This comprehensive testing approach ensures that any issues are identified before merging the changes into the main branch.
 
-The pull-request snapshot tag task generates a unique image tag for this pull-request build so it never collides with real releases. Then build select tool apps routes the changed app to the correct compile task — Maven, Gradle, npm, pip, or Composer — running inside the appropriate build image. Kaniko containerizes the result and pushes it to the registry, with optional cache repository support for faster rebuilds.
+The PR pipeline also incorporates a retry mechanism for transient failures during the build and test processes. This helps to maintain reliability, especially in shared or spot instance environments where interruptions may occur.
 
-Now the interesting part. The pipeline deploys a parallel instance of the changed service — the pull-request build runs alongside the existing baseline deployment in the cluster where you validate changes, not in your separate production cluster. It then configures traffic interception using Telepresence or mirrord so that any request carrying the dev-session header, with a value matching this pull request number, gets routed to the new build.
+Once testing is complete, the pipeline can generate a comment on the pull request with the results, providing immediate feedback to developers. This process not only enhances collaboration but also ensures that only validated changes make it into the main codebase.
 
-The validate propagation task confirms the header travels correctly through the entire chain. Validate original traffic confirms that requests without the header still reach the baseline pods. Then query test plan calls the orchestrator to ask the Neo4j graph which tests are relevant for the changed app. Run tests executes only those tests, with the dev-session header injected.
-
-In the finally block, the pipeline cleans up pull-request pods and posts a comment to the GitHub pull request with the test summary and a link to the Tekton Dashboard run. If tests passed, a version bump task records the release candidate.
-
-If tests pass, the pull request is safe to merge. If they fail, only the pull-request traffic was affected — baseline traffic and your production cluster stay out of the blast radius.
+In summary, the PR pipeline automates the entire process from building to testing, integrating seamlessly with GitHub and providing valuable insights back to developers. This approach fosters a more efficient and reliable development workflow, ultimately leading to higher quality software releases.

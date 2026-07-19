@@ -1,17 +1,17 @@
-Welcome to tekton-dag — a stack-aware CI/CD system built on Tekton Pipelines.
+Tekton-DAG is a stack-aware CI/CD system built on Tekton, designed to model applications as directed acyclic graphs. This architecture allows for clear dependency management and efficient propagation of roles across different stages.
 
-Most CI/CD tools treat each repository in isolation. tekton-dag takes a different approach. It models your applications as a directed acyclic graph — a DAG — where each node is a service and each edge represents a runtime dependency. The system understands which services call which, how requests flow, and what needs testing when something changes.
+The system features four main pipelines: bootstrap, PR, merge or release, and promote. The bootstrap pipeline deploys the full stack initially, setting up the environment for further development. The PR pipeline focuses on intercepting changes, validating builds, and running tests. The merge or release pipeline promotes a release candidate to production, while the promote pipeline manages the transfer of images to different registries.
 
-Here is the architecture. On the left, a webhook from GitHub triggers the orchestrator — a Flask service that decides which pipelines to run. The orchestrator reads the stack definition, resolves which applications are affected by a change, and generates Tekton PipelineRun manifests on the fly.
+At the core of this architecture is the Flask orchestrator, which acts as the brain of the system. It listens for GitHub webhooks and processes requests through a REST API. When the STACKRUN_VIA_CRD option is enabled, runs are converted into StackRun custom resources, which are managed by a Kubernetes operator. This operator reconciles these custom resources into Tekton PipelineRuns, ensuring that the history of executions is preserved even if the original resources are deleted.
 
-In the center, you see the demo stack: three services — a Vue front-end, a Spring Boot BFF, and a Spring Boot API — connected by dependency edges. Each service declares a propagation role: originator, forwarder, or terminal. These roles define how the dev-session routing header — written x-dev-session in YAML — flows through the call chain during pull-request testing.
+The architecture supports polyglot stacks, meaning it can handle applications built with various programming languages and frameworks. This flexibility is enhanced by the ability to integrate hook tasks, which can be customized for specific needs. 
 
-The system is polyglot by design. A second stack in the repo demonstrates five services spanning npm, Maven, Gradle, Composer, and pip — all sharing the same pipeline infrastructure. Parameterized build images support Java 11, 17, and 21, Node 18, 20, and 22, Python 3.10 through 3.12, and PHP 8.1 through 8.3.
+The management GUI provides a user-friendly interface for teams to manage their pipelines, view runs, and monitor application statuses. The Helm chart facilitates multi-team deployments, allowing for isolation and efficient management of resources across different teams. 
 
-Below the stack, three pipelines fan out. The bootstrap pipeline builds and deploys every service in the stack from scratch. The PR pipeline builds only the changed service, deploys it alongside the existing baseline deployment in your validation cluster, and wires up traffic interception using either Telepresence or mirrord so the pull request build receives only tagged requests. The merge pipeline promotes the tested image to the mainline deployment with semantic version tagging — separate from shipping to a customer-facing production cluster, if that is another environment.
+Additionally, Tekton Results and Neo4j integration provide valuable insights into pipeline performance and historical data, enabling teams to make informed decisions based on past executions.
 
-Pipelines are also extensible. Teams can inject custom hook tasks — pre-build, post-build, pre-test, post-test — for things like image scanning, software bill of materials generation, or Slack notifications, without modifying the core pipeline definitions.
+With the foundations of production hardening already shipped in Milestone 13, the system is evolving to enhance reliability and performance in real-world environments. Open items still include fine-tuning the handling of secrets and configuration, as well as improving observability and cross-cluster deployments.
 
-A management GUI built with Vue and Flask provides a web interface for team switching, DAG visualization, pipeline monitoring, and manual triggers. Everything is deployed through a Helm chart with multi-team support, and Tekton Results stores every pipeline outcome in a Postgres database. A Neo4j graph tracks which tests touch which services, enabling intelligent blast-radius analysis.
+The Kubernetes operator is a key component of this architecture. It allows for more granular control over stack management through Stack and StackRun custom resources. The operator is not yet the default runtime path, as the Helm configuration defaults to false for operator.enabled.
 
-That is the high-level picture. Let's dive in.
+In summary, Tekton-DAG represents a robust and flexible architecture for modern CI/CD practices, focusing on efficiency, reliability, and user experience.

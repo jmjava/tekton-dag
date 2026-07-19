@@ -1,0 +1,137 @@
+segment_id: '07'
+class_name: MergeReleaseScene
+title:
+  text: Merge and Release Pipeline
+  font_size: 36
+  color: C_WHITE
+layout:
+  first_row_title_buff: 0.5
+  row_gap: 0.3
+  column_gap: 0.3
+  page_transition: fade
+pages:
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Tekton DAG system
+      color: C_BLUE
+      width: 4.0
+      height: 0.9
+      font_size: 20
+      wait_word: 11
+    - label: Crucial part
+      color: C_GREEN
+      width: 3.5
+      height: 0.9
+      font_size: 20
+  - run_time: 1.5
+    boxes:
+    - label: Version bump
+      color: C_ORANGE
+      width: 3.5
+      height: 0.8
+      font_size: 18
+      wait_word: 35
+    - label: Remove suffix
+      color: C_RED
+      width: 3.5
+      height: 0.8
+      font_size: 18
+    - label: Properly tagged
+      color: C_PURPLE
+      width: 3.5
+      height: 0.8
+      font_size: 18
+      wait_word: 54
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Compile code
+      color: C_TEAL
+      width: 3.5
+      height: 0.8
+      font_size: 18
+    - label: Rebuild images
+      color: C_BLUE
+      width: 3.5
+      height: 0.8
+      font_size: 18
+    - label: Include changes
+      color: C_GREEN
+      width: 3.5
+      height: 0.8
+      font_size: 18
+  - run_time: 1.5
+    boxes:
+    - label: Tag images
+      color: C_ORANGE
+      width: 3.5
+      height: 0.8
+      font_size: 18
+    - label: Version control
+      color: C_RED
+      width: 3.5
+      height: 0.8
+      font_size: 18
+      wait_word: 97
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Hook tasks
+      color: C_PURPLE
+      width: 3.5
+      height: 0.8
+      font_size: 18
+      wait_word: 118
+    - label: Notifications
+      color: C_TEAL
+      width: 3.5
+      height: 0.8
+      font_size: 18
+      wait_word: 128
+    - label: Logging
+      color: C_BLUE
+      width: 3.5
+      height: 0.8
+      font_size: 18
+      wait_word: 130
+  - run_time: 1.5
+    boxes:
+    - label: Push to mainline
+      color: C_GREEN
+      width: 4.0
+      height: 0.9
+      font_size: 20
+    - label: Next cycle
+      color: C_ORANGE
+      width: 3.5
+      height: 0.9
+      font_size: 20
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Automate steps
+      color: C_RED
+      width: 4.0
+      height: 0.9
+      font_size: 20
+    - label: Enhance efficiency
+      color: C_PURPLE
+      width: 4.0
+      height: 0.9
+      font_size: 20
+  - run_time: 1.5
+    boxes:
+    - label: Focus on features
+      color: C_TEAL
+      width: 4.0
+      height: 0.9
+      font_size: 20
+    - label: Reduce manual work
+      color: C_BLUE
+      width: 4.0
+      height: 0.9
+      font_size: 20
+  transition: fade

@@ -1,15 +1,13 @@
-Let's visualize exactly how intercept routing works under the hood.
+Intercept routing is a powerful feature that allows for the management of traffic between production and development environments. This feature is particularly useful in scenarios involving pull requests, where you might want to validate changes without affecting live traffic.
 
-On screen you see two request paths — blue for normal traffic and green for PR traffic. Both enter the same URL, the same ingress, the same front-end service.
+With intercept routing, you can differentiate between normal traffic and traffic coming from pull requests. This is achieved by utilizing header-based interception. When a pull request is made, the system can modify the incoming requests to include specific headers that identify them as coming from a development environment. 
 
-The blue request has no special headers. It flows straight through the standard deployments — the original front-end, the original BFF, the original API. This is baseline traffic to the steady deployment, completely unaffected.
+For example, a common header used is "x-dev-session." This header allows the system to route traffic specifically to the version of the application that is under development, enabling developers to test their changes in a live-like environment without impacting actual users.
 
-Now watch the green request. It carries the dev-session header with pull request number forty-two. When it reaches the intercept point, the routing layer inspects the header. tekton-dag supports two intercept backends — Telepresence and mirrord — and the choice is a single parameter in the pipeline configuration. Regardless of backend, the behavior is the same: the header match redirects the request to the pull-request-specific pod.
+As a result, when a pull request is merged, the system can seamlessly switch back to routing normal traffic. This ensures that the development process is efficient and that testing is conducted in an environment that closely mirrors production. 
 
-The key insight is that both requests coexist. They share the same cluster, the same ingress, even the same service DNS names. The only difference is the header. In practice you usually run this in a validation or pre-production cluster that mirrors production's shape, so DNS resolution, service discovery, and network policies match what you will see after promote — while keeping customer-facing production on its own cluster until you release.
+In the context of Tekton DAG, intercept routing can be integrated with various tools such as Telepresence or mirrord. These tools enable developers to intercept traffic and debug their applications directly within the cluster, providing immediate feedback on their changes. 
 
-The validate propagation task in the pipeline verifies this automatically. It sends a request with the header and confirms it arrives at the pull-request pod at every hop in the propagation chain. The validate original traffic task sends a request without the header and confirms it still reaches the baseline deployment. Both checks must pass before tests run.
+While the foundations for intercept routing are shipped with the current version, there are still some open items to address. Specifically, the wiring for intercept secrets and configuration is not yet complete, which means that additional work is needed to fully integrate this feature into the production workflow.
 
-The intercept mechanism supports multiple concurrent pull requests. Pull request forty-two gets its own deployment, pull request forty-three gets another. Each is isolated by header value. When the pull request merges or closes, the cleanup task in the pipeline's finally block removes the parallel deployment and the intercept rules, leaving the cluster clean.
-
-Same URL, same infrastructure, different backend. That is header-based traffic interception.
+In summary, intercept routing enhances the development workflow by allowing developers to test their changes in a controlled manner while ensuring that production traffic remains unaffected. This feature is crucial for maintaining a robust and efficient continuous integration and deployment process.

@@ -1,250 +1,663 @@
-# docgen.yaml — configuration for the documentation-generator pipeline
-# See: https://github.com/jmjava/documentation-generator
+# docgen.yaml — updated by docgen yaml-generate
+# Source: /home/ubuntu/github/jmjava/tekton-dag/docs/demos/docgen.yaml
+# Note: PyYAML rewrite drops comments; review diff in Git.
 
-repo_root: "../.."
-env_file: "../../.env"
-
+repo_root: ../..
+env_file: ../../.env
 dirs:
   narration: narration
   audio: audio
   animations: animations
   terminal: terminal
   recordings: recordings
-
 segments:
-  default: ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13"]
+  default:
+  - '01'
+  - '02'
+  - '03'
+  - '04'
+  - '05'
+  - '06'
+  - '07'
+  - 08
+  - 09
+  - '10'
+  - '11'
+  - '12'
+  - '13'
+  - '14'
+  - '15'
+  - '16'
+  - '17'
+  - '18'
+  - '19'
   all:
-    - "01"
-    - "02"
-    - "03"
-    - "04"
-    - "05"
-    - "06"
-    - "07"
-    - "08"
-    - "09"
-    - "10"
-    - "11"
-    - "12"
-    - "13"
-    - "14"
-    - "15"
-    - "16"
-    - "17"
-    - "18"
-
+  - '01'
+  - '02'
+  - '03'
+  - '04'
+  - '05'
+  - '06'
+  - '07'
+  - 08
+  - 09
+  - '10'
+  - '11'
+  - '12'
+  - '13'
+  - '14'
+  - '15'
+  - '16'
+  - '17'
+  - '18'
+  - '19'
 segment_names:
-  "01": "01-architecture"
-  "02": "02-quickstart"
-  "03": "03-bootstrap-dataflow"
-  "04": "04-pr-pipeline"
-  "05": "05-intercept-routing"
-  "06": "06-local-debug"
-  "07": "07-merge-release"
-  "08": "08-orchestrator"
-  "09": "09-multi-team-helm"
-  "10": "10-baggage-middleware"
-  "11": "11-testing-ecosystem"
-  "12": "12-test-trace-graph"
-  "13": "13-results-db"
-  "14": "14-customization"
-  "15": "15-regression-suite"
-  "16": "16-management-gui"
-  "17": "17-extending-gui"
-  "18": "18-roadmap"
-
+  '01': 01-architecture
+  '02': 02-quickstart
+  '03': 03-bootstrap-dataflow
+  '04': 04-pr-pipeline
+  '05': 05-intercept-routing
+  '06': 06-local-debug
+  '07': 07-merge-release
+  08: 08-orchestrator
+  09: 09-multi-team-helm
+  '10': 10-baggage-middleware
+  '11': 11-testing-ecosystem
+  '12': 12-test-trace-graph
+  '13': 13-results-db
+  '14': 14-customization
+  '15': 15-regression-suite
+  '16': 16-management-gui
+  '17': 17-extending-gui
+  '18': 18-roadmap-forward
+  '19': 19-kubernetes-operator
 visual_map:
-  "01":
+  '01':
     type: manim
     scene: StackDAGScene
     source: StackDAGScene.mp4
-  "02":
-    type: vhs
-    tape: 02-quickstart.tape
-    source: 02-quickstart.mp4
-  "03":
-    type: mixed
+  '02':
+    type: manim
+    scene: QuickstartScene
+    source: QuickstartScene.mp4
+  '03':
+    type: manim
     scene: HeaderPropagationScene
-    tape: 03-bootstrap.tape
-    sources:
-      - HeaderPropagationScene.mp4
-      - 03-bootstrap.mp4
-  "04":
-    type: vhs
-    tape: 04-pr-pipeline.tape
-    source: 04-pr-pipeline.mp4
-  "05":
+    source: HeaderPropagationScene.mp4
+  '04':
+    type: manim
+    scene: PRPipelineScene
+    source: PRPipelineScene.mp4
+  '05':
     type: manim
     scene: InterceptRoutingScene
     source: InterceptRoutingScene.mp4
-  "06":
+  '06':
     type: manim
     scene: LocalDebugScene
     source: LocalDebugScene.mp4
-  "07":
+  '07':
     type: manim
     scene: MergeReleaseScene
     source: MergeReleaseScene.mp4
-  "08":
-    type: vhs
-    tape: 08-orchestrator-api.tape
-    source: 08-orchestrator-api.mp4
-  "09":
+  08:
+    type: manim
+    scene: OrchestratorAPIScene
+    source: OrchestratorAPIScene.mp4
+  09:
     type: manim
     scene: MultiTeamScene
     source: MultiTeamScene.mp4
-  "10":
+  '10':
     type: manim
     scene: BaggageMiddlewareScene
     source: BaggageMiddlewareScene.mp4
-  "11":
-    type: vhs
-    tape: 11-testing.tape
-    source: 11-testing.mp4
-  "12":
-    type: mixed
+  '11':
+    type: manim
+    scene: TestingEcosystemScene
+    source: TestingEcosystemScene.mp4
+  '12':
+    type: manim
     scene: BlastRadiusScene
-    tape: 12-graph-tests.tape
-    sources:
-      - BlastRadiusScene.mp4
-      - 12-graph-tests.mp4
-  "13":
-    type: vhs
-    tape: 13-results-db.tape
-    source: 13-results-db.mp4
-  "14":
+    source: BlastRadiusScene.mp4
+  '13':
+    type: manim
+    scene: ResultsDBScene
+    source: ResultsDBScene.mp4
+  '14':
     type: manim
     scene: CustomizationScene
     source: CustomizationScene.mp4
-  "15":
-    type: vhs
-    tape: 15-regression.tape
-    source: 15-regression.mp4
-  "16":
+  '15':
+    type: manim
+    scene: RegressionSuiteScene
+    source: RegressionSuiteScene.mp4
+  '16':
     type: manim
     scene: ManagementGUITourScene
     source: ManagementGUITourScene.mp4
-  "17":
+  '17':
     type: manim
     scene: GUIExtensionPatternScene
     source: GUIExtensionPatternScene.mp4
-  "18":
+  '18':
     type: manim
     scene: RoadmapScene
     source: RoadmapScene.mp4
-
+  '19':
+    type: manim
+    scene: OperatorCRDScene
+    source: OperatorCRDScene.mp4
 manim:
   quality: 720p30
   scenes:
-    - StackDAGScene
-    - HeaderPropagationScene
-    - InterceptRoutingScene
-    - LocalDebugScene
-    - MergeReleaseScene
-    - MultiTeamScene
-    - BaggageMiddlewareScene
-    - BlastRadiusScene
-    - CustomizationScene
-    - ManagementGUITourScene
-    - GUIExtensionPatternScene
-    - RoadmapScene
-
+  - StackDAGScene
+  - QuickstartScene
+  - HeaderPropagationScene
+  - PRPipelineScene
+  - InterceptRoutingScene
+  - LocalDebugScene
+  - MergeReleaseScene
+  - OrchestratorAPIScene
+  - MultiTeamScene
+  - BaggageMiddlewareScene
+  - TestingEcosystemScene
+  - BlastRadiusScene
+  - ResultsDBScene
+  - CustomizationScene
+  - RegressionSuiteScene
+  - ManagementGUITourScene
+  - GUIExtensionPatternScene
+  - RoadmapScene
+  - OperatorCRDScene
 tts:
   model: gpt-4o-mini-tts
   voice: coral
-  instructions: >
-    You are narrating a technical demo video about a CI/CD pipeline platform
-    called tekton-dag. Speak in a calm, professional tone. Pronounce technical
-    terms clearly: Tekton, Kubernetes, Helm, Newman, pytest, Neo4j, Manim.
+  instructions: 'You are narrating a technical demo video about a CI/CD pipeline platform called tekton-dag. Speak in a calm,
+    professional tone. Pronounce technical terms clearly: Tekton, Kubernetes, Helm, Newman, pytest, Neo4j, Manim.
 
+    '
 concat:
   full-demo:
-    - "01"
-    - "02"
-    - "03"
-    - "04"
-    - "05"
-    - "06"
-    - "07"
-    - "08"
-    - "09"
-    - "10"
-    - "11"
-    - "12"
-    - "13"
+  - '01'
+  - '02'
+  - '03'
+  - '04'
+  - '05'
+  - '06'
+  - '07'
+  - 08
+  - 09
+  - '10'
+  - '11'
+  - '12'
+  - '13'
   full-demo-complete:
-    - "01"
-    - "02"
-    - "03"
-    - "04"
-    - "05"
-    - "06"
-    - "07"
-    - "08"
-    - "09"
-    - "10"
-    - "11"
-    - "12"
-    - "13"
-    - "14"
-    - "15"
-    - "16"
-    - "17"
-    - "18"
+  - '01'
+  - '02'
+  - '03'
+  - '04'
+  - '05'
+  - '06'
+  - '07'
+  - 08
+  - 09
+  - '10'
+  - '11'
+  - '12'
+  - '13'
+  - '14'
+  - '15'
+  - '16'
+  - '17'
+  - '18'
+  - '19'
   platform-core:
-    - "01"
-    - "02"
-    - "03"
-    - "04"
-    - "05"
-    - "06"
-    - "07"
-
+  - '01'
+  - '02'
+  - '03'
+  - '04'
+  - '05'
+  - '06'
+  - '07'
 validation:
   max_drift_sec: 2.75
   max_freeze_ratio: 0.25
   ocr:
     error_patterns:
-      - "command not found"
-      - "No such file"
-      - "syntax error"
-      - "Permission denied"
-      - "bash:"
+    - command not found
+    - No such file
+    - syntax error
+    - Permission denied
+    - 'bash:'
   narration_lint:
     pre_tts_deny_patterns:
-      - "target duration"
-      - "intended length"
-      - "visual:"
-      - "edit for voice"
-      - "approximately \\d+ minutes"
+    - target duration
+    - intended length
+    - 'visual:'
+    - edit for voice
+    - approximately \d+ minutes
     post_tts_deny_patterns:
-      - "target duration"
-      - "narration segment"
-      - "script section"
-      - "edit for voice"
-
+    - target duration
+    - narration segment
+    - script section
+    - edit for voice
 wizard:
   llm_model: gpt-4o
-  system_prompt: >
-    You are a technical writer creating narration scripts for demo videos about
-    tekton-dag, a CI/CD pipeline platform built on Tekton. Write in plain spoken
-    English suitable for text-to-speech. No markdown formatting, no headings, no
-    bullet points. Conversational but professional tone, like a senior engineer
-    presenting at a conference.
-  exclude_patterns:
-    - "**/node_modules/**"
-    - "**/.pytest_cache/**"
-    - "**/archive/**"
-    - "**/__pycache__/**"
-    - "**/animations/media/**"
-    - "**/terminal/rendered/**"
-    - "**/.venv/**"
+  system_prompt: 'You are a technical writer creating narration scripts for demo videos about tekton-dag, a CI/CD pipeline
+    platform built on Tekton. Write in plain spoken English suitable for text-to-speech. No markdown formatting, no headings,
+    no bullet points. Conversational but professional tone, like a senior engineer presenting at a conference.
 
+    '
+  exclude_patterns:
+  - '**/node_modules/**'
+  - '**/.pytest_cache/**'
+  - '**/archive/**'
+  - '**/__pycache__/**'
+  - '**/animations/media/**'
+  - '**/terminal/rendered/**'
+  - '**/.venv/**'
 pages:
-  title: "tekton-dag Demo Videos"
-  description: "CI/CD pipeline platform demo recordings"
+  title: tekton-dag Demo Videos
+  description: CI/CD pipeline platform demo recordings
   lfs_patterns:
-    - "recordings/*.mp4"
-    - "audio/*.mp3"
-    - "animations/media/**/*.mp4"
-    - "terminal/rendered/*.mp4"
+  - recordings/*.mp4
+  - audio/*.mp3
+  - animations/media/**/*.mp4
+  - terminal/rendered/*.mp4
+narration_from_source:
+  model: gpt-4o-mini
+  temperature: 0.65
+  max_context_bytes: 120000
+  hints:
+  - 'Ground every script in the Jul 2026 tree: four pipelines (bootstrap, PR, merge, promote), M13 foundations shipped, M14
+    operator foundations present but not default-on.'
+  - Do not frame milestone 13 as entirely future work. Say foundations are shipped and name only remaining open items when
+    discussing production hardening.
+  - The Kubernetes operator under operator/ is CRD-primary (Stack + StackRun, tektondag.io/v1alpha1). Flask STACKRUN_VIA_CRD
+    and Helm operator.enabled default false — do not claim the operator is the default runtime path.
+  - Demo video for this bundle is Manim + TTS + ffmpeg compose only (current docgen). Do not narrate VHS, ttyd, or terminal-tape
+    capture as a pipeline stage.
+  - 'Timestamps for this bundle must use Whisper (timestamps.engine: whisper). Do not use the local silencedetect aligner
+    for shippable demos.'
+  - Regression entrypoint is scripts/run-regression-agent.sh (Phase 1 + pytest + Playwright + stack-dag-verify + Newman when
+    a cluster is wired).
+  context:
+    paths:
+    - README.md
+    - AGENTS.md
+    - docs/REGRESSION.md
+    - milestones/milestone-13.md
+    - milestones/milestone-14.md
+    - operator/README.md
+    globs: []
+  segments:
+    '01':
+      hints:
+      - 'Open with what tekton-dag is today: stack-aware CI/CD on Tekton that models apps as a DAG with dependency edges and
+        propagation roles.'
+      - 'Name the four pipelines clearly: bootstrap, PR (intercept), merge/release, and promote (stack-promote + stacks/registries.yaml).
+        Promote is shipped with M13 foundations — not future work.'
+      - Mention the Flask orchestrator as webhook/API brain. Optionally note that when STACKRUN_VIA_CRD is enabled, runs become
+        StackRun CRs reconciled by the operator (segment 19) — do not claim that path is default-on (Helm operator.enabled
+        defaults false).
+      - Cover polyglot stacks, hook tasks, management GUI, Helm multi-team, Tekton Results + Neo4j briefly as the high-level
+        picture.
+      context:
+        paths:
+        - README.md
+        - milestones/milestone-13.md
+        - milestones/milestone-14.md
+        - docs/demos/hints/narration-tts.md
+    '02':
+      hints:
+      - Walk Kind-with-registry, install Tekton, Helm install of tekton-dag, and first bootstrap or health check — spoken
+        as diagram steps, not terminal capture.
+      - Point to DO-THIS-LOCAL or README quickstart paths. Keep commands as spoken phrases without backticks.
+      context:
+        paths:
+        - README.md
+        - DO-THIS-LOCAL.md
+        - docs/demos/hints/narration-tts.md
+    '03':
+      hints:
+      - 'Bootstrap builds and deploys every app: resolve stack, clone repos, compile by tool, Kaniko push, deploy-full-stack.'
+      - Tie header propagation roles (originator/forwarder/terminal) to the stack graph during bootstrap context.
+      context:
+        paths:
+        - README.md
+        - pipeline/
+        - stacks/
+        - docs/demos/hints/narration-tts.md
+    '04':
+      hints:
+      - PR webhook -> orchestrator resolves changed app -> PipelineRun (or StackRun if CRD path on) in PR mode builds only
+        the changed service.
+      - Deploy intercept beside baseline; tests run with x-dev-session so traffic hits the PR build.
+      context:
+        paths:
+        - README.md
+        - milestones/milestone-13.md
+        - docs/demos/hints/narration-tts.md
+    '05':
+      hints:
+      - Contrast baseline traffic (no header) vs PR traffic (x-dev-session) through the same ingress and services.
+      - 'Telepresence or mirrord intercept; note M13 open: intercept secret wiring still incomplete while stack secrets on
+        full deploy are shipped.'
+      context:
+        paths:
+        - README.md
+        - milestones/milestone-13.md
+        - docs/demos/hints/narration-tts.md
+    '06':
+      hints:
+      - 'Debug failed PR tests locally with mirrord: laptop IDE receives mirrored cluster traffic with real headers and payloads.'
+      context:
+        paths:
+        - README.md
+        - docs/demos/hints/narration-tts.md
+    '07':
+      hints:
+      - 'Merge mode: release version bump strips RC suffix, rebuild/tag release images, update mainline deploy.'
+      - Promote is a separate shipped pipeline (stack-promote + registries.yaml) for pushing release images to target registries
+        — do not call promote future work.
+      context:
+        paths:
+        - README.md
+        - milestones/milestone-13.md
+        - stacks/registries.yaml
+        - docs/demos/hints/narration-tts.md
+    08:
+      hints:
+      - 'Flask orchestrator on 8080: healthz/readyz, stacks API, POST /api/run modes including promote.'
+      - Orchestrator still owns webhook HMAC (fail-closed when named Secret missing) and stack resolve. When STACKRUN_VIA_CRD
+        is true it creates StackRun CRs instead of PipelineRuns — operator reconciles (see segment 19). Default remains direct
+        PipelineRun creation.
+      context:
+        paths:
+        - README.md
+        - milestones/milestone-13.md
+        - milestones/milestone-14.md
+        - orchestrator/
+        - docs/demos/hints/narration-tts.md
+    09:
+      hints:
+      - 'Helm multi-team: per-team releases, scoped ConfigMaps, shared Tasks/Pipelines. operator.enabled is off by default.'
+      context:
+        paths:
+        - README.md
+        - helm/tekton-dag/
+        - docs/demos/hints/narration-tts.md
+    '10':
+      hints:
+      - Baggage middleware auto-propagates x-dev-session across frameworks; roles originator/forwarder/terminal/standalone.
+      context:
+        paths:
+        - README.md
+        - docs/demos/hints/narration-tts.md
+    '11':
+      hints:
+      - Newman, pytest, Playwright, Artillery integrated via stack test specs and run- stack-tests; orchestrator Newman contracts
+        vs full regression.
+      context:
+        paths:
+        - README.md
+        - docs/REGRESSION.md
+        - docs/demos/hints/narration-tts.md
+    '12':
+      hints:
+      - 'Neo4j test-trace graph: services, tests, Touches/Calls; ingest via orchestrator; blast-radius test selection.'
+      context:
+        paths:
+        - README.md
+        - docs/demos/hints/narration-tts.md
+    '13':
+      hints:
+      - Tekton Results watches PipelineRuns/TaskRuns into Postgres; verify-results script; history retained when StackRuns
+        orphan PipelineRuns under CRD path.
+      context:
+        paths:
+        - README.md
+        - milestones/milestone-14.md
+        - docs/demos/hints/narration-tts.md
+    '14':
+      hints:
+      - 'Config-driven extension: stacks/schema.json, hook tasks, secrets/config blocks in stack YAML (M13 foundations), Helm
+        values — without forking core pipelines.'
+      context:
+        paths:
+        - README.md
+        - stacks/schema.json
+        - milestones/milestone-13.md
+        - docs/demos/hints/narration-tts.md
+    '15':
+      hints:
+      - 'Regression via scripts/run-regression-agent.sh: Phase 1 offline checks + pytest; with cluster: stack-dag-verify,
+        Playwright GUI, Newman. Prefer this entrypoint over ad-hoc scripts.'
+      context:
+        paths:
+        - docs/REGRESSION.md
+        - scripts/run-regression-agent.sh
+        - docs/demos/hints/narration-tts.md
+    '16':
+      hints:
+      - 'Vue3 + Flask management GUI: team switcher, DAG view, pipeline monitoring, manual triggers. Injection-status APIs
+        exist for secrets/config; some M13 GUI panels still open.'
+      context:
+        paths:
+        - README.md
+        - milestones/milestone-13.md
+        - docs/demos/hints/narration-tts.md
+    '17':
+      hints:
+      - 'Five-step pattern to extend GUI: Flask route, pytest, Vue panel, wire navigation, document contract. Future StackRun
+        views follow same pattern (M14 follow-on).'
+      context:
+        paths:
+        - README.md
+        - milestones/milestone-14.md
+        - docs/demos/hints/narration-tts.md
+    '18':
+      hints:
+      - 'Retarget: do NOT pitch M13 as what we build next. M13 foundations are shipped (HMAC, secrets/config + status APIs,
+        timeouts/retries/classifier/profiles, promote+registries).'
+      - 'Remaining M13 open items only: intercept secret wiring, Helm appConfig/ESO templates, GUI panels, Prometheus/cost
+        labels, cross-cluster deploy, Results/Neo4j backup polish.'
+      - 'Post-M14 follow-ons: default-on operator.enabled after soak, Team CR, GUI native StackRun views / promote approve
+        via StackRun.spec.approvedBy, Stack admission webhook, retire direct PipelineRun path once CRD is default.'
+      context:
+        paths:
+        - milestones/milestone-13.md
+        - milestones/milestone-14.md
+        - operator/README.md
+        - docs/demos/hints/narration-tts.md
+    '19':
+      hints:
+      - 'Problem: Flask creating PipelineRuns directly is less GitOps-friendly than desired-state CRs.'
+      - 'CRDs: Stack (validate/topo status) vs StackRun (mode pr|bootstrap|merge|promote -> PipelineRun).'
+      - 'Flow: GitHub/API -> Flask (HMAC+resolve) -> StackRun -> tekton-dag-operator -> PipelineRun (orphaned on delete for
+        Results history).'
+      - 'Enablement: STACKRUN_VIA_CRD + Helm operator.enabled (default off). Golden Python↔Go PipelineRun builders.'
+      - 'Status: foundations shipped under operator/; not default runtime yet.'
+      context:
+        paths:
+        - operator/README.md
+        - milestones/milestone-14.md
+        - orchestrator/stackrun_builder.py
+        - docs/demos/hints/narration-tts.md
+        - docs/demos/hints/manim-scene-specs.md
+manim_scene_generation:
+  model: gpt-4o
+  temperature: 0.4
+  max_context_bytes: 80000
+  hints:
+  - 'AUDIO-FIRST: scenes are generated only after Whisper timing.json exists for this segment. Design pages from narration
+    + timing words; every box label MUST be a short phrase copied from spoken narration (same tokens Whisper lists). If it
+    is not spoken, do not show it.'
+  - 'SUBJECT BEATS: hold the board across sentences on the same topic; reveal a new spoken-phrase label when the topic shifts.
+    Coverage of beats matters — not a blind label count. Never invent unspoken diagram terms.'
+  - Do not invent diagram-only terms (Originator, Demo-fe, etc.) unless those exact words are spoken. Prefer pages of short
+    rows; ASCII labels only (use -> not unicode). Leave wait_word unset so scene-compile binds labels to Whisper word indices.
+  context:
+    paths:
+    - docs/demos/hints/manim-scene-specs.md
+    globs: []
+  segments:
+    '01':
+      class_name: StackDAGScene
+      hints:
+      - Title tekton-dag, then DAG of demo-fe -> demo-bff -> demo-api with propagation roles.
+      - 'Four pipeline boxes: Bootstrap, PR, Merge, Promote. Small callout Optional CRD path pointing forward, not default.'
+      context:
+        paths:
+        - docs/demos/hints/manim-scene-specs.md
+        - docs/demos/hints/segment-01-architecture.md
+    '02':
+      class_name: QuickstartScene
+      hints:
+      - 'Sequential pages: Kind cluster -> Tekton install -> Helm release -> Healthz/Readyz green.'
+      context:
+        paths:
+        - docs/demos/hints/manim-scene-specs.md
+        - docs/demos/hints/segment-02-quickstart.md
+    '03':
+      class_name: HeaderPropagationScene
+      hints:
+      - Pipeline stages as a row flow; second page shows x-dev-session propagation through fe/bff/api.
+      context:
+        paths:
+        - docs/demos/hints/manim-scene-specs.md
+        - docs/demos/hints/segment-03-bootstrap-dataflow.md
+    '04':
+      class_name: PRPipelineScene
+      hints:
+      - Webhook -> resolve -> PR PipelineRun; changed app highlighted; intercept sidecar vs baseline.
+      context:
+        paths:
+        - docs/demos/hints/manim-scene-specs.md
+        - docs/demos/hints/segment-04-pr-pipeline.md
+    '05':
+      class_name: InterceptRoutingScene
+      hints:
+      - Two colored request paths through fe/bff/api; green path diverts to PR pod.
+      context:
+        paths:
+        - docs/demos/hints/manim-scene-specs.md
+        - docs/demos/hints/segment-05-intercept-routing.md
+    '06':
+      class_name: LocalDebugScene
+      hints:
+      - Laptop <-> mirrord tunnel <-> cluster stack; breakpoint callout on local process.
+      context:
+        paths:
+        - docs/demos/hints/manim-scene-specs.md
+        - docs/demos/hints/segment-06-local-debug.md
+    '07':
+      class_name: MergeReleaseScene
+      hints:
+      - Merge PipelineRun stages; side box Promote pipeline shipped with registries.yaml.
+      context:
+        paths:
+        - docs/demos/hints/manim-scene-specs.md
+        - docs/demos/hints/segment-07-merge-release.md
+    08:
+      class_name: OrchestratorAPIScene
+      hints:
+      - 'API boxes: healthz, stacks, run(pr|bootstrap|merge|promote); branch Direct PipelineRun vs StackRun CRD path.'
+      context:
+        paths:
+        - docs/demos/hints/manim-scene-specs.md
+        - docs/demos/hints/segment-08-orchestrator.md
+    09:
+      class_name: MultiTeamScene
+      hints:
+      - One cluster, three team namespaces/releases side by side.
+      context:
+        paths:
+        - docs/demos/hints/manim-scene-specs.md
+        - docs/demos/hints/segment-09-multi-team-helm.md
+    '10':
+      class_name: BaggageMiddlewareScene
+      hints:
+      - Five framework boxes under propagation role headers.
+      context:
+        paths:
+        - docs/demos/hints/manim-scene-specs.md
+        - docs/demos/hints/segment-10-baggage-middleware.md
+    '11':
+      class_name: TestingEcosystemScene
+      hints:
+      - Four testing framework boxes feeding run-stack-tests.
+      context:
+        paths:
+        - docs/demos/hints/manim-scene-specs.md
+        - docs/demos/hints/segment-11-testing-ecosystem.md
+    '12':
+      class_name: BlastRadiusScene
+      hints:
+      - Graph nodes Services and Tests with Touches/Calls edges; blast-radius highlight.
+      context:
+        paths:
+        - docs/demos/hints/manim-scene-specs.md
+        - docs/demos/hints/segment-12-test-trace-graph.md
+    '13':
+      class_name: ResultsDBScene
+      hints:
+      - PipelineRun -> Results watcher -> Postgres; note orphan GC preserves history.
+      context:
+        paths:
+        - docs/demos/hints/manim-scene-specs.md
+        - docs/demos/hints/segment-13-results-db.md
+    '14':
+      class_name: CustomizationScene
+      hints:
+      - Schema -> stack YAML -> hooks/secrets/config -> Helm values flow.
+      context:
+        paths:
+        - docs/demos/hints/manim-scene-specs.md
+        - docs/demos/hints/segment-14-customization.md
+    '15':
+      class_name: RegressionSuiteScene
+      hints:
+      - 'Layered phases: Phase1 offline -> pytest -> cluster DAG verify -> Playwright/Newman.'
+      context:
+        paths:
+        - docs/demos/hints/manim-scene-specs.md
+        - docs/demos/hints/segment-15-regression-suite.md
+    '16':
+      class_name: ManagementGUITourScene
+      hints:
+      - 'GUI panels: Teams, DAG, Runs, Triggers; note injection-status.'
+      context:
+        paths:
+        - docs/demos/hints/manim-scene-specs.md
+        - docs/demos/hints/segment-16-management-gui.md
+    '17':
+      class_name: GUIExtensionPatternScene
+      hints:
+      - Five numbered steps as a vertical checklist.
+      context:
+        paths:
+        - docs/demos/hints/manim-scene-specs.md
+        - docs/demos/hints/segment-17-extending-gui.md
+    '18':
+      class_name: RoadmapScene
+      hints:
+      - 'Two columns: M13 open items | M14 follow-ons. Title Whats next — not Milestone 13 preview.'
+      context:
+        paths:
+        - docs/demos/hints/manim-scene-specs.md
+        - docs/demos/hints/segment-18-roadmap-forward.md
+    '19':
+      class_name: OperatorCRDScene
+      hints:
+      - 'Flow diagram pages: Webhook/API -> Flask -> StackRun -> Operator -> PipelineRun; side boxes Stack CRD and StackRun
+        CRD; footer Not default-on.'
+      context:
+        paths:
+        - docs/demos/hints/manim-scene-specs.md
+        - docs/demos/hints/segment-19-kubernetes-operator.md
+discovery:
+  auto_visual_map: false
+timestamps:
+  engine: whisper

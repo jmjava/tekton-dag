@@ -20,21 +20,16 @@ concurrency:
 
 jobs:
   deploy:
-    # Required for deploy-pages; shows deployment URL on the environment
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           lfs: true
-      # Same MP4 paths are reused on every deploy; browsers + CDN cache them hard.
-      # Bump the query string on each deploy so viewers get the bytes that match main.
-      - name: Cache-bust video URLs in index.html
+      - name: Cache-bust video URLs
         env:
           GITHUB_SHA: ${{ github.sha }}
         run: |
@@ -42,23 +37,25 @@ jobs:
           import os, pathlib, re
           sha = os.environ["GITHUB_SHA"][:12]
           path = pathlib.Path("docs/index.html")
+          if not path.exists():
+              exit(0)
           text = path.read_text(encoding="utf-8")
-
-          def repl(m: re.Match) -> str:
-              base = m.group(1)
-              return f'src="{base}?v={sha}"'
-
           new = re.sub(
               r'src="(demos/recordings/[^"?]+\.mp4)(?:\?[^"]*)?"',
-              repl,
+              lambda m: f'src="{m.group(1)}?v={sha}"',
               text,
+          )
+          new = re.sub(
+              r'poster="(demos/recordings/[^"?]+\.(?:png|jpg|jpeg|webp))(?:\?[^"]*)?"',
+              lambda m: f'poster="{m.group(1)}?v={sha}"',
+              new,
           )
           path.write_text(new, encoding="utf-8")
           PY
       - name: Setup Pages
-        uses: actions/configure-pages@v4
+        uses: actions/configure-pages@v5
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: docs
       - name: Deploy to GitHub Pages

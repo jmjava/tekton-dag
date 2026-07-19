@@ -1,0 +1,271 @@
+segment_id: '01'
+class_name: StackDAGScene
+title:
+  text: Tekton DAG Architecture
+  font_size: 32
+  color: C_WHITE
+layout:
+  first_row_title_buff: 0.45
+  row_gap: 0.3
+  column_gap: 0.3
+  page_transition: fade
+pages:
+- rows:
+  - run_time: 2.0
+    boxes:
+    - label: Tekton DAG
+      color: C_BLUE
+      width: 3.5
+      height: 0.8
+      font_size: 16
+      wait_word: 0
+    - label: Stack-aware CI/CD
+      color: C_GREEN
+      width: 4.0
+      height: 0.8
+      font_size: 16
+  - run_time: 2.0
+    boxes:
+    - label: Directed acyclic graphs
+      color: C_ORANGE
+      width: 5.0
+      height: 0.8
+      font_size: 16
+      wait_word: 17
+    - label: Dependency management
+      color: C_PURPLE
+      width: 4.5
+      height: 0.8
+      font_size: 16
+      wait_word: 25
+- rows:
+  - run_time: 2.0
+    boxes:
+    - label: Bootstrap pipeline
+      color: C_TEAL
+      width: 4.5
+      height: 0.8
+      font_size: 16
+      wait_word: 49
+    - label: Deploys stack
+      color: C_RED
+      width: 3.5
+      height: 0.8
+      font_size: 16
+  - run_time: 2.0
+    boxes:
+    - label: PR pipeline
+      color: C_BLUE
+      width: 3.5
+      height: 0.8
+      font_size: 16
+      wait_word: 63
+    - label: Validates builds
+      color: C_GREEN
+      width: 4.0
+      height: 0.8
+      font_size: 16
+      wait_word: 69
+  transition: fade
+- rows:
+  - run_time: 2.0
+    boxes:
+    - label: Merge or Release pipeline
+      color: C_ORANGE
+      width: 5.0
+      height: 0.8
+      font_size: 16
+      wait_word: 75
+    - label: Promotes to production
+      color: C_PURPLE
+      width: 5.0
+      height: 0.8
+      font_size: 16
+  - run_time: 2.0
+    boxes:
+    - label: Promote pipeline
+      color: C_TEAL
+      width: 4.5
+      height: 0.8
+      font_size: 16
+      wait_word: 87
+    - label: Transfers images
+      color: C_RED
+      width: 4.0
+      height: 0.8
+      font_size: 16
+  transition: fade
+- rows:
+  - run_time: 2.0
+    boxes:
+    - label: Flask orchestrator
+      color: C_BLUE
+      width: 4.5
+      height: 0.8
+      font_size: 16
+      wait_word: 105
+    - label: GitHub webhooks
+      color: C_GREEN
+      width: 4.0
+      height: 0.8
+      font_size: 16
+      wait_word: 118
+  - run_time: 2.0
+    boxes:
+    - label: REST API
+      color: C_ORANGE
+      width: 3.5
+      height: 0.8
+      font_size: 16
+      wait_word: 125
+    - label: StackRun custom resources
+      color: C_PURPLE
+      width: 5.5
+      height: 0.8
+      font_size: 16
+  transition: fade
+- rows:
+  - run_time: 2.0
+    boxes:
+    - label: Kubernetes operator
+      color: C_TEAL
+      width: 5.0
+      height: 0.8
+      font_size: 16
+      wait_word: 149
+    - label: Reconciles resources
+      color: C_RED
+      width: 4.5
+      height: 0.8
+      font_size: 16
+  - run_time: 2.0
+    boxes:
+    - label: Polyglot stacks
+      color: C_BLUE
+      width: 4.0
+      height: 0.8
+      font_size: 16
+      wait_word: 179
+    - label: Hook tasks
+      color: C_GREEN
+      width: 3.5
+      height: 0.8
+      font_size: 16
+      wait_word: 202
+  transition: fade
+- rows:
+  - run_time: 2.0
+    boxes:
+    - label: Management GUI
+      color: C_ORANGE
+      width: 4.5
+      height: 0.8
+      font_size: 16
+      wait_word: 212
+    - label: User-friendly interface
+      color: C_PURPLE
+      width: 5.0
+      height: 0.8
+      font_size: 16
+  - run_time: 2.0
+    boxes:
+    - label: Helm chart
+      color: C_TEAL
+      width: 3.5
+      height: 0.8
+      font_size: 16
+      wait_word: 232
+    - label: Multi-team deployments
+      color: C_RED
+      width: 5.0
+      height: 0.8
+      font_size: 16
+  transition: fade
+- rows:
+  - run_time: 2.0
+    boxes:
+    - label: Tekton Results
+      color: C_BLUE
+      width: 4.0
+      height: 0.8
+      font_size: 16
+      wait_word: 250
+    - label: Neo4j integration
+      color: C_GREEN
+      width: 4.5
+      height: 0.8
+      font_size: 16
+      wait_word: 253
+  - run_time: 2.0
+    boxes:
+    - label: Performance insights
+      color: C_ORANGE
+      width: 5.5
+      height: 0.8
+      font_size: 16
+    - label: Historical data
+      color: C_PURPLE
+      width: 4.0
+      height: 0.8
+      font_size: 16
+      wait_word: 262
+  transition: fade
+- rows:
+  - run_time: 2.0
+    boxes:
+    - label: Production hardening
+      color: C_TEAL
+      width: 5.0
+      height: 0.8
+      font_size: 16
+      wait_word: 278
+    - label: Milestone 13
+      color: C_RED
+      width: 3.5
+      height: 0.8
+      font_size: 16
+      wait_word: 283
+  - run_time: 2.0
+    boxes:
+    - label: Open items
+      color: C_BLUE
+      width: 3.5
+      height: 0.8
+      font_size: 16
+      wait_word: 298
+    - label: Secrets and configuration
+      color: C_GREEN
+      width: 5.5
+      height: 0.8
+      font_size: 16
+      wait_word: 307
+  transition: fade
+- rows:
+  - run_time: 2.0
+    boxes:
+    - label: Observability
+      color: C_ORANGE
+      width: 4.0
+      height: 0.8
+      font_size: 16
+      wait_word: 314
+    - label: Cross-cluster deployments
+      color: C_PURPLE
+      width: 5.0
+      height: 0.8
+      font_size: 16
+  - run_time: 2.0
+    boxes:
+    - label: Granular control
+      color: C_TEAL
+      width: 4.5
+      height: 0.8
+      font_size: 16
+      wait_word: 333
+    - label: Stack management
+      color: C_RED
+      width: 4.0
+      height: 0.8
+      font_size: 16
+      wait_word: 336
+  transition: fade

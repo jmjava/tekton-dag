@@ -1,0 +1,171 @@
+segment_id: '16'
+class_name: ManagementGUITourScene
+title:
+  text: Management GUI Tour
+  font_size: 32
+  color: C_WHITE
+layout:
+  first_row_title_buff: 0.45
+  row_gap: 0.3
+  column_gap: 0.25
+pages:
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Management GUI
+      color: C_BLUE
+      width: 4.0
+      height: 0.8
+      font_size: 16
+      wait_word: 1
+    - label: Vue 3 and Flask
+      color: C_GREEN
+      width: 4.0
+      height: 0.8
+      font_size: 16
+      wait_word: 9
+  - run_time: 1.5
+    boxes:
+    - label: Navigate Pipelines
+      color: C_PURPLE
+      width: 4.5
+      height: 0.8
+      font_size: 16
+    - label: Manage Pipelines
+      color: C_ORANGE
+      width: 4.5
+      height: 0.8
+      font_size: 16
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Team Switcher
+      color: C_TEAL
+      width: 4.5
+      height: 0.8
+      font_size: 16
+      wait_word: 25
+    - label: Switch Teams Quickly
+      color: C_RED
+      width: 4.5
+      height: 0.8
+      font_size: 16
+  - run_time: 1.5
+    boxes:
+    - label: Access Relevant Data
+      color: C_BLUE
+      width: 6.0
+      height: 0.8
+      font_size: 16
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: DAG View
+      color: C_GREEN
+      width: 4.0
+      height: 0.8
+      font_size: 16
+    - label: Pipeline Structure
+      color: C_PURPLE
+      width: 4.0
+      height: 0.8
+      font_size: 16
+      wait_word: 61
+  - run_time: 1.5
+    boxes:
+    - label: Monitor Runs
+      color: C_ORANGE
+      width: 4.5
+      height: 0.8
+      font_size: 16
+    - label: Real-Time Feedback
+      color: C_TEAL
+      width: 4.5
+      height: 0.8
+      font_size: 16
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Manual Triggers
+      color: C_RED
+      width: 4.5
+      height: 0.8
+      font_size: 16
+    - label: Flexibility in Initiation
+      color: C_BLUE
+      width: 4.5
+      height: 0.8
+      font_size: 16
+  - run_time: 1.5
+    boxes:
+    - label: Integrated Testing
+      color: C_GREEN
+      width: 5.0
+      height: 0.8
+      font_size: 16
+      wait_word: 132
+    - label: View Test Results
+      color: C_PURPLE
+      width: 5.0
+      height: 0.8
+      font_size: 16
+      wait_word: 137
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Git Browser
+      color: C_ORANGE
+      width: 5.0
+      height: 0.8
+      font_size: 16
+      wait_word: 152
+    - label: Navigate Repositories
+      color: C_TEAL
+      width: 5.0
+      height: 0.8
+      font_size: 16
+      wait_word: 160
+  - run_time: 1.5
+    boxes:
+    - label: API Endpoints
+      color: C_RED
+      width: 4.5
+      height: 0.8
+      font_size: 16
+      wait_word: 176
+    - label: Check Injection Status
+      color: C_BLUE
+      width: 4.5
+      height: 0.8
+      font_size: 16
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: M13 Panels
+      color: C_GREEN
+      width: 4.5
+      height: 0.8
+      font_size: 16
+    - label: In Development
+      color: C_PURPLE
+      width: 4.5
+      height: 0.8
+      font_size: 16
+      wait_word: 214
+  - run_time: 1.5
+    boxes:
+    - label: Streamlines Tekton
+      color: C_ORANGE
+      width: 5.5
+      height: 0.8
+      font_size: 16
+    - label: Essential for CI/CD
+      color: C_TEAL
+      width: 5.5
+      height: 0.8
+      font_size: 16
+  transition: fade

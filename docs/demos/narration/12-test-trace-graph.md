@@ -1,17 +1,13 @@
-The final piece of the puzzle is intelligent test selection — knowing which tests to run when a specific service changes.
+The test-trace graph feature provides a powerful way to analyze the relationships between services and their associated tests within the Tekton DAG system.
 
-tekton-dag maintains a test-trace graph in Neo4j. Service nodes represent your applications. Test nodes represent individual test cases — Postman collections, Playwright specs, Artillery scenarios. Touches edges connect tests to the services they exercise. Calls edges connect services to their downstream dependencies.
+At its core, this feature uses Neo4j to create a visual representation of service interactions and test dependencies. This graph allows users to see how different services interact with each other, as well as the tests that cover those interactions.
 
-Here is how the graph gets populated. During test execution, trace data — which services called which — is captured and ingested via the orchestrator's POST slash api slash graph slash ingest endpoint. Over time, the graph builds an accurate map of test-to-service relationships.
+When you ingest data into the Neo4j database, the orchestrator compiles a detailed map of service calls and touches. This enables users to understand the blast radius of changes made in the codebase, making it easier to identify which tests need to be run based on the services affected.
 
-Now watch what happens when a developer changes demo-api. The query test plan task in the pull-request pipeline calls GET slash api slash test-plan with the changed app and a blast radius parameter.
+Graph-guided test selection leverages this data to optimize testing efforts. Instead of running all tests, the system intelligently selects only those that are relevant to the changes made, significantly speeding up the testing process while maintaining coverage.
 
-At radius one, the graph returns every test that directly touches demo-api — the API Postman collection, the integration tests that call the API endpoints. These are the tests most likely to catch a regression.
+This approach is particularly useful in large microservices architectures where the number of tests can be overwhelming. By focusing on relevant tests, teams can improve their CI/CD efficiency and reduce the time spent on unnecessary test runs.
 
-At radius two, the graph expands to neighbor services. The BFF calls demo-api, so BFF tests are included too — they exercise code paths that depend on the changed service. The test plan grows, but only to tests that have a real dependency relationship.
+The integration of Neo4j into the testing ecosystem not only enhances visibility but also aids in decision-making. With a clear view of how services are interconnected and which tests validate those connections, teams can make informed choices about where to focus their testing resources. 
 
-The graph also identifies gaps. If a service node has no touches edges — no tests exercise it — the graph flags it as unmapped. This tells the team where to add regression test coverage.
-
-The run tests task receives this focused test plan and executes only the relevant tests, not the entire suite. For a large stack with dozens of services and hundreds of tests, this can reduce test time from thirty minutes to three.
-
-Stack graph query. Focused test plan. Faster feedback. That is blast-radius aware test selection.
+Overall, the test-trace graph feature exemplifies a sophisticated method for managing and optimizing testing within Tekton DAG, ensuring that developers can maintain high-quality code while accelerating their development cycles.

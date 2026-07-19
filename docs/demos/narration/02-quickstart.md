@@ -1,13 +1,13 @@
-Let's get tekton-dag running from scratch. The entire setup takes about five minutes on a local machine.
+To get started with Tekton DAG, first, you need to set up a Kind cluster with a local registry. This allows you to run your applications in a Kubernetes environment on your local machine. 
 
-First, we create a Kind cluster with an integrated container registry. The Kind-with-registry script provisions a single-node Kubernetes cluster and configures a local registry on port five thousand one so we can push images without needing Docker Hub credentials.
+Next, install Tekton by running the provided installation script. This script will set up the necessary components for your Tekton pipelines to function correctly within your cluster.
 
-Next, we install Tekton Pipelines into the cluster. The install Tekton script applies the official Tekton release manifests and waits for all controller pods to become ready.
+Once Tekton is installed, you will need to publish your build images to the Kind registry. This is a one-time step that ensures your images are available for deployment in your local environment.
 
-Now we publish the build images — these are the containers that compile and test your code inside the pipeline. There are six: one each for npm, Maven, Gradle, pip, Composer, and mirrord. Each is built locally and pushed to the Kind registry. If you need multiple language versions — say Java seventeen alongside Java twenty-one — the build-and-push script supports a matrix flag to generate all variants.
+After you've published the images, apply the necessary tasks and pipelines. This step involves using the provided Kubernetes configuration files to set up the tasks and pipelines that your applications will use.
 
-Finally, we apply the shared Tekton Tasks and Pipeline definitions with a single kubectl apply. These are the reusable building blocks: git clone, resolve stack, compile tasks for each build tool, Kaniko container builds, deployment, intercept setup for both Telepresence and mirrord, header propagation validation, and test execution.
+Optionally, if you want to enable intercepts for your pull request pipeline, you can install the Telepresence Traffic Manager. This tool allows you to intercept traffic and route it to your local development environment for easier testing and debugging.
 
-That is the core platform. For optional components — Tekton Results with Postgres for pipeline history, Neo4j for the test-trace graph, or the Tekton Dashboard — there are dedicated install scripts in the scripts directory.
+Lastly, if you're interested in using the Tekton Results API, you can set up Postgres to enable this feature. This will allow you to store and retrieve results from your pipeline runs efficiently.
 
-Four commands and we have a fully functional stack-aware CI/CD platform running locally. Let's see it in action.
+For detailed steps and additional configurations, refer to the DO-THIS-LOCAL guide or the README quickstart paths. Following these steps will get you up and running with Tekton DAG for local development and proof-of-concept projects.

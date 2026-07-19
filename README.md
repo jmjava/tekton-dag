@@ -86,8 +86,13 @@ Each row links to the **in-browser player** on Pages (`#seg-…`) and to the **c
 | [M12.2](milestones/milestone-12.2.md) | **Partial** | **Part A done:** doc sync + archive. **Part B open:** regression + Management GUI [docs & demo plan](docs/TESTING-AND-REGRESSION-OVERVIEW.md) / [GUI extension](docs/MANAGEMENT-GUI-EXTENSION.md) / [video segments](docs/demos/segments-m12-2-regression-gui.md) |
 | [doc-generator](milestones/milestone-doc-generator.md) | **Completed** | Reusable Python library ([`docgen`](https://github.com/jmjava/documentation-generator)) extracting the demo pipeline (TTS, Manim, VHS, ffmpeg, validation, Pages). OCR validation, A/V sync, narration linting, auto-generated GitHub Pages. All 18 demo segments regenerated via `docgen`. |
 | [M13](milestones/milestone-13.md) | **Partial** | Production hardening foundations shipped: webhook HMAC, stack secrets/config + deploy wiring + injection-status APIs, PipelineRun timeouts / task retries / failure classifier / resource profiles, `stack-promote` + registries + approval gate. Open: intercept secret/config wiring, Helm `appConfig` / ESO, GUI panels, observability, cross-cluster deploy. Roadmap video: [segment 18](https://jmjava.github.io/tekton-dag/#seg-18). Local cluster checklist: [DO-THIS-LOCAL.md](DO-THIS-LOCAL.md). |
+| [M14](milestones/milestone-14.md) | **Partial** | **Kubernetes operator (CRD-primary):** Go Kubebuilder operator under [`operator/`](operator/) with `Stack` + `StackRun` (`tektondag.io/v1alpha1`). Flask creates StackRuns when `STACKRUN_VIA_CRD=true`; Helm `operator.enabled`. Shared PipelineRun golden fixtures Python↔Go. |
 
 Older milestones (M2, M3) are in [milestones/completed/](milestones/completed/).
+
+### Operator (M14)
+
+CRD-primary control plane: apply a **Stack** for the app DAG, create a **StackRun** for each pipeline execution (`pr` / `bootstrap` / `merge` / `promote`). The operator owns creating Tekton PipelineRuns (orphaned on StackRun delete so Results history survives). Details: [milestones/milestone-14.md](milestones/milestone-14.md), Kind smoke in [DO-THIS-LOCAL.md](DO-THIS-LOCAL.md).
 
 **M13 remaining — [Milestone 13: Production Hardening](milestones/milestone-13.md):**
 

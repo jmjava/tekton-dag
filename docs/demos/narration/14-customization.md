@@ -1,17 +1,15 @@
-tekton-dag is designed to be extended without forking. Every integration point is config-driven, validated by schema, and exposed through Helm values.
+Customization in the Tekton DAG system allows users to tailor their CI/CD workflows to meet specific needs.
 
-Start with the stack schema. The file stacks slash schema dot json defines the shape of a valid stack YAML: app names, build tools, propagation roles, downstream dependencies, and test specifications. When you add a new app or modify an existing one, the schema catches typos and missing fields before the pipeline ever runs.
+The stack schema is the foundation for this customization. It defines how applications are structured within the system. Each application entry can specify build variants, dependencies, and the tools required for deployment.
 
-Adding an application to an existing stack is a YAML edit. You add an entry to the apps array with the app name, its Git repository, its propagation role — originator, forwarder, terminal, or standalone — the build tool, and optionally its downstream dependencies and test collections. The pipeline automatically picks up the new app on the next run.
+Hook tasks provide additional flexibility. These tasks can be defined to execute at various points in the pipeline, allowing teams to implement custom logic for pre-build, post-build, or test stages without altering the core pipeline structure.
 
-Build image variants let teams use different language versions without separate pipelines. The Helm chart exposes compileImageVariants — a map of tool-plus-version to container image. Team alpha can run Java seventeen while team beta uses Java twenty-one. The stack YAML specifies which version each app needs via the build dot java dash version field, and the pipeline selects the matching image at runtime.
+Team onboarding is simplified with the use of Helm values. Teams can define their specific configurations and secrets directly in the Helm chart. This ensures that each environment can be tailored with minimal effort, making it easier to manage different configurations for development, staging, and production.
 
-Hook tasks are the primary extension mechanism for the pipelines. Four insertion points are available: pre-build, post-build, pre-test, and post-test. Each is a pipeline parameter that names a Tekton Task. If the parameter is empty, the pipeline step is skipped via a when expression — zero overhead. If it names a task, that task runs at the appropriate point with access to the stack definition, build outputs, and workspace.
+Secrets and configuration injection are crucial for maintaining security and flexibility. The stack YAML supports secrets and config blocks, which allow for the injection of sensitive information and environment-specific configurations into the deployment.
 
-The examples directory includes two reference hooks. The image scan example runs a vulnerability scanner against the built container image after the build step. The Slack notification example posts a message to a channel when the pipeline completes. Both follow the same parameter contract, so teams can write their own hooks without understanding pipeline internals.
+With the production hardening foundations shipped, features like webhook HMAC verification and pipeline reliability parameters are now available. These enhancements provide teams with greater control over their pipelines, allowing for retries on transient failures and more reliable task executions.
 
-Onboarding a new team is a three-step process. Create a directory under teams with a team dot yaml defining the team name, namespace, and stack list. Add a values dot yaml with Helm overrides — registry, intercept backend, build image versions, resource limits. Then install the Helm chart with that team's values. The chart creates team-scoped ConfigMaps, and the team's orchestrator instance only manages its own stacks.
+The Kubernetes operator further extends the customization capabilities. It enables the definition of custom resources like Stack and StackRun, which serve as the source of truth for application deployment and execution. This operator facilitates a more streamlined approach to managing Tekton pipelines, especially in multi-cluster environments.
 
-Infrastructure-level settings — the container registry URL, the intercept backend choice between Telepresence and mirrord, pipeline timeouts, and resource profiles — are all Helm values. Changing the registry for a team is a single values dot yaml edit and a Helm upgrade.
-
-Config-only onboarding. Schema-validated stacks. Pluggable hook tasks. Multi-version build images. That is customization in tekton-dag.
+In summary, the Tekton DAG system offers a robust framework for customization, empowering teams to adapt their CI/CD processes to their unique requirements while maintaining a high level of reliability and security.

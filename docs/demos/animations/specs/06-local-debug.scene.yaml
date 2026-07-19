@@ -1,0 +1,167 @@
+segment_id: '06'
+class_name: LocalDebugScene
+title:
+  text: Local Debugging with mirrord
+  font_size: 28
+  color: C_WHITE
+pages:
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Local debugging with Tekton DAG
+      color: C_BLUE
+      width: 5.0
+      height: 0.8
+      font_size: 18
+      wait_word: 0
+    - label: Integration of mirrord
+      color: C_GREEN
+      width: 4.5
+      height: 0.8
+      font_size: 18
+  - run_time: 1.5
+    boxes:
+    - label: Connect local environment
+      color: C_ORANGE
+      width: 5.5
+      height: 0.7
+      font_size: 16
+    - label: Running Kubernetes cluster
+      color: C_TEAL
+      width: 5.5
+      height: 0.7
+      font_size: 16
+      wait_word: 25
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Set breakpoints in IDE
+      color: C_PURPLE
+      width: 5.0
+      height: 0.8
+      font_size: 16
+    - label: Process requests locally
+      color: C_RED
+      width: 5.0
+      height: 0.8
+      font_size: 16
+  - run_time: 1.5
+    boxes:
+    - label: Inspect variables
+      color: C_ACCENT
+      width: 3.8882352941176475
+      height: 0.7
+      font_size: 16
+      wait_word: 58
+    - label: Step through code
+      color: C_BLUE
+      width: 3.8882352941176475
+      height: 0.7
+      font_size: 16
+    - label: Live cluster behavior
+      color: C_GREEN
+      width: 3.8882352941176475
+      height: 0.7
+      font_size: 16
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Mirror traffic
+      color: C_ORANGE
+      width: 4.5
+      height: 0.8
+      font_size: 16
+      wait_word: 155
+    - label: Analyze real-time data
+      color: C_TEAL
+      width: 5.0
+      height: 0.8
+      font_size: 16
+  - run_time: 1.5
+    boxes:
+    - label: No need to deploy changes
+      color: C_PURPLE
+      width: 6.0
+      height: 0.7
+      font_size: 16
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Debug complex interactions
+      color: C_RED
+      width: 5.5
+      height: 0.8
+      font_size: 16
+    - label: Dependencies not evident locally
+      color: C_ACCENT
+      width: 5.5
+      height: 0.8
+      font_size: 16
+  - run_time: 1.5
+    boxes:
+    - label: Install and configure mirrord
+      color: C_BLUE
+      width: 6.0
+      height: 0.7
+      font_size: 16
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Initiate mirroring process
+      color: C_GREEN
+      width: 5.5
+      height: 0.8
+      font_size: 16
+    - label: Run application as normal
+      color: C_ORANGE
+      width: 5.5
+      height: 0.8
+      font_size: 16
+  - run_time: 1.5
+    boxes:
+    - label: IDE receives mirrored traffic
+      color: C_TEAL
+      width: 6.0
+      height: 0.7
+      font_size: 16
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Debug like local application
+      color: C_PURPLE
+      width: 6.0
+      height: 0.8
+      font_size: 16
+  - run_time: 1.5
+    boxes:
+    - label: Improves debugging experience
+      color: C_RED
+      width: 6.0
+      height: 0.7
+      font_size: 16
+    - label: Accelerates development cycle
+      color: C_ACCENT
+      width: 6.0
+      height: 0.7
+      font_size: 16
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Identify and resolve issues quickly
+      color: C_BLUE
+      width: 6.5
+      height: 0.8
+      font_size: 16
+  - run_time: 1.5
+    boxes:
+    - label: Enhance reliability and efficiency
+      color: C_GREEN
+      width: 6.5
+      height: 0.7
+      font_size: 16
+  transition: fade

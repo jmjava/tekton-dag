@@ -1,0 +1,189 @@
+segment_id: '11'
+class_name: TestingEcosystemScene
+title:
+  text: Testing Ecosystem in Tekton DAG
+  font_size: 36
+  color: C_WHITE
+layout:
+  first_row_title_buff: 0.5
+  row_gap: 0.4
+  column_gap: 0.3
+  page_transition: fade
+  page_transition_run_time: 0.45
+pages:
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Testing ecosystem
+      color: C_BLUE
+      width: 3.0
+      height: 0.8
+      font_size: 16
+      wait_word: 1
+    - label: Tekton DAG
+      color: C_GREEN
+      width: 3.0
+      height: 0.8
+      font_size: 16
+      wait_word: 4
+  - run_time: 1.5
+    boxes:
+    - label: Robust framework
+      color: C_PURPLE
+      width: 3.5
+      height: 0.8
+      font_size: 16
+      wait_word: 8
+    - label: Application quality
+      color: C_ORANGE
+      width: 3.5
+      height: 0.8
+      font_size: 16
+      wait_word: 12
+  - run_time: 1.5
+    boxes:
+    - label: API tests
+      color: C_TEAL
+      width: 2.5
+      height: 0.7
+      font_size: 14
+      wait_word: 23
+    - label: End-to-end tests
+      color: C_RED
+      width: 2.5
+      height: 0.7
+      font_size: 14
+    - label: Load tests
+      color: C_BLUE
+      width: 2.5
+      height: 0.7
+      font_size: 14
+      wait_word: 30
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Newman
+      color: C_GREEN
+      width: 2.8
+      height: 0.8
+      font_size: 16
+    - label: API testing
+      color: C_TEAL
+      width: 3.2
+      height: 0.8
+      font_size: 16
+      wait_word: 36
+  - run_time: 1.5
+    boxes:
+    - label: Postman collections
+      color: C_PURPLE
+      width: 3.5
+      height: 0.7
+      font_size: 14
+      wait_word: 43
+    - label: Orchestrator API
+      color: C_ORANGE
+      width: 3.5
+      height: 0.7
+      font_size: 14
+      wait_word: 47
+  - run_time: 1.5
+    boxes:
+    - label: Playwright
+      color: C_RED
+      width: 3.0
+      height: 0.8
+      font_size: 16
+      wait_word: 65
+    - label: User interactions
+      color: C_BLUE
+      width: 3.0
+      height: 0.8
+      font_size: 16
+      wait_word: 73
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Load testing
+      color: C_TEAL
+      width: 3.0
+      height: 0.8
+      font_size: 16
+      wait_word: 87
+    - label: Artillery
+      color: C_GREEN
+      width: 3.0
+      height: 0.8
+      font_size: 16
+      wait_word: 92
+  - run_time: 1.5
+    boxes:
+    - label: Heavy traffic
+      color: C_PURPLE
+      width: 3.5
+      height: 0.7
+      font_size: 14
+      wait_word: 99
+    - label: Performance assessment
+      color: C_ORANGE
+      width: 3.5
+      height: 0.7
+      font_size: 14
+  - run_time: 1.5
+    boxes:
+    - label: Regression testing
+      color: C_RED
+      width: 3.5
+      height: 0.8
+      font_size: 16
+      wait_word: 115
+    - label: No bugs
+      color: C_BLUE
+      width: 3.5
+      height: 0.8
+      font_size: 16
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Regression tiers
+      color: C_TEAL
+      width: 3.5
+      height: 0.8
+      font_size: 16
+      wait_word: 137
+    - label: Targeted tests
+      color: C_GREEN
+      width: 3.5
+      height: 0.8
+      font_size: 16
+      wait_word: 143
+  - run_time: 1.5
+    boxes:
+    - label: Automated testing
+      color: C_PURPLE
+      width: 3.5
+      height: 0.8
+      font_size: 16
+      wait_word: 162
+    - label: Pipeline integration
+      color: C_ORANGE
+      width: 3.5
+      height: 0.8
+      font_size: 16
+  - run_time: 1.5
+    boxes:
+    - label: Comprehensive coverage
+      color: C_RED
+      width: 3.5
+      height: 0.8
+      font_size: 16
+      wait_word: 197
+    - label: Ready for production
+      color: C_BLUE
+      width: 3.5
+      height: 0.8
+      font_size: 16
+      wait_word: 213
+  transition: fade

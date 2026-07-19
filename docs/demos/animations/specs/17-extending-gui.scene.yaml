@@ -1,0 +1,147 @@
+segment_id: '17'
+class_name: GUIExtensionPatternScene
+title:
+  text: Extending the Management GUI
+  font_size: 32
+  color: C_WHITE
+layout:
+  first_row_title_buff: 0.45
+  row_gap: 0.4
+  column_gap: 0.3
+  page_transition: fade
+pages:
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Define a new Flask route
+      color: C_BLUE
+      width: 5.0
+      height: 0.8
+      font_size: 16
+      wait_word: 20
+    - label: Handle requests and responses
+      color: C_GREEN
+      width: 5.5
+      height: 0.8
+      font_size: 16
+      wait_word: 28
+  - run_time: 1.5
+    boxes:
+    - label: Backend endpoint
+      color: C_ORANGE
+      width: 5.0
+      height: 0.8
+      font_size: 16
+    - label: Interact with the GUI
+      color: C_TEAL
+      width: 4.5
+      height: 0.8
+      font_size: 16
+      wait_word: 49
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Create Pytest tests
+      color: C_PURPLE
+      width: 4.5
+      height: 0.8
+      font_size: 16
+    - label: Ensure route behaves
+      color: C_RED
+      width: 4.5
+      height: 0.8
+      font_size: 16
+  - run_time: 1.5
+    boxes:
+    - label: Validate inputs and outputs
+      color: C_BLUE
+      width: 5.0
+      height: 0.8
+      font_size: 16
+      wait_word: 69
+    - label: Maintain application integrity
+      color: C_GREEN
+      width: 5.5
+      height: 0.8
+      font_size: 16
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Develop Vue component
+      color: C_ORANGE
+      width: 5.5
+      height: 0.8
+      font_size: 16
+    - label: Represent new feature
+      color: C_TEAL
+      width: 4.5
+      height: 0.8
+      font_size: 16
+  - run_time: 1.5
+    boxes:
+    - label: Provide UI elements
+      color: C_PURPLE
+      width: 5.0
+      height: 0.8
+      font_size: 16
+    - label: Interact with data
+      color: C_RED
+      width: 4.5
+      height: 0.8
+      font_size: 16
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Wire up navigation
+      color: C_BLUE
+      width: 5.0
+      height: 0.8
+      font_size: 16
+      wait_word: 130
+    - label: Access within GUI
+      color: C_GREEN
+      width: 4.5
+      height: 0.8
+      font_size: 16
+  - run_time: 1.5
+    boxes:
+    - label: Update routing configuration
+      color: C_ORANGE
+      width: 5.5
+      height: 0.8
+      font_size: 16
+    - label: Include new component
+      color: C_TEAL
+      width: 5.0
+      height: 0.8
+      font_size: 16
+  transition: fade
+- rows:
+  - run_time: 1.5
+    boxes:
+    - label: Document contract
+      color: C_PURPLE
+      width: 5.5
+      height: 0.8
+      font_size: 16
+    - label: Flask route and Vue component
+      color: C_RED
+      width: 6.0
+      height: 0.8
+      font_size: 16
+  - run_time: 1.5
+    boxes:
+    - label: Outline inputs and outputs
+      color: C_BLUE
+      width: 5.5
+      height: 0.8
+      font_size: 16
+    - label: Easier for future developers
+      color: C_GREEN
+      width: 5.5
+      height: 0.8
+      font_size: 16
+      wait_word: 180
+  transition: fade

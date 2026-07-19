@@ -1,0 +1,163 @@
+segment_id: 09
+class_name: MultiTeamScene
+title:
+  text: Multi-Team Helm Deployment
+  font_size: 28
+  color: C_WHITE
+pages:
+- rows:
+  - run_time: 2.0
+    boxes:
+    - label: Multi-team Helm
+      color: C_BLUE
+      width: 4.0
+      height: 0.9
+      font_size: 18
+    - label: Scalable deployments
+      color: C_GREEN
+      width: 4.0
+      height: 0.9
+      font_size: 18
+  - run_time: 2.0
+    boxes:
+    - label: Isolated environments
+      color: C_ORANGE
+      width: 4.0
+      height: 0.9
+      font_size: 18
+    - label: Kubernetes namespaces
+      color: C_TEAL
+      width: 4.0
+      height: 0.9
+      font_size: 18
+- rows:
+  - run_time: 2.0
+    boxes:
+    - label: Manage configurations
+      color: C_PURPLE
+      width: 4.0
+      height: 0.9
+      font_size: 18
+    - label: Custom hooks
+      color: C_RED
+      width: 4.0
+      height: 0.9
+      font_size: 18
+      wait_word: 49
+  - run_time: 2.0
+    boxes:
+    - label: Define Helm charts
+      color: C_BLUE
+      width: 4.0
+      height: 0.9
+      font_size: 18
+    - label: Specific requirements
+      color: C_GREEN
+      width: 4.0
+      height: 0.9
+      font_size: 18
+      wait_word: 65
+  transition: fade
+- rows:
+  - run_time: 2.0
+    boxes:
+    - label: Streamlined process
+      color: C_ORANGE
+      width: 4.0
+      height: 0.9
+      font_size: 18
+    - label: Minimal coordination
+      color: C_TEAL
+      width: 4.0
+      height: 0.9
+      font_size: 18
+      wait_word: 82
+  - run_time: 2.0
+    boxes:
+    - label: Enhance security
+      color: C_PURPLE
+      width: 4.0
+      height: 0.9
+      font_size: 18
+      wait_word: 91
+    - label: Resource management
+      color: C_RED
+      width: 4.0
+      height: 0.9
+      font_size: 18
+      wait_word: 94
+  transition: fade
+- rows:
+  - run_time: 2.0
+    boxes:
+    - label: Stable deployments
+      color: C_BLUE
+      width: 4.0
+      height: 0.9
+      font_size: 18
+      wait_word: 112
+    - label: Pre- and post-deployment
+      color: C_GREEN
+      width: 4.0
+      height: 0.9
+      font_size: 18
+  - run_time: 2.0
+    boxes:
+    - label: Shared tasks
+      color: C_ORANGE
+      width: 4.0
+      height: 0.9
+      font_size: 18
+      wait_word: 144
+    - label: Centralized resources
+      color: C_TEAL
+      width: 4.0
+      height: 0.9
+      font_size: 18
+  transition: fade
+- rows:
+  - run_time: 2.0
+    boxes:
+    - label: Promote collaboration
+      color: C_PURPLE
+      width: 4.0
+      height: 0.9
+      font_size: 18
+      wait_word: 168
+    - label: Team autonomy
+      color: C_RED
+      width: 4.0
+      height: 0.9
+      font_size: 18
+  - run_time: 2.0
+    boxes:
+    - label: Empower teams
+      color: C_BLUE
+      width: 4.0
+      height: 0.9
+      font_size: 18
+      wait_word: 186
+    - label: Efficient deployment
+      color: C_GREEN
+      width: 4.0
+      height: 0.9
+      font_size: 18
+  - run_time: 2.0
+    boxes:
+    - label: Enhance CI/CD
+      color: C_ORANGE
+      width: 4.0
+      height: 0.9
+      font_size: 18
+    - label: Multi-team environment
+      color: C_TEAL
+      width: 4.0
+      height: 0.9
+      font_size: 18
+  transition: fade
+layout:
+  first_row_title_buff: 0.5
+  row_gap: 0.3
+  column_gap: 0.5
+  page_transition: fade
+  page_transition_run_time: 0.45

@@ -143,15 +143,43 @@ bash scripts/run-regression.sh --kind-e2e
 
 Use when changing bootstrap, intercepts, or full-stack deploy behavior. Long-running.
 
-## 5. Still open after local smoke (product follow-ups)
+## 5. M14 operator smoke (Stack / StackRun)
 
-These are **not** blocked on this checklist; track in [milestones/milestone-13.md](milestones/milestone-13.md):
+CRD-primary path (see [milestones/milestone-14.md](milestones/milestone-14.md)):
+
+```bash
+# Build/push operator image (Kind registry)
+./scripts/publish-operator-image.sh
+
+# Install CRDs + sample Stack / StackRun
+kubectl apply -f operator/config/crd/bases/
+kubectl apply -f operator/config/samples/
+
+# Or via Helm (also sets STACKRUN_VIA_CRD when operator.enabled)
+cd helm/tekton-dag && ./package.sh
+helm upgrade --install tekton-dag . -n tekton-pipelines \
+  --set operator.enabled=true \
+  --set orchestrationService.stackrunViaCrd=true
+
+# Expect Stack status.valid=true and StackRun to create a PipelineRun
+kubectl get stacks,stackruns -n tekton-pipelines
+kubectl get pipelineruns -n tekton-pipelines -l tektondag.io/stackrun
+
+# Unit / golden contract (no cluster)
+cd operator && go test ./internal/pipeline/ ./internal/controller/
+python scripts/generate-pipelinerun-goldens.py   # regenerate if builders change
+```
+
+## 6. Still open after local smoke (product follow-ups)
+
+These are **not** blocked on this checklist; track in [milestones/milestone-13.md](milestones/milestone-13.md) / [milestone-14.md](milestones/milestone-14.md):
 
 - Intercept deploy (`deploy-intercept*`) secret/config wiring
 - Management GUI panel for injection-status
 - Helm `appConfig` / ESO templates
 - Cross-cluster deploy task
 - `pytest-cov` CI gate
+- Live operator image + Newman with `STACKRUN_VIA_CRD=true`
 
 ## Done when
 
@@ -160,3 +188,4 @@ These are **not** blocked on this checklist; track in [milestones/milestone-13.m
 - [ ] At least one promote dry-run PipelineRun **Succeeded**
 - [ ] injection-status shows present/missing correctly for a test Secret
 - [ ] Webhook rejects bad HMAC when secret is configured
+- [ ] Operator: Stack/StackRun applied; PipelineRun created from StackRun (M14)

@@ -1,19 +1,11 @@
-Intercept routing depends on one thing: every service in the call chain must propagate the dev-session header. If any service drops it, the routing breaks. The baggage middleware libraries make this automatic across five frameworks.
+Baggage middleware serves as a crucial component in the Tekton DAG system, enabling seamless integration and communication across multiple frameworks.
 
-Every service has a propagation role defined in the stack YAML. An originator starts the chain — it sets the dev-session header on all outgoing requests. A forwarder reads the incoming header, stores it in request context, and attaches it to every downstream call. A terminal accepts the header for routing and logging but does not forward it further.
+This middleware automatically propagates context information, such as the x-dev-session header, across various applications built on different technologies like Spring, Node, Flask, and PHP. This capability ensures that all components within the pipeline can share essential data without manual intervention.
 
-Let's walk through each framework.
+The architecture supports multiple roles, including originator, forwarder, terminal, and standalone. Each role is designed to handle specific tasks within the data flow, ensuring that the context is maintained and correctly routed.
 
-In Spring Boot, the baggage starter auto-configures everything. A servlet filter called BaggageContextFilter reads the incoming header and stores it using OpenTelemetry Baggage and a thread-local context holder. A RestTemplate interceptor called BaggageRestTemplateInterceptor automatically adds the header to every outbound HTTP call. The entire setup activates with a single property: baggage dot enabled equals true. If the property is false or absent, the filter and interceptor are not registered. Zero overhead in production.
+The integration process begins with the originator, which initiates the baggage by attaching the necessary headers to the request. As the request moves through the system, the forwarder captures and passes along this information to subsequent services. The terminal role finalizes the baggage handling, ensuring that all relevant data reaches its destination.
 
-For Node and Vue, the library provides createBaggageFetch — a wrapper around the native fetch API that injects the header — and createAxiosInterceptor for Axios-based projects. The default configuration reads from environment variables like VITE underscore BAGGAGE underscore ENABLED, so the browser build can include or exclude baggage at compile time.
+This approach enhances observability and debugging capabilities. By maintaining a consistent context throughout the pipeline, developers can trace the flow of requests and identify issues more efficiently.
 
-In Flask and Python, the init underscore app function registers a before-request hook that extracts the header and stores it on Flask's g object. For outbound calls, BaggageSession extends the standard requests dot Session class to add the header automatically. Same pattern: enabled by an environment variable, zero-cost when disabled.
-
-The PHP implementation uses PSR-15 middleware for inbound requests and a Guzzle middleware for outbound HTTP. The BaggageMiddleware class reads its configuration from environment variables and can be instantiated with a static fromEnv factory method.
-
-All five implementations follow the W3C Baggage specification alongside the custom x-dev-session header. The W3C baggage header carries key-value pairs in a standardized format, which means third-party observability tools can read the routing context without custom parsing.
-
-The critical safety feature is the enabled flag. In every framework, baggage propagation is off by default. It activates only when the environment variable is explicitly set to true. This means you can deploy the middleware to production and it does nothing until you opt in — no accidental header leakage, no performance impact.
-
-Five frameworks. One header contract. Zero application code changes beyond configuration. That is the baggage middleware.
+Implementing baggage middleware in your Tekton DAG setup provides a robust solution for managing cross-framework interactions, making it easier to build complex, interconnected applications. This enhances the overall reliability and maintainability of your CI/CD pipelines.

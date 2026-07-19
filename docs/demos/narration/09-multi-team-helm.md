@@ -1,15 +1,9 @@
-tekton-dag is designed for multi-team operation from the ground up. Let's see how the Helm chart handles scaling.
+The multi-team Helm feature enables scalable, isolated deployments for different teams within a Kubernetes environment. It effectively organizes team resources by scoping deployments to specific namespaces, ensuring that each team operates within its own environment without interference from others.
 
-We start with a single team — team alpha — running the three-tier demo stack. The Helm chart deploys the orchestrator, applies all Tekton Tasks and Pipeline definitions, creates ConfigMaps for the stack and team configuration, and optionally provisions a build cache persistent volume for faster rebuilds.
+With this feature, teams can manage their configurations and custom hooks independently. Each team can define its own Helm charts, which are tailored to its specific requirements. This flexibility allows for a more streamlined development process, where teams can deploy applications with minimal coordination overhead.
 
-Now imagine three teams need their own CI/CD environments. Each team gets its own Helm release with a different team name value. The chart creates team-scoped ConfigMaps, and each orchestrator instance only manages its own team's stacks and pipelines.
+The isolation provided by namespace scoping enhances security and resource management. Teams can ensure that their applications and dependencies do not conflict with others, leading to more stable deployments. In addition, custom hooks allow teams to implement specific pre- and post-deployment actions, adapting the deployment process to their unique workflows.
 
-The values dot YAML file exposes the key knobs: where to push and pull images, Telepresence versus mirrord for intercepts, default build images per tool, and language version overrides — so team beta can use Java seventeen while team alpha stays on Java twenty-one, all from the same pipeline definitions.
+This approach also simplifies the management of shared tasks and pipelines. By defining these shared resources in a centralized manner, teams can easily access and utilize them without duplicating efforts. This promotes collaboration while maintaining the autonomy of individual teams.
 
-Teams can also inject custom pipeline steps. The pre-build and post-build task parameters let a team wire in their own Tekton Tasks — an image security scan after build, or a data seeding step before tests — without forking the core pipelines. The example tasks in the repo show an image scan hook and a Slack notification hook.
-
-The management GUI provides a team switcher in the web interface. Each team sees their own stacks, pipeline runs, DAG visualizations, and test results — fully isolated.
-
-Watch as a webhook fires for team beta's pull request. Only team beta's orchestrator picks it up. Only team beta's pipeline runs. Team alpha and team gamma are completely undisturbed.
-
-One chart, multiple releases, full team isolation. That is how tekton-dag scales.
+Overall, the multi-team Helm feature is designed to empower teams, providing them with the tools they need to deploy their applications efficiently while maintaining the necessary isolation and customization. It is a vital component for organizations looking to enhance their CI/CD practices in a multi-team environment.
