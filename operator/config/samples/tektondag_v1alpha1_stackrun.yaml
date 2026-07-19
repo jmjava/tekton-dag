@@ -1,0 +1,15 @@
+apiVersion: tektondag.io/v1alpha1
+kind: StackRun
+metadata:
+  name: stackrun-bootstrap-sample
+  namespace: tekton-pipelines
+spec:
+  mode: bootstrap
+  stackRef: stack-one
+  stackFile: stacks/stack-one.yaml
+  gitUrl: https://github.com/jmjava/tekton-dag.git
+  gitRevision: main
+  imageRegistry: localhost:5000
+  cacheRepo: localhost:5000/kaniko-cache
+  timeout: 2h
+  maxRetries: 2

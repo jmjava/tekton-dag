@@ -1,0 +1,97 @@
+{{- if .Values.operator.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tekton-dag-operator
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: tekton-dag-operator
+    {{- include "tekton-dag.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tekton-dag-operator-{{ .Values.namespace }}
+  labels:
+    {{- include "tekton-dag.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["tektondag.io"]
+    resources: ["stacks", "stackruns"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["tektondag.io"]
+    resources: ["stacks/status", "stackruns/status"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: ["tektondag.io"]
+    resources: ["stacks/finalizers", "stackruns/finalizers"]
+    verbs: ["update"]
+  - apiGroups: ["tekton.dev"]
+    resources: ["pipelineruns", "taskruns"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tekton-dag-operator-{{ .Values.namespace }}
+  labels:
+    {{- include "tekton-dag.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tekton-dag-operator-{{ .Values.namespace }}
+subjects:
+  - kind: ServiceAccount
+    name: tekton-dag-operator
+    namespace: {{ .Values.namespace }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tekton-dag-operator
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: tekton-dag-operator
+    {{- include "tekton-dag.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.operator.replicas }}
+  selector:
+    matchLabels:
+      app: tekton-dag-operator
+  template:
+    metadata:
+      labels:
+        app: tekton-dag-operator
+        tekton-dag/team: {{ .Values.teamName }}
+    spec:
+      serviceAccountName: tekton-dag-operator
+      containers:
+        - name: manager
+          image: {{ .Values.operator.image }}
+          args:
+            - --leader-elect=false
+            - --health-probe-bind-address=:8081
+            - --metrics-bind-address=0
+            - --metrics-secure=false
+          ports:
+            - containerPort: 8081
+              name: health
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.operator.resources | nindent 12 }}
+{{- end }}

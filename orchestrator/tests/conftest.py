@@ -36,12 +36,15 @@ def flask_app():
         GIT_URL="https://github.com/org/tekton-dag.git",
         GIT_REVISION="main",
         STACK_FILE="stacks/stack-one.yaml",
-        WEBHOOK_SECRET_NAME="github-webhook-secret",
+        # Empty by default so unit tests do not hit a live kubeconfig for secret lookup.
+        # Fail-closed / HMAC cases set WEBHOOK_SECRET_NAME explicitly and mock get_secret_data.
+        WEBHOOK_SECRET_NAME="",
         WEBHOOK_SECRET="",
         WEBHOOK_VERIFY_SIGNATURE=True,
         PIPELINE_TIMEOUT="2h",
         MAX_RETRIES=2,
         REGISTRIES_FILE="",
+        STACKRUN_VIA_CRD=False,
     )
     resolver = MagicMock(name="StackResolver")
     resolver.list_stacks.return_value = [

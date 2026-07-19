@@ -40,3 +40,8 @@ __pycache__/
 .docgen-state.json
 
 # recordings/*.mp4 — COMMITTED (tracked via LFS for README/Pages links)
+
+# Regenerable / local-only demo tooling junk
+animations/.scene-spec-drafts/
+animations/scenes.py.legacy*
+media/

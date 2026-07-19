@@ -79,6 +79,11 @@ Packaged content under `raw/` is **not** committed by default; `package.sh` copi
 | `orchestrationService.replicas` | int | `1` | Replica count |
 | `orchestrationService.port` | int | `8080` | Container and Service port |
 | `orchestrationService.resources` | object | requests/limits | Pod resources |
+| `orchestrationService.stackrunViaCrd` | bool | `true` | When `operator.enabled`, set `STACKRUN_VIA_CRD` (set `false` to keep direct PipelineRun creates) |
+| `operator.enabled` | bool | `false` | Deploy M14 Go operator + use CRDs from chart `crds/` |
+| `operator.image` | string | `localhost:5000/tekton-dag-operator:latest` | Operator manager image |
+| `operator.replicas` | int | `1` | Operator replicas |
+| `operator.resources` | object | requests/limits | Operator pod resources |
 | `triggers.enabled` | bool | `true` | Included for parity with values; trigger YAML is shipped under `raw/pipelines/` |
 | `triggers.webhookSecretName` | string | `"github-webhook-secret"` | Secret for GitHub HMAC (orchestrator env) |
 | `triggers.githubTokenSecretName` | string | `"github-token"` | Secret name for PR comment token (pipelines) |

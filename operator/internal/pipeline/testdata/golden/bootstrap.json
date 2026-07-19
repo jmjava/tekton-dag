@@ -1,0 +1,78 @@
+{
+  "apiVersion": "tekton.dev/v1",
+  "kind": "PipelineRun",
+  "metadata": {
+    "labels": {
+      "app.kubernetes.io/part-of": "tekton-job-standardization",
+      "tekton.dev/pipeline": "stack-bootstrap"
+    },
+    "name": "stack-bootstrap-fixed",
+    "namespace": "tekton-pipelines"
+  },
+  "spec": {
+    "params": [
+      {
+        "name": "git-url",
+        "value": "https://github.com/jmjava/tekton-dag.git"
+      },
+      {
+        "name": "git-revision",
+        "value": "main"
+      },
+      {
+        "name": "stack-file",
+        "value": "stacks/stack-one.yaml"
+      },
+      {
+        "name": "image-registry",
+        "value": "localhost:5000"
+      },
+      {
+        "name": "cache-repo",
+        "value": "localhost:5000/kaniko-cache"
+      },
+      {
+        "name": "max-retries",
+        "value": "2"
+      }
+    ],
+    "pipelineRef": {
+      "name": "stack-bootstrap"
+    },
+    "taskRunTemplate": {
+      "serviceAccountName": "tekton-pr-sa"
+    },
+    "timeouts": {
+      "pipeline": "2h"
+    },
+    "workspaces": [
+      {
+        "name": "shared-workspace",
+        "volumeClaimTemplate": {
+          "spec": {
+            "accessModes": [
+              "ReadWriteOnce"
+            ],
+            "resources": {
+              "requests": {
+                "storage": "2Gi"
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "ssh-key",
+        "secret": {
+          "secretName": "ssh-key-secret"
+        }
+      },
+      {
+        "name": "build-cache",
+        "persistentVolumeClaim": {
+          "claimName": "build-cache-pvc"
+        }
+      }
+    ]
+  }
+}

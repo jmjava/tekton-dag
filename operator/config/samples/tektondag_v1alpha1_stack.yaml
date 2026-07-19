@@ -1,0 +1,39 @@
+apiVersion: tektondag.io/v1alpha1
+kind: Stack
+metadata:
+  name: stack-one
+  namespace: tekton-pipelines
+spec:
+  name: stack-one
+  description: "Demo 3-tier stack"
+  stackFile: stacks/stack-one.yaml
+  gitUrl: https://github.com/jmjava/tekton-dag.git
+  defaults:
+    namespace: staging
+    imageRegistry: localhost:5000
+  apps:
+    - name: demo-fe
+      repo: jmjava/tekton-dag-vue-fe
+      role: frontend
+      propagationRole: originator
+      build:
+        tool: npm
+        runtime: vue
+      downstream:
+        - release-lifecycle-demo
+    - name: release-lifecycle-demo
+      repo: jmjava/tekton-dag-spring-boot
+      role: middleware
+      propagationRole: forwarder
+      build:
+        tool: maven
+        runtime: spring-boot
+      downstream:
+        - demo-api
+    - name: demo-api
+      repo: jmjava/tekton-dag-spring-boot-gradle
+      role: persistence
+      propagationRole: terminal
+      build:
+        tool: maven
+        runtime: spring-boot

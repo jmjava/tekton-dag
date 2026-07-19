@@ -602,6 +602,35 @@ def test_webhook_accepts_valid_signature(mock_build_pr, mock_create, client, fla
     assert rv.get_json()["pipelinerun"] == "signed-pr"
 
 
+@patch("routes.k8s_client.get_secret_data")
+@patch("routes.k8s_client.create_pipelinerun")
+@patch("routes.builder.build_pr_pipelinerun")
+def test_webhook_accepts_valid_signature_from_named_secret(
+    mock_build_pr, mock_create, mock_get_secret, client, flask_app
+):
+    import webhook_auth
+
+    flask_app.config["WEBHOOK_SECRET"] = ""
+    flask_app.config["WEBHOOK_SECRET_NAME"] = "github-webhook-secret"
+    mock_get_secret.return_value = {"secret": "from-k8s"}
+    mock_create.return_value = "named-secret-pr"
+    payload = _pr_payload("opened", repo_name="demo-fe", pr_number=1, head_sha="abc")
+    body = json.dumps(payload).encode("utf-8")
+    sig = webhook_auth.compute_signature("from-k8s", body)
+    rv = client.post(
+        "/webhook/github",
+        data=body,
+        content_type="application/json",
+        headers={
+            "X-GitHub-Event": "pull_request",
+            "X-Hub-Signature-256": sig,
+        },
+    )
+    assert rv.status_code == 200
+    assert rv.get_json()["pipelinerun"] == "named-secret-pr"
+    mock_get_secret.assert_called()
+
+
 @patch("routes.k8s_client.list_configmap_names")
 @patch("routes.k8s_client.list_secret_names")
 def test_injection_status_reports_missing_secret(

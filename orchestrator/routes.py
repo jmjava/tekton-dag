@@ -19,6 +19,7 @@ from flask import Flask, request, jsonify, current_app
 
 import k8s_client
 import pipelinerun_builder as builder
+import stackrun_builder
 import graph_client
 import webhook_auth
 import registry_resolver
@@ -44,6 +45,28 @@ def _reliability_kwargs(cfg, data=None):
     except (TypeError, ValueError):
         max_retries = cfg.get("MAX_RETRIES", 2)
     return {"timeout": timeout, "max_retries": max_retries}
+
+
+def _via_crd(cfg) -> bool:
+    return bool(cfg.get("STACKRUN_VIA_CRD"))
+
+
+def _create_run(cfg, *, mode: str, pipelinerun_manifest=None, stackrun_kwargs=None):
+    """
+    Create a PipelineRun or StackRun depending on STACKRUN_VIA_CRD.
+
+    Returns (response_dict, status_code).
+    """
+    ns = cfg["NAMESPACE"]
+    try:
+        if _via_crd(cfg):
+            manifest = stackrun_builder.build_stackrun(mode=mode, namespace=ns, **(stackrun_kwargs or {}))
+            name = k8s_client.create_stackrun(manifest, namespace=ns)
+            return {"status": "created", "stackrun": name, "pipelinerun": name, "mode": mode}, 200
+        name = k8s_client.create_pipelinerun(pipelinerun_manifest, namespace=ns)
+        return {"status": "created", "pipelinerun": name, "mode": mode}, 200
+    except Exception as e:
+        return {"error": str(e)}, 500
 
 
 def _verify_webhook_or_reject():
@@ -103,10 +126,23 @@ def register_routes(app: Flask):
 
     @app.route("/api/runs", methods=["GET"])
     def list_runs():
-        ns = current_app.config["NAMESPACE"]
+        cfg = current_app.config
+        ns = cfg["NAMESPACE"]
         limit = request.args.get("limit", 20, type=int)
-        runs = k8s_client.list_pipelineruns(namespace=ns, limit=limit)
         summary = []
+        if _via_crd(cfg):
+            runs = k8s_client.list_stackruns(namespace=ns, limit=limit)
+            for r in runs:
+                status = r.get("status", {})
+                summary.append({
+                    "name": r["metadata"]["name"],
+                    "pipeline": r.get("spec", {}).get("mode", ""),
+                    "status": status.get("phase", "Unknown"),
+                    "pipelinerun": status.get("pipelineRunName", ""),
+                    "created": r["metadata"].get("creationTimestamp", ""),
+                })
+            return jsonify(summary)
+        runs = k8s_client.list_pipelineruns(namespace=ns, limit=limit)
         for r in runs:
             conditions = r.get("status", {}).get("conditions", [{}])
             reason = conditions[0].get("reason", "Unknown") if conditions else "Unknown"
@@ -157,6 +193,14 @@ def register_routes(app: Flask):
                 namespace=cfg["NAMESPACE"],
                 **rel,
             )
+            sr_kw = dict(
+                stack_file=stack_file,
+                git_url=git_url,
+                git_revision=git_revision,
+                image_registry=cfg["IMAGE_REGISTRY"],
+                cache_repo=cfg["CACHE_REPO"],
+                **rel,
+            )
         elif mode == "merge":
             changed_app = data.get("changed_app", "")
             if not changed_app:
@@ -169,6 +213,15 @@ def register_routes(app: Flask):
                 image_registry=cfg["IMAGE_REGISTRY"],
                 cache_repo=cfg["CACHE_REPO"],
                 namespace=cfg["NAMESPACE"],
+                **rel,
+            )
+            sr_kw = dict(
+                stack_file=stack_file,
+                git_url=git_url,
+                git_revision=git_revision,
+                image_registry=cfg["IMAGE_REGISTRY"],
+                cache_repo=cfg["CACHE_REPO"],
+                changed_app=changed_app,
                 **rel,
             )
         elif mode == "promote":
@@ -209,6 +262,18 @@ def register_routes(app: Flask):
                 approved_by=approved_by,
                 **rel,
             )
+            sr_kw = dict(
+                stack_file=stack_file,
+                image_registry=cfg["IMAGE_REGISTRY"],
+                changed_app=changed_app,
+                release_version=release_version,
+                target_environment=target["target_environment"],
+                target_registry=target["target_registry"],
+                credentials_secret=target["credentials_secret"],
+                require_approval=require_approval,
+                approved_by=approved_by,
+                **rel,
+            )
         else:
             changed_app = data.get("changed_app", "")
             pr_number = data.get("pr_number", 0)
@@ -228,12 +293,23 @@ def register_routes(app: Flask):
                 namespace=cfg["NAMESPACE"],
                 **rel,
             )
+            sr_kw = dict(
+                stack_file=stack_file,
+                git_url=git_url,
+                git_revision=git_revision,
+                image_registry=cfg["IMAGE_REGISTRY"],
+                cache_repo=cfg["CACHE_REPO"],
+                changed_app=changed_app,
+                pr_number=pr_number,
+                app_revisions=app_revisions,
+                intercept_backend=intercept_backend,
+                **rel,
+            )
 
-        try:
-            name = k8s_client.create_pipelinerun(run, namespace=cfg["NAMESPACE"])
-            return jsonify({"status": "created", "pipelinerun": name, "mode": mode})
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
+        body, code = _create_run(
+            cfg, mode=mode, pipelinerun_manifest=run, stackrun_kwargs=sr_kw
+        )
+        return jsonify(body), code
 
     @app.route("/api/bootstrap", methods=["POST"])
     def bootstrap():
@@ -252,12 +328,18 @@ def register_routes(app: Flask):
             namespace=cfg["NAMESPACE"],
             **rel,
         )
-
-        try:
-            name = k8s_client.create_pipelinerun(run, namespace=cfg["NAMESPACE"])
-            return jsonify({"status": "created", "pipelinerun": name, "mode": "bootstrap"})
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
+        sr_kw = dict(
+            stack_file=stack_file,
+            git_url=cfg["GIT_URL"],
+            git_revision=cfg["GIT_REVISION"],
+            image_registry=cfg["IMAGE_REGISTRY"],
+            cache_repo=cfg["CACHE_REPO"],
+            **rel,
+        )
+        body, code = _create_run(
+            cfg, mode="bootstrap", pipelinerun_manifest=run, stackrun_kwargs=sr_kw
+        )
+        return jsonify(body), code
 
     @app.route("/webhook/github", methods=["POST"])
     def github_webhook():
@@ -300,6 +382,7 @@ def register_routes(app: Flask):
 
         if action in ("opened", "synchronize", "reopened"):
             app_rev_json = json.dumps({changed_app: head_sha})
+            pr_repo_url = pr.get("base", {}).get("repo", {}).get("ssh_url", "")
             run = builder.build_pr_pipelinerun(
                 stack_file=stack_file,
                 changed_app=changed_app,
@@ -311,14 +394,26 @@ def register_routes(app: Flask):
                 intercept_backend=cfg["INTERCEPT_BACKEND"],
                 app_revisions=app_rev_json,
                 namespace=cfg["NAMESPACE"],
-                pr_repo_url=pr.get("base", {}).get("repo", {}).get("ssh_url", ""),
+                pr_repo_url=pr_repo_url,
                 **rel,
             )
-            try:
-                name = k8s_client.create_pipelinerun(run, namespace=cfg["NAMESPACE"])
-                return jsonify({"status": "created", "pipelinerun": name, "mode": "pr"})
-            except Exception as e:
-                return jsonify({"error": str(e)}), 500
+            sr_kw = dict(
+                stack_file=stack_file,
+                git_url=cfg["GIT_URL"],
+                git_revision=cfg["GIT_REVISION"],
+                image_registry=cfg["IMAGE_REGISTRY"],
+                cache_repo=cfg["CACHE_REPO"],
+                intercept_backend=cfg["INTERCEPT_BACKEND"],
+                changed_app=changed_app,
+                pr_number=pr_number,
+                app_revisions=app_rev_json,
+                pr_repo_url=pr_repo_url,
+                **rel,
+            )
+            body, code = _create_run(
+                cfg, mode="pr", pipelinerun_manifest=run, stackrun_kwargs=sr_kw
+            )
+            return jsonify(body), code
 
         elif action == "closed" and merged:
             run = builder.build_merge_pipelinerun(
@@ -331,11 +426,19 @@ def register_routes(app: Flask):
                 namespace=cfg["NAMESPACE"],
                 **rel,
             )
-            try:
-                name = k8s_client.create_pipelinerun(run, namespace=cfg["NAMESPACE"])
-                return jsonify({"status": "created", "pipelinerun": name, "mode": "merge"})
-            except Exception as e:
-                return jsonify({"error": str(e)}), 500
+            sr_kw = dict(
+                stack_file=stack_file,
+                git_url=cfg["GIT_URL"],
+                git_revision="main",
+                image_registry=cfg["IMAGE_REGISTRY"],
+                cache_repo=cfg["CACHE_REPO"],
+                changed_app=changed_app,
+                **rel,
+            )
+            body, code = _create_run(
+                cfg, mode="merge", pipelinerun_manifest=run, stackrun_kwargs=sr_kw
+            )
+            return jsonify(body), code
 
         return jsonify({"status": "ignored", "reason": f"action={action}"}), 200
 

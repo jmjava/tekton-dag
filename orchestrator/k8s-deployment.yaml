@@ -46,8 +46,10 @@ spec:
               value: /stacks
             - name: TEAMS_DIR
               value: /teams
+            # Leave empty for Kind/newman without a Secret; set to a Secret name in real clusters
+            # (fail-closed when named Secret is missing). Helm sets triggers.webhookSecretName.
             - name: WEBHOOK_SECRET_NAME
-              value: github-webhook-secret
+              value: ""
             - name: WEBHOOK_VERIFY_SIGNATURE
               value: "true"
             - name: PIPELINE_TIMEOUT

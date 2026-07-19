@@ -94,9 +94,10 @@ echo "  tekton-dag regression (encompassing suite)"
 echo "  REPO_ROOT=$REPO_ROOT"
 echo "=============================================="
 
-# Prefer repo .venv when default python3 has no pytest (common when venv not activated).
-if ! python3 -c "import pytest" 2>/dev/null && [[ -x "$REPO_ROOT/.venv/bin/python3" ]]; then
-  echo ">>> Using $REPO_ROOT/.venv/bin for Python (pytest not on PATH python3)"
+# Prefer repo .venv when present so editable installs (tekton-dag-common, etc.) resolve.
+# Fall back to PATH python3 only when .venv is missing (CI images may install globally).
+if [[ -x "$REPO_ROOT/.venv/bin/python3" ]]; then
+  echo ">>> Using $REPO_ROOT/.venv/bin for Python"
   export PATH="$REPO_ROOT/.venv/bin:$PATH"
 fi
 

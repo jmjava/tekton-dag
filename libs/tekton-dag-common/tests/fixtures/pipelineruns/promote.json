@@ -1,0 +1,97 @@
+{
+  "apiVersion": "tekton.dev/v1",
+  "kind": "PipelineRun",
+  "metadata": {
+    "annotations": {
+      "tekton-dag.io/approved-by": "alice",
+      "tekton-dag.io/max-retries-note": "PipelineRun param max-retries is for audit; Tekton task retries on promote remain fixed at 2",
+      "tekton-dag.io/release-version": "0.1.0",
+      "tekton-dag.io/require-approval": "true"
+    },
+    "labels": {
+      "app.kubernetes.io/part-of": "tekton-job-standardization",
+      "tekton-dag.io/environment": "staging",
+      "tekton.dev/pipeline": "stack-promote"
+    },
+    "name": "stack-promote-staging-fixed",
+    "namespace": "tekton-pipelines"
+  },
+  "spec": {
+    "params": [
+      {
+        "name": "stack-file",
+        "value": "stacks/stack-one.yaml"
+      },
+      {
+        "name": "release-version",
+        "value": "0.1.0"
+      },
+      {
+        "name": "target-environment",
+        "value": "staging"
+      },
+      {
+        "name": "image-registry",
+        "value": "localhost:5000"
+      },
+      {
+        "name": "target-registry",
+        "value": "ghcr.io/example"
+      },
+      {
+        "name": "credentials-secret",
+        "value": "regcred"
+      },
+      {
+        "name": "changed-app",
+        "value": "demo-fe"
+      },
+      {
+        "name": "apps",
+        "value": "demo-fe"
+      },
+      {
+        "name": "max-retries",
+        "value": "2"
+      }
+    ],
+    "pipelineRef": {
+      "name": "stack-promote"
+    },
+    "taskRunTemplate": {
+      "serviceAccountName": "tekton-pr-sa"
+    },
+    "timeouts": {
+      "pipeline": "2h"
+    },
+    "workspaces": [
+      {
+        "name": "shared-workspace",
+        "volumeClaimTemplate": {
+          "spec": {
+            "accessModes": [
+              "ReadWriteOnce"
+            ],
+            "resources": {
+              "requests": {
+                "storage": "1Gi"
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "dockerconfig",
+        "secret": {
+          "items": [
+            {
+              "key": ".dockerconfigjson",
+              "path": "config.json"
+            }
+          ],
+          "secretName": "regcred"
+        }
+      }
+    ]
+  }
+}

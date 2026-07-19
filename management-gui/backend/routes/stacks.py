@@ -1,8 +1,16 @@
+import sys
+from pathlib import Path
+
 from flask import Blueprint, current_app, jsonify, request
 
 import k8s_client
 
 bp = Blueprint("stacks", __name__)
+
+# Editable / sibling checkout: allow import without requiring a prior pip install.
+_COMMON = Path(__file__).resolve().parents[3] / "libs" / "tekton-dag-common"
+if _COMMON.is_dir() and str(_COMMON) not in sys.path:
+    sys.path.insert(0, str(_COMMON))
 
 try:
     from tekton_dag_common.deploy_injection import (

@@ -46,6 +46,9 @@ def create_app():
             "REGISTRIES_FILE",
             os.path.join(os.environ.get("STACKS_DIR", "/stacks"), "registries.yaml"),
         ),
+        # M14: when true, create StackRun CRs instead of PipelineRuns directly.
+        STACKRUN_VIA_CRD=os.environ.get("STACKRUN_VIA_CRD", "false").lower()
+        in ("1", "true", "yes"),
     )
 
     stacks_dir = os.environ.get("STACKS_DIR", "/stacks")

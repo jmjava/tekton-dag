@@ -67,10 +67,26 @@ orchestrationService:
   # Verify GitHub webhooks when the named Secret exists (key: secret|value|webhook-secret)
   webhookVerifySignature: true
   registriesFile: "/stacks/registries.yaml"
+  # M14: when operator.enabled, defaults to creating StackRun CRs.
+  # Set explicitly to false to keep direct PipelineRun creation while operator is installed.
+  stackrunViaCrd: true
   resources:
     requests:
       cpu: "100m"
       memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "256Mi"
+
+# M14 Go operator (Kubebuilder): reconciles Stack + StackRun → Tekton PipelineRuns
+operator:
+  enabled: false
+  image: "localhost:5000/tekton-dag-operator:latest"
+  replicas: 1
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
     limits:
       cpu: "500m"
       memory: "256Mi"

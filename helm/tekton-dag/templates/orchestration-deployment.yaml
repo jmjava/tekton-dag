@@ -54,6 +54,9 @@ spec:
               value: {{ .Values.orchestrationService.maxRetries | quote }}
             - name: REGISTRIES_FILE
               value: {{ .Values.orchestrationService.registriesFile | quote }}
+            - name: STACKRUN_VIA_CRD
+              # On when operator is enabled (unless stackrunViaCrd is explicitly false).
+              value: {{ if and .Values.operator.enabled (ne .Values.orchestrationService.stackrunViaCrd false) }}"true"{{ else }}"false"{{ end }}
             - name: STACKS_DIR
               value: /stacks
             - name: TEAMS_DIR

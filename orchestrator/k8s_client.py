@@ -99,6 +99,69 @@ def list_pipelineruns(namespace="tekton-pipelines", limit=20, label_selector="")
         return []
 
 
+# M14 CRDs (tektondag.io/v1alpha1)
+STACKRUN_GROUP = "tektondag.io"
+STACKRUN_VERSION = "v1alpha1"
+STACKRUN_PLURAL = "stackruns"
+
+
+def create_stackrun(run_manifest, namespace="tekton-pipelines"):
+    """
+    Create a StackRun custom resource.
+
+    Returns the created resource name, or raises on failure.
+    """
+    api = _get_api()
+    try:
+        result = api.create_namespaced_custom_object(
+            group=STACKRUN_GROUP,
+            version=STACKRUN_VERSION,
+            namespace=namespace,
+            plural=STACKRUN_PLURAL,
+            body=run_manifest,
+        )
+        name = result["metadata"]["name"]
+        logger.info("Created StackRun: %s in %s", name, namespace)
+        return name
+    except ApiException as e:
+        logger.error("Failed to create StackRun: %s", e.reason)
+        raise
+
+
+def list_stackruns(namespace="tekton-pipelines", limit=20):
+    """List recent StackRun CRs."""
+    api = _get_api()
+    try:
+        result = api.list_namespaced_custom_object(
+            group=STACKRUN_GROUP,
+            version=STACKRUN_VERSION,
+            namespace=namespace,
+            plural=STACKRUN_PLURAL,
+            limit=limit,
+        )
+        return result.get("items", [])
+    except ApiException as e:
+        logger.error("Failed to list StackRuns: %s", e.reason)
+        return []
+
+
+def get_stackrun(name, namespace="tekton-pipelines"):
+    """Get a StackRun by name, or None if missing."""
+    api = _get_api()
+    try:
+        return api.get_namespaced_custom_object(
+            group=STACKRUN_GROUP,
+            version=STACKRUN_VERSION,
+            namespace=namespace,
+            plural=STACKRUN_PLURAL,
+            name=name,
+        )
+    except ApiException as e:
+        if e.status == 404:
+            return None
+        raise
+
+
 def get_secret_data(name, namespace="tekton-pipelines"):
     """
     Return decoded string data from a Secret, or None if missing.
