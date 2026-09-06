@@ -1,0 +1,34 @@
+cff-version: 1.2.0
+message: If you use tekton-dag, please cite it using these metadata.
+type: software
+title: "tekton-dag: stack-aware CI/CD with header-based pull-request isolation"
+abstract: >-
+  Tekton-DAG models a polyglot application group as a directed acyclic graph
+  and drives a single family of Tekton pipelines (bootstrap, PR, merge, promote).
+  Pull-request isolation uses W3C baggage / session-header propagation and
+  header-matched intercepts (Telepresence or mirrord) so only the changed
+  node(s) are rebuilt, while original traffic continues to serve the baseline
+  deployment.
+authors:
+  - family-names: Menke
+    given-names: John
+    email: jmjava@gmail.com
+repository-code: "https://github.com/jmjava/tekton-dag"
+url: "https://jmjava.github.io/tekton-dag/"
+license: Apache-2.0
+keywords:
+  - continuous-integration
+  - tekton
+  - kubernetes
+  - microservices
+  - preview-environments
+  - w3c-baggage
+  - intercept-routing
+preferred-citation:
+  type: unpublished
+  title: "Tekton-DAG: Stack-Aware Pull-Request Isolation for Polyglot Microservice Ecosystems"
+  authors:
+    - family-names: Menke
+      given-names: John
+  year: 2026
+  notes: "Workshop / tool-demonstration draft; see docs/research/"

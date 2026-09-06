@@ -19,6 +19,7 @@ This folder contains design, operations, and verification docs for the tekton-da
 | **Shell scripts index** | [SCRIPTS.md](SCRIPTS.md) — every `scripts/*.sh` entrypoint; [../scripts/README.md](../scripts/README.md) — quick links |
 | **Management GUI extension** | [MANAGEMENT-GUI-EXTENSION.md](MANAGEMENT-GUI-EXTENSION.md) — Vue/Flask/Tekton pattern; [demos/segments-m12-2-regression-gui.md](demos/segments-m12-2-regression-gui.md) — video shot list |
 | **Clusters vs production** | [ENVIRONMENTS-AND-CLUSTERS.md](ENVIRONMENTS-AND-CLUSTERS.md) — validation / baseline vs production cluster wording |
+| **Academic / workshop packaging** | [research/](research/) — [research/README.md](research/README.md), venue map, contribution claims, IEEE 4-page draft |
 
 ## Active documents
 
@@ -67,6 +68,7 @@ This folder contains design, operations, and verification docs for the tekton-da
 |----------|-------------|
 | [demo-playbook.md](demo-playbook.md) | What to record and how to demo (complements [M8](../milestones/milestone-8.md)) |
 | [README-FULL.md](README-FULL.md) | Long-form design: Tekton job standardization, stack model, intercepts, versioning (historical depth) |
+| [research/README.md](research/README.md) | Organize the multi-repo work for workshop / ICSE tool-demo review (not a product changelog) |
 
 ## Archive
 
