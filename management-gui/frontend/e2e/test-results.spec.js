@@ -57,7 +57,7 @@ test.describe('Test Results view', () => {
   })
 
   test('empty state when no runs match filter', async ({ page }) => {
-    await mockApi(page, { pipelineRuns: { items: [] } })
+    await mockApi(page, { stackRuns: { items: [] } })
     await page.goto('/test-results')
     await expect(page.locator('.empty')).toContainText('No runs match')
   })

@@ -11,11 +11,11 @@ export const useRunsStore = defineStore('runs', () => {
   async function fetchRuns() {
     const { teamUrl, get } = useApi()
     try {
-      const data = await get(teamUrl('/pipelineruns?limit=50'))
+      const data = await get(teamUrl('/stackruns?limit=50'))
       runs.value = data.items || []
       error.value = ''
     } catch (e) {
-      error.value = e.message || 'Failed to load pipeline runs'
+      error.value = e.message || 'Failed to load stack runs'
       runs.value = []
     } finally {
       loading.value = false

@@ -1,7 +1,7 @@
 <template>
   <div>
     <h1>Trigger jobs</h1>
-    <p>Start a pipeline run (PR test, bootstrap, or merge).</p>
+    <p>Create a StackRun (PR test, bootstrap, merge, or promote).</p>
 
     <form @submit.prevent="submit" class="trigger-form">
       <div class="field">
@@ -10,6 +10,7 @@
           <option value="pr">PR test</option>
           <option value="bootstrap">Bootstrap</option>
           <option value="merge">Merge</option>
+          <option value="promote">Promote</option>
         </select>
       </div>
 
@@ -23,7 +24,7 @@
 
       <div class="field">
         <label>Changed app</label>
-        <select v-model="form.app" required>
+        <select v-model="form.app" :required="form.pipelineType !== 'bootstrap'">
           <option value="">— select —</option>
           <option v-for="a in appOptions" :key="a" :value="a">{{ a }}</option>
         </select>
@@ -32,6 +33,21 @@
       <div class="field" v-if="form.pipelineType === 'pr'">
         <label>PR number</label>
         <input v-model.number="form.prNumber" type="number" min="1" required placeholder="e.g. 1" />
+      </div>
+
+      <div class="field" v-if="form.pipelineType === 'promote'">
+        <label>Release version</label>
+        <input v-model="form.releaseVersion" type="text" required placeholder="e.g. 1.2.0" />
+      </div>
+      <div class="field" v-if="form.pipelineType === 'promote'">
+        <label>Target environment</label>
+        <input v-model="form.targetEnvironment" type="text" required placeholder="e.g. staging" />
+      </div>
+      <div class="field" v-if="form.pipelineType === 'promote'">
+        <label class="checkbox">
+          <input v-model="form.requireApproval" type="checkbox" />
+          Require approval before PipelineRun
+        </label>
       </div>
 
       <div class="field">
@@ -55,7 +71,7 @@
       </div>
 
       <div class="form-actions">
-        <button type="submit" :disabled="submitting">Create PipelineRun</button>
+        <button type="submit" :disabled="submitting">Create StackRun</button>
       </div>
     </form>
 
@@ -90,6 +106,9 @@ const form = reactive({
   gitRevision: 'main',
   imageRegistry: 'localhost:5000',
   versionOverrides: '{}',
+  releaseVersion: '',
+  targetEnvironment: '',
+  requireApproval: true,
 })
 
 const stackOptions = computed(() => stacksStore.stacks.map(s => s.stack_file))
@@ -122,10 +141,15 @@ async function submit() {
       versionOverrides: form.versionOverrides && form.versionOverrides.trim() !== '{}' ? form.versionOverrides : undefined,
     }
     if (form.pipelineType === 'pr') body.prNumber = form.prNumber
+    if (form.pipelineType === 'promote') {
+      body.releaseVersion = form.releaseVersion
+      body.targetEnvironment = form.targetEnvironment
+      body.requireApproval = form.requireApproval
+    }
     const data = await post(teamUrl('/trigger'), body)
-    message.value = 'PipelineRun created.'
+    message.value = 'StackRun created.'
     messageError.value = false
-    if (data.pipelineRun) createdRun.value = data.pipelineRun
+    createdRun.value = data.stackrun || data.pipelineRun
   } catch (e) {
     message.value = e.message || 'Request failed'
     messageError.value = true
@@ -140,6 +164,8 @@ async function submit() {
 .field { margin-bottom: 0.75rem; }
 .field label { display: block; margin-bottom: 0.25rem; font-weight: 500; font-size: 0.9rem; }
 .field select, .field input { width: 100%; padding: 0.4rem; border: 1px solid #ccc; border-radius: 4px; }
+.field .checkbox { display: flex; align-items: center; gap: 0.4rem; font-weight: 500; }
+.field .checkbox input { width: auto; }
 .form-actions { margin-top: 1rem; }
 .form-actions button { padding: 0.5rem 1rem; cursor: pointer; background: #1a1a2e; color: #fff; border: none; border-radius: 4px; }
 .form-actions button:disabled { opacity: 0.6; cursor: not-allowed; }

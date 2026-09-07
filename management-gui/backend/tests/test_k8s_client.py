@@ -99,6 +99,42 @@ def test_create_pipelinerun_error(mock_get_api):
         k8s_client.create_pipelinerun("ctx", "ns", {})
 
 
+@patch("k8s_client.get_api")
+def test_list_stackruns(mock_get_api):
+    mock_api = MagicMock()
+    mock_api.list_namespaced_custom_object.return_value = {
+        "items": [{"metadata": {"name": "sr-1"}}]
+    }
+    mock_get_api.return_value = mock_api
+    result = k8s_client.list_stackruns("ctx", "ns")
+    assert result[0]["metadata"]["name"] == "sr-1"
+    mock_api.list_namespaced_custom_object.assert_called_once_with(
+        group="tektondag.io", version="v1alpha1", namespace="ns",
+        plural="stackruns", limit=50, label_selector="",
+    )
+
+
+@patch("k8s_client.get_api")
+def test_get_stackrun_not_found(mock_get_api):
+    from kubernetes.client.rest import ApiException
+    mock_api = MagicMock()
+    mock_api.get_namespaced_custom_object.side_effect = ApiException(status=404, reason="Not Found")
+    mock_get_api.return_value = mock_api
+    assert k8s_client.get_stackrun("ctx", "ns", "missing") is None
+
+
+@patch("k8s_client.get_api")
+def test_patch_stackrun(mock_get_api):
+    mock_api = MagicMock()
+    mock_api.patch_namespaced_custom_object.return_value = {
+        "metadata": {"name": "sr-1"},
+        "spec": {"approvedBy": "alice"},
+    }
+    mock_get_api.return_value = mock_api
+    result = k8s_client.patch_stackrun("ctx", "ns", "sr-1", {"spec": {"approvedBy": "alice"}})
+    assert result["spec"]["approvedBy"] == "alice"
+
+
 def test_get_api_caches_client():
     k8s_client._clients.clear()
     with patch("k8s_client.config") as mock_config, \

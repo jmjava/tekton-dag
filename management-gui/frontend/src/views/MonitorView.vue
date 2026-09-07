@@ -1,14 +1,15 @@
 <template>
   <div>
     <h1>Monitor jobs</h1>
-    <p>Recent PipelineRuns (polling every 10s).</p>
+    <p>Recent StackRuns (polling every 10s).</p>
     <div v-if="store.error" class="error">{{ store.error }}</div>
-    <DataTable v-else :columns="columns" :rows="store.runs" empty-text="No pipeline runs found.">
+    <DataTable v-else :columns="columns" :rows="store.runs" empty-text="No stack runs found.">
       <template #status="{ value }">
         <StatusBadge :status="value" />
       </template>
       <template #startTime="{ value }">{{ formatTime(value) }}</template>
       <template #durationSeconds="{ value }">{{ value != null ? value + 's' : '-' }}</template>
+      <template #pipelineRunName="{ value }">{{ value || '—' }}</template>
       <template #name="{ row }">
         <router-link :to="'/monitor/' + row.name">{{ row.name }}</router-link>
       </template>
@@ -29,10 +30,10 @@ const teams = useTeamsStore()
 
 const columns = [
   { key: 'name', label: 'Name' },
-  { key: 'pipeline', label: 'Pipeline' },
+  { key: 'mode', label: 'Mode' },
   { key: 'status', label: 'Status' },
+  { key: 'pipelineRunName', label: 'PipelineRun' },
   { key: 'startTime', label: 'Start' },
-  { key: 'durationSeconds', label: 'Duration' },
 ]
 
 function formatTime(iso) {
