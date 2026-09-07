@@ -16,7 +16,7 @@ It does **not** invent a new platform. It maps what is already in this repo (and
 | **Multi-repo artifact map** | Draft | [`artifact-map.md`](artifact-map.md) |
 | **Evaluation evidence** | Partial | [`evaluation.md`](evaluation.md) — `--local-only` green (105+47+61+17 pytest, 15 vitest). **No** PR CI, **no** Java/PHP/operator in the driver, **no** cluster E2E in this environment, **no** comparative study |
 | **ACM artifact badges** | Partial | [`artifact-checklist.md`](artifact-checklist.md) — Available is blocked until Zenodo/Software Heritage DOI; Reusable needs a reviewer-timed Kind path |
-| **SEIP / full research track** | Not ready | Needs industrial context or a controlled comparative study; see [`gaps.md`](gaps.md) |
+| **SEIP / full research track** | Not this cycle | Standing backlog: [seip-tasks.md](seip-tasks.md). Gate 0 is industrial context. No ICSE 2027 deadline. |
 
 **Short answer: no, the testing work is not “all done.”** There is a real, passing *local* unit/static suite. Cluster E2E, several language libraries, the operator, GitHub Actions coverage, and every comparative study a workshop PC might still ask for are incomplete or unenforced.
 
@@ -40,7 +40,8 @@ See [`evaluation.md`](evaluation.md) for counts from a live `--local-only` run.
 | [related-work.md](related-work.md) | Positioning vs. CI DAGs, preview envs, intercepts, TIA, baggage |
 | [evaluation.md](evaluation.md) | What we can cite today vs. what reviewers will ask for |
 | [artifact-checklist.md](artifact-checklist.md) | ACM badges + ICSE demo “easy-to-use tool” requirements |
-| [gaps.md](gaps.md) | Remaining work before a submission is review-ready |
+| [gaps.md](gaps.md) | Remaining work before a workshop/tool-demo is review-ready |
+| [seip-tasks.md](seip-tasks.md) | Iterable SEIP backlog (no this-cycle deadline): context gate, evidence, CI, paper |
 | [paper/](paper/) | IEEE `IEEEtran` draft + BibTeX |
 
 Engineering sources of truth remain where they are: [README](../../README.md), [DAG-AND-PROPAGATION.md](../DAG-AND-PROPAGATION.md), [milestones](../../milestones/), [REGRESSION.md](../REGRESSION.md). This folder **cites** those documents; it does not replace them.

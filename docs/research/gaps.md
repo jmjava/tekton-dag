@@ -30,9 +30,9 @@ Organizing the repo (this folder, license, citation, paper skeleton) is **necess
 2. Reviewer VM or preloaded Kind image → **Functional**.
 3. Re-run `--local-only` regression on a clean machine and paste the log summary into the AE abstract.
 
-## Should-do to raise the *research* bar (not required for a tool workshop)
+## SEIP (not aimed at this cycle)
 
-From [`evaluation.md`](evaluation.md): intercept vs. namespace-clone cost, concurrent PR isolation, developer study, TIA comparison. Any one of these can become the core of a later SEIP or research paper; stuffing them as unsourced claims into the 4-pager will hurt.
+See **[seip-tasks.md](seip-tasks.md)**. No ICSE 2027 date. Gate 0 is a real site; Workstream C (CI) can still proceed around other work.
 
 ## Must-do for a defensible “tests are done” story
 
