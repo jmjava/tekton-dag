@@ -154,7 +154,7 @@ wait_stackrun_reconcile() {
     fi
     pr_count="$(kubectl get pipelinerun -n "$NS" -l tektondag.io/stackrun --no-headers 2>/dev/null | wc -l | tr -d ' ')"
     echo "  StackRuns with PipelineRunName: ${ready}/${total}; labeled PipelineRuns: ${pr_count} (${elapsed}s)"
-    if [[ "$total" -ge 1 && "$ready" -ge 1 && "$pr_count" -ge 1 ]]; then
+    if [[ "$total" -ge 1 && "$ready" -eq "$total" && "$pr_count" -ge "$total" ]]; then
       kubectl get stackrun -n "$NS" -l app.kubernetes.io/part-of=tekton-job-standardization
       kubectl get pipelinerun -n "$NS" -l tektondag.io/stackrun
       echo "  Operator soak: StackRun -> PipelineRun OK"

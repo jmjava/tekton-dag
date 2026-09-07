@@ -24,8 +24,8 @@ docgen:
           Enablement: Helm operator.enabled and Kind STACKRUN_VIA_CRD default on. Golden
           Python↔Go PipelineRun builders.
       - >-
-          Status: CRD-primary is the default runtime; webhook certs and GUI StackRun views
-          remain follow-ons.
+          Status: CRD-primary is the default runtime; M15 hygiene (idempotent
+          create) in progress. Webhook certs and Team CR as API source remain M16.
       context:
         paths:
         - operator/README.md

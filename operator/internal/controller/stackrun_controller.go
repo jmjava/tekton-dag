@@ -10,7 +10,7 @@ You may obtain a copy of the License at
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
+See the License for the specific license governing permissions and
 limitations under the License.
 */
 
@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -27,8 +28,10 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	tektondagv1alpha1 "github.com/jmjava/tekton-dag/operator/api/v1alpha1"
@@ -36,9 +39,11 @@ import (
 )
 
 const (
-	// Label marking PipelineRuns owned by a StackRun. OwnerReference is set but
-	// blockOwnerDeletion=false and we document orphan GC so Results history survives.
+	// Label marking PipelineRuns created for a StackRun. OwnerReference is not
+	// set (orphan on StackRun delete) so Tekton Results history survives.
 	labelStackRun = "tektondag.io/stackrun"
+
+	pipelineStatusRetry = 15 * time.Second
 )
 
 // StackRunReconciler creates Tekton PipelineRuns from StackRun specs.
@@ -66,7 +71,6 @@ func (r *StackRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, err
 	}
 
-	// Idempotent: if we already recorded a PipelineRun, sync status only.
 	if run.Status.PipelineRunName != "" {
 		return r.syncPipelineStatus(ctx, &run)
 	}
@@ -75,54 +79,58 @@ func (r *StackRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return r.pendingApproval(ctx, &run)
 	}
 
-	opt, err := r.optionsFromStackRun(ctx, &run)
+	prName, err := r.findExistingPipelineRun(ctx, &run)
 	if err != nil {
-		return r.fail(ctx, &run, "InvalidSpec", err.Error())
-	}
-
-	pr, err := buildFromMode(run.Spec.Mode, opt)
-	if err != nil {
-		return r.fail(ctx, &run, "BuildFailed", err.Error())
-	}
-
-	// Annotate with StackRun identity; do NOT set controller OwnerReference that
-	// cascades delete — orphan PipelineRuns so Tekton Results keep history.
-	labels := pr.GetLabels()
-	if labels == nil {
-		labels = map[string]string{}
-	}
-	labels[labelStackRun] = run.Name
-	pr.SetLabels(labels)
-	ann := pr.GetAnnotations()
-	if ann == nil {
-		ann = map[string]string{}
-	}
-	ann["tektondag.io/stackrun-uid"] = string(run.UID)
-	pr.SetAnnotations(ann)
-
-	if err := r.Create(ctx, pr); err != nil {
-		if apierrors.IsAlreadyExists(err) {
-			// Rare name collision; record and sync.
-		} else {
-			logger.Error(err, "failed to create PipelineRun")
-			return r.fail(ctx, &run, "CreateFailed", err.Error())
-		}
-	}
-
-	run.Status.PipelineRunName = pr.GetName()
-	run.Status.ObservedGeneration = run.Generation
-	run.Status.Phase = "Pending"
-	meta.SetStatusCondition(&run.Status.Conditions, metav1.Condition{
-		Type:               "Ready",
-		Status:             metav1.ConditionFalse,
-		Reason:             "PipelineRunCreated",
-		Message:            fmt.Sprintf("Created PipelineRun %s", pr.GetName()),
-		ObservedGeneration: run.Generation,
-	})
-	if err := r.Status().Update(ctx, &run); err != nil {
 		return ctrl.Result{}, err
 	}
-	return ctrl.Result{Requeue: true}, nil
+	if prName == "" {
+		opt, err := r.optionsFromStackRun(ctx, &run)
+		if err != nil {
+			return r.fail(ctx, &run, "InvalidSpec", err.Error())
+		}
+		pr, err := buildFromMode(run.Spec.Mode, opt)
+		if err != nil {
+			return r.fail(ctx, &run, "BuildFailed", err.Error())
+		}
+		pr.SetName(run.Name)
+		pr.SetNamespace(pipelineNamespace(&run))
+		labels := pr.GetLabels()
+		if labels == nil {
+			labels = map[string]string{}
+		}
+		labels[labelStackRun] = run.Name
+		pr.SetLabels(labels)
+		ann := pr.GetAnnotations()
+		if ann == nil {
+			ann = map[string]string{}
+		}
+		ann["tektondag.io/stackrun-uid"] = string(run.UID)
+		pr.SetAnnotations(ann)
+
+		if err := r.Create(ctx, pr); err != nil {
+			if !apierrors.IsAlreadyExists(err) {
+				logger.Error(err, "failed to create PipelineRun")
+				return r.fail(ctx, &run, "CreateFailed", err.Error())
+			}
+		}
+		prName = pr.GetName()
+	}
+
+	if err := r.patchStatus(ctx, &run, func(latest *tektondagv1alpha1.StackRun) {
+		latest.Status.PipelineRunName = prName
+		latest.Status.ObservedGeneration = latest.Generation
+		latest.Status.Phase = "Pending"
+		meta.SetStatusCondition(&latest.Status.Conditions, metav1.Condition{
+			Type:               "Ready",
+			Status:             metav1.ConditionFalse,
+			Reason:             "PipelineRunCreated",
+			Message:            fmt.Sprintf("Created PipelineRun %s", prName),
+			ObservedGeneration: latest.Generation,
+		})
+	}); err != nil {
+		return ctrl.Result{}, err
+	}
+	return ctrl.Result{RequeueAfter: pipelineStatusRetry}, nil
 }
 
 func waitingForApproval(run *tektondagv1alpha1.StackRun) bool {
@@ -132,26 +140,22 @@ func waitingForApproval(run *tektondagv1alpha1.StackRun) bool {
 }
 
 func (r *StackRunReconciler) pendingApproval(ctx context.Context, run *tektondagv1alpha1.StackRun) (ctrl.Result, error) {
-	run.Status.ObservedGeneration = run.Generation
-	run.Status.Phase = "PendingApproval"
-	meta.SetStatusCondition(&run.Status.Conditions, metav1.Condition{
-		Type:               "Ready",
-		Status:             metav1.ConditionFalse,
-		Reason:             "PendingApproval",
-		Message:            "requireApproval is set; patch spec.approvedBy to create the PipelineRun",
-		ObservedGeneration: run.Generation,
+	err := r.patchStatus(ctx, run, func(latest *tektondagv1alpha1.StackRun) {
+		latest.Status.ObservedGeneration = latest.Generation
+		latest.Status.Phase = "PendingApproval"
+		meta.SetStatusCondition(&latest.Status.Conditions, metav1.Condition{
+			Type:               "Ready",
+			Status:             metav1.ConditionFalse,
+			Reason:             "PendingApproval",
+			Message:            "requireApproval is set; patch spec.approvedBy to create the PipelineRun",
+			ObservedGeneration: latest.Generation,
+		})
 	})
-	if err := r.Status().Update(ctx, run); err != nil {
-		return ctrl.Result{}, err
-	}
-	return ctrl.Result{}, nil
+	return ctrl.Result{}, err
 }
 
 func (r *StackRunReconciler) syncPipelineStatus(ctx context.Context, run *tektondagv1alpha1.StackRun) (ctrl.Result, error) {
-	prNS := run.Spec.PipelineNamespace
-	if prNS == "" {
-		prNS = run.Namespace
-	}
+	prNS := pipelineNamespace(run)
 	pr := &unstructured.Unstructured{}
 	pr.SetGroupVersionKind(pipeline.PipelineRunGVK)
 	if err := r.Get(ctx, types.NamespacedName{Name: run.Status.PipelineRunName, Namespace: prNS}, pr); err != nil {
@@ -170,45 +174,102 @@ func (r *StackRunReconciler) syncPipelineStatus(ctx context.Context, run *tekton
 			}
 		}
 	}
-	run.Status.Phase = phase
-	run.Status.ObservedGeneration = run.Generation
-	ready := metav1.ConditionFalse
-	reason := phase
-	msg := fmt.Sprintf("PipelineRun %s phase=%s", run.Status.PipelineRunName, phase)
-	if phase == "Succeeded" {
-		ready = metav1.ConditionTrue
-	}
-	if phase == "Failed" || phase == "Cancelled" {
-		reason = phase
-	}
-	meta.SetStatusCondition(&run.Status.Conditions, metav1.Condition{
-		Type:               "Ready",
-		Status:             ready,
-		Reason:             reason,
-		Message:            msg,
-		ObservedGeneration: run.Generation,
-	})
-	if err := r.Status().Update(ctx, run); err != nil {
+	if err := r.patchStatus(ctx, run, func(latest *tektondagv1alpha1.StackRun) {
+		latest.Status.Phase = phase
+		latest.Status.ObservedGeneration = latest.Generation
+		ready := metav1.ConditionFalse
+		reason := phase
+		msg := fmt.Sprintf("PipelineRun %s phase=%s", latest.Status.PipelineRunName, phase)
+		if phase == "Succeeded" {
+			ready = metav1.ConditionTrue
+		}
+		meta.SetStatusCondition(&latest.Status.Conditions, metav1.Condition{
+			Type:               "Ready",
+			Status:             ready,
+			Reason:             reason,
+			Message:            msg,
+			ObservedGeneration: latest.Generation,
+		})
+	}); err != nil {
 		return ctrl.Result{}, err
 	}
 	if phase == "Succeeded" || phase == "Failed" || phase == "Cancelled" {
 		return ctrl.Result{}, nil
 	}
-	return ctrl.Result{Requeue: true}, nil
+	return ctrl.Result{RequeueAfter: pipelineStatusRetry}, nil
 }
 
 func (r *StackRunReconciler) fail(ctx context.Context, run *tektondagv1alpha1.StackRun, reason, msg string) (ctrl.Result, error) {
-	run.Status.ObservedGeneration = run.Generation
-	run.Status.Phase = "Error"
-	meta.SetStatusCondition(&run.Status.Conditions, metav1.Condition{
-		Type:               "Ready",
-		Status:             metav1.ConditionFalse,
-		Reason:             reason,
-		Message:            msg,
-		ObservedGeneration: run.Generation,
+	err := r.patchStatus(ctx, run, func(latest *tektondagv1alpha1.StackRun) {
+		latest.Status.ObservedGeneration = latest.Generation
+		latest.Status.Phase = "Error"
+		meta.SetStatusCondition(&latest.Status.Conditions, metav1.Condition{
+			Type:               "Ready",
+			Status:             metav1.ConditionFalse,
+			Reason:             reason,
+			Message:            msg,
+			ObservedGeneration: latest.Generation,
+		})
 	})
-	_ = r.Status().Update(ctx, run)
-	return ctrl.Result{}, nil
+	return ctrl.Result{}, err
+}
+
+func (r *StackRunReconciler) patchStatus(ctx context.Context, run *tektondagv1alpha1.StackRun, mutate func(*tektondagv1alpha1.StackRun)) error {
+	key := types.NamespacedName{Name: run.Name, Namespace: run.Namespace}
+	return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		var latest tektondagv1alpha1.StackRun
+		if err := r.Get(ctx, key, &latest); err != nil {
+			return err
+		}
+		mutate(&latest)
+		if err := r.Status().Update(ctx, &latest); err != nil {
+			return err
+		}
+		latest.DeepCopyInto(run)
+		return nil
+	})
+}
+
+func pipelineNamespace(run *tektondagv1alpha1.StackRun) string {
+	if run.Spec.PipelineNamespace != "" {
+		return run.Spec.PipelineNamespace
+	}
+	return run.Namespace
+}
+
+// findExistingPipelineRun returns a PipelineRun already created for this StackRun
+// (deterministic name = StackRun name, or label tektondag.io/stackrun).
+func (r *StackRunReconciler) findExistingPipelineRun(ctx context.Context, run *tektondagv1alpha1.StackRun) (string, error) {
+	ns := pipelineNamespace(run)
+	pr := &unstructured.Unstructured{}
+	pr.SetGroupVersionKind(pipeline.PipelineRunGVK)
+	if err := r.Get(ctx, types.NamespacedName{Name: run.Name, Namespace: ns}, pr); err == nil {
+		return pr.GetName(), nil
+	} else if !apierrors.IsNotFound(err) {
+		return "", err
+	}
+	list := &unstructured.UnstructuredList{}
+	list.SetGroupVersionKind(pipeline.PipelineRunGVK)
+	list.SetKind("PipelineRunList")
+	if err := r.List(ctx, list, client.InNamespace(ns), client.MatchingLabels{labelStackRun: run.Name}); err != nil {
+		return "", err
+	}
+	if len(list.Items) == 0 {
+		return "", nil
+	}
+	return list.Items[0].GetName(), nil
+}
+
+func mapPipelineRunToStackRun(_ context.Context, obj client.Object) []ctrl.Request {
+	labels := obj.GetLabels()
+	if labels == nil {
+		return nil
+	}
+	name := labels[labelStackRun]
+	if name == "" {
+		return nil
+	}
+	return []ctrl.Request{{NamespacedName: types.NamespacedName{Name: name, Namespace: obj.GetNamespace()}}}
 }
 
 func (r *StackRunReconciler) optionsFromStackRun(ctx context.Context, run *tektondagv1alpha1.StackRun) (pipeline.Options, error) {
@@ -248,49 +309,28 @@ func (r *StackRunReconciler) optionsFromStackRun(ctx context.Context, run *tekto
 		v := int(*run.Spec.MaxRetries)
 		opt.MaxRetries = &v
 	}
-	if run.Spec.StackRef == "" && opt.StackFile == "" {
-		stack, appName, err := r.lookupStack(ctx, run)
+
+	var stack *tektondagv1alpha1.Stack
+	if run.Spec.StackRef != "" {
+		got := &tektondagv1alpha1.Stack{}
+		if err := r.Get(ctx, types.NamespacedName{Name: run.Spec.StackRef, Namespace: run.Namespace}, got); err != nil {
+			return opt, fmt.Errorf("stackRef %q: %w", run.Spec.StackRef, err)
+		}
+		stack = got
+	} else if opt.StackFile == "" {
+		found, appName, err := r.lookupStack(ctx, run)
 		if err != nil {
 			return opt, err
 		}
-		if stack != nil {
-			run.Spec.StackRef = stack.Name
-			if opt.StackFile == "" {
-				if stack.Spec.StackFile != "" {
-					opt.StackFile = stack.Spec.StackFile
-				} else {
-					opt.StackFile = fmt.Sprintf("stacks/%s.yaml", stack.Spec.Name)
-				}
-			}
-			if opt.GitURL == "" {
-				opt.GitURL = stack.Spec.GitURL
-			}
-			if opt.ImageRegistry == "" && stack.Spec.Defaults != nil {
-				opt.ImageRegistry = stack.Spec.Defaults.ImageRegistry
-			}
+		if found != nil {
+			stack = found
 			if appName != "" {
 				opt.ChangedApp = appName
 			}
 		}
 	}
-	if run.Spec.StackRef != "" {
-		var stack tektondagv1alpha1.Stack
-		if err := r.Get(ctx, types.NamespacedName{Name: run.Spec.StackRef, Namespace: run.Namespace}, &stack); err != nil {
-			return opt, fmt.Errorf("stackRef %q: %w", run.Spec.StackRef, err)
-		}
-		if opt.StackFile == "" {
-			if stack.Spec.StackFile != "" {
-				opt.StackFile = stack.Spec.StackFile
-			} else {
-				opt.StackFile = fmt.Sprintf("stacks/%s.yaml", stack.Spec.Name)
-			}
-		}
-		if opt.GitURL == "" {
-			opt.GitURL = stack.Spec.GitURL
-		}
-		if opt.ImageRegistry == "" && stack.Spec.Defaults != nil {
-			opt.ImageRegistry = stack.Spec.Defaults.ImageRegistry
-		}
+	if stack != nil {
+		applyStackDefaults(&opt, stack)
 	}
 	if opt.StackFile == "" {
 		return opt, fmt.Errorf("stackFile or stackRef required")
@@ -314,6 +354,22 @@ func (r *StackRunReconciler) optionsFromStackRun(ctx context.Context, run *tekto
 		return opt, fmt.Errorf("unknown mode %q", run.Spec.Mode)
 	}
 	return opt, nil
+}
+
+func applyStackDefaults(opt *pipeline.Options, stack *tektondagv1alpha1.Stack) {
+	if opt.StackFile == "" {
+		if stack.Spec.StackFile != "" {
+			opt.StackFile = stack.Spec.StackFile
+		} else {
+			opt.StackFile = fmt.Sprintf("stacks/%s.yaml", stack.Spec.Name)
+		}
+	}
+	if opt.GitURL == "" {
+		opt.GitURL = stack.Spec.GitURL
+	}
+	if opt.ImageRegistry == "" && stack.Spec.Defaults != nil {
+		opt.ImageRegistry = stack.Spec.Defaults.ImageRegistry
+	}
 }
 
 func repoShort(repo string) string {
@@ -367,8 +423,11 @@ func buildFromMode(mode tektondagv1alpha1.StackRunMode, opt pipeline.Options) (*
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *StackRunReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	pr := &unstructured.Unstructured{}
+	pr.SetGroupVersionKind(pipeline.PipelineRunGVK)
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&tektondagv1alpha1.StackRun{}).
+		Watches(pr, handler.EnqueueRequestsFromMapFunc(mapPipelineRunToStackRun)).
 		Named("stackrun").
 		Complete(r)
 }

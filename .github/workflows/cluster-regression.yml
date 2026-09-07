@@ -17,9 +17,9 @@ on:
         type: boolean
         default: false
       with_operator:
-        description: Install operator and Newman with STACKRUN_VIA_CRD=true
+        description: Install operator (false passes --skip-operator). Nightly/tags always install.
         type: boolean
-        default: false
+        default: true
   schedule:
     # GitHub only fires this on the default branch after merge.
     - cron: "17 6 * * *"
@@ -112,8 +112,9 @@ jobs:
           if [[ "${{ github.event.inputs.skip_newman || false }}" == "true" ]]; then
             extra+=(--skip-newman)
           fi
-          if [[ "${{ github.event.inputs.with_operator || false }}" == "true" ]]; then
-            extra+=(--with-operator)
+          # Script defaults WITH_OPERATOR=true. Honor dispatch uncheck only.
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.with_operator }}" == "false" ]]; then
+            extra+=(--skip-operator)
           fi
           bash scripts/run-cluster-ci.sh --isolation-repeats "$ISOLATION_EVAL_REPEATS" \
             --out "$ISOLATION_EVAL_OUT" "${extra[@]}" 2>&1 | tee cluster-ci.log

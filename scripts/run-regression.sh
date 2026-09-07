@@ -195,9 +195,16 @@ run_newman_suites() {
   [[ "$NEWMAN_SKIP_INTEGRATION" == "true" ]] && extra+=(--skip-integration)
   # Same default port as run-orchestrator-tests.sh; that script frees the port if stale.
   local pf_port="${ORCHESTRATOR_TEST_PORT:-9091}"
-  echo ""
-  echo ">>> Newman: orchestrator + graph — scripts/run-orchestrator-tests.sh --all (port ${pf_port})${extra[*]:+ ${extra[*]}}"
-  ORCHESTRATOR_TEST_PORT="$pf_port" "$SCRIPT_DIR/run-orchestrator-tests.sh" --all "${extra[@]}"
+  local newman_args=()
+  if kubectl get svc graph-db -n "$NAMESPACE" &>/dev/null; then
+    newman_args+=(--all)
+    echo ""
+    echo ">>> Newman: orchestrator + graph — scripts/run-orchestrator-tests.sh --all (port ${pf_port})${extra[*]:+ ${extra[*]}}"
+  else
+    echo ""
+    echo ">>> Newman: orchestrator only (Service graph-db not in $NAMESPACE; skip M9 graph collection)"
+  fi
+  ORCHESTRATOR_TEST_PORT="$pf_port" "$SCRIPT_DIR/run-orchestrator-tests.sh" "${newman_args[@]}" "${extra[@]}"
 }
 
 run_results_verify() {

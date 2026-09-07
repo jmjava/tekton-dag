@@ -1,5 +1,9 @@
 {{- if .Values.operator.enabled }}
-{{- range $path, $_ := .Files.Glob "raw/stack-crs/*.yaml" }}
+{{- $stacks := .Files.Glob "raw/stack-crs/*.yaml" }}
+{{- if eq (len $stacks) 0 }}
+{{- fail "operator.enabled requires Stack CRs: run helm/tekton-dag/package.sh before helm template/install (raw/stack-crs is empty)" }}
+{{- end }}
+{{- range $path, $_ := $stacks }}
 ---
 {{ $.Files.Get $path }}
 {{- end }}

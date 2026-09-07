@@ -148,9 +148,8 @@ if [[ "$SKIP_NEWMAN" != "true" ]]; then
   echo ""
   echo ">>> Deploy orchestrator"
   kubectl apply -f "$REPO_ROOT/orchestrator/k8s-deployment.yaml"
-  kubectl patch deployment tekton-dag-orchestrator -n "$NAMESPACE" --type=json \
-    -p '[{"op":"add","path":"/spec/template/spec/containers/0/imagePullPolicy","value":"IfNotPresent"}]' \
-    >/dev/null || true
+  kubectl patch deployment tekton-dag-orchestrator -n "$NAMESPACE" --type=strategic \
+    -p '{"spec":{"template":{"spec":{"containers":[{"name":"orchestrator","imagePullPolicy":"IfNotPresent"}]}}}}'
   if [[ "$WITH_OPERATOR" != "true" ]]; then
     kubectl set env deployment/tekton-dag-orchestrator -n "$NAMESPACE" STACKRUN_VIA_CRD=false
   fi

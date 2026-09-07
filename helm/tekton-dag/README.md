@@ -8,7 +8,7 @@ Tekton-based CI/CD for multi-app stacks: stack resolution, Kaniko builds, PR int
 - Namespace for Tekton (default in values: `tekton-pipelines`).
 - For the orchestrator: **Secrets** referenced by values (`triggers.webhookSecretName`, `triggers.githubTokenSecretName`) when using webhooks / PR comments.
 - **Git SSH**: pipeline workspaces expect clone secrets (e.g. `ssh-key-secret`) consistent with your cluster bootstrap.
-- Before `helm template` / `helm install`, run **`./package.sh`** from this chart directory so `raw/tasks`, `raw/pipelines`, and `raw/stacks` are populated from the repository root.
+- Before `helm template` / `helm install`, run **`./package.sh`** from this chart directory so `raw/tasks`, `raw/pipelines`, `raw/stacks`, `raw/stack-crs`, and `raw/team-crs` are populated. With `operator.enabled` (the default), an empty `raw/stack-crs` or `raw/team-crs` **fails** the template.
 
 ## Quick install
 

@@ -20,9 +20,9 @@ docgen:
           templates, GUI panels, Prometheus/cost labels, cross-cluster deploy,
           Results/Neo4j backup polish.
       - >-
-          Post-M14 follow-ons: GUI native StackRun views / promote approve via
-          StackRun.spec.approvedBy, enable Stack admission webhook with certs, retire
-          --pipeline-run / STACKRUN_VIA_CRD=false escape hatches.
+          Post-M14: M15 control-plane hygiene (idempotent PipelineRun create).
+          Remaining M16: Team CR as Flask/GUI source, Stack admission webhook with
+          certs, retire --pipeline-run / STACKRUN_VIA_CRD=false escape hatches.
       context:
         paths:
         - milestones/milestone-13.md

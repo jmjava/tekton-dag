@@ -51,3 +51,31 @@ def test_webhook_via_crd(mock_build_pr, mock_sr, client, flask_app):
     assert rv.status_code == 200
     assert rv.get_json()["stackrun"] == "stackrun-pr-xyz"
     mock_sr.assert_called_once()
+
+
+@patch("routes.k8s_client.create_stackrun")
+@patch("routes.k8s_client.create_pipelinerun")
+def test_api_run_promote_via_crd_waits_for_approval(mock_pr, mock_sr, client, flask_app):
+    """CRD path matches GUI: require_approval without approved_by is PendingApproval."""
+    flask_app.config["STACKRUN_VIA_CRD"] = True
+    mock_sr.return_value = "stackrun-promote-wait"
+    rv = client.post(
+        "/api/run",
+        data=json.dumps(
+            {
+                "mode": "promote",
+                "release_version": "0.1.0",
+                "target_environment": "production",
+                "changed_app": "demo-fe",
+                "target_registry": "reg:5001",
+                "require_approval": True,
+            }
+        ),
+        content_type="application/json",
+    )
+    assert rv.status_code == 200, rv.get_json()
+    mock_pr.assert_not_called()
+    mock_sr.assert_called_once()
+    spec = mock_sr.call_args.args[0]["spec"]
+    assert spec["requireApproval"] is True
+    assert "approvedBy" not in spec

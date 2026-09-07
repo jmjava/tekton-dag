@@ -238,7 +238,9 @@ def register_routes(app: Flask):
                 }), 400
             require_approval = bool(data.get("require_approval", False))
             approved_by = data.get("approved_by", "")
-            if require_approval and not approved_by:
+            # Direct PipelineRun create has no PendingApproval phase. CRD path
+            # matches the GUI: empty approved_by waits on the operator.
+            if require_approval and not approved_by and not _via_crd(cfg):
                 return jsonify({
                     "error": "approved_by required when require_approval is true",
                 }), 400
