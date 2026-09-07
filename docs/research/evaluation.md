@@ -15,7 +15,11 @@ On 2026-09-07, `bash scripts/run-regression-stream.sh --local-only --require-lan
 | pytest `tekton-dag-common` | **47 passed** (README still says 14) |
 | pytest management-gui backend | **61 passed** (README still says 56) |
 | pytest baggage-python | **17 passed** |
+| pytest isolation-eval | **7 passed** |
 | vitest baggage-node | **15 passed** |
+| PHPUnit baggage-php | **19 passed** |
+| Maven Java baggage | both modules OK (`--require-lang-tests`) |
+| operator `go test` | `internal/pipeline` + `internal/controller` OK |
 
 `--local-only` **skips** Playwright on purpose. The 69 Playwright files are still in `management-gui/frontend/e2e/`; they were not executed here.
 
