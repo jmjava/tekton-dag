@@ -29,6 +29,8 @@ kubectl apply -f config/samples/
 - **Stack** — structural validation + topo order in status (no PipelineRuns).
 - **StackRun** — builds a Tekton PipelineRun (PR/bootstrap/merge/promote), syncs phase; PipelineRuns are **orphaned** on delete.
 
+Do not add more CRD kinds for promote, intercepts, hooks, or registries. Those are StackRun fields or Tekton/Helm. The real follow-ons are: Stack as the in-cluster source of truth (`stackRef`), GUI/Triggers creating StackRuns instead of PipelineRuns, a **Team** CR, and a Stack admission webhook. See [milestones/milestone-14.md](../milestones/milestone-14.md) “Control plane: what is a CR”.
+
 ## Contract with Python
 
 PipelineRun JSON shape must match `orchestrator/pipelinerun_builder.py`. Shared goldens:
