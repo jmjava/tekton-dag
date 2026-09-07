@@ -6,7 +6,7 @@ import io
 import unittest
 from unittest.mock import MagicMock, patch
 
-from cluster import curl_entry
+from cluster import curl_entry, wait_ready
 
 
 class CurlEntryTests(unittest.TestCase):
@@ -53,6 +53,26 @@ class CurlEntryTests(unittest.TestCase):
             out = curl_entry("demo-ns", False)
         self.assertTrue(out.startswith("probe-error:port-forward:"))
         proc.terminate.assert_called()
+
+
+class WaitReadyTests(unittest.TestCase):
+    def test_polls_until_pods_exist_then_waits(self) -> None:
+        empty = MagicMock(returncode=1, stdout="", stderr="No resources found")
+        listed = MagicMock(returncode=0, stdout="app-0-xxx   1/1   Running\n")
+        waited = MagicMock(returncode=0, stdout="", stderr="")
+        calls = {"n": 0}
+
+        def fake_run(args, **kwargs):
+            if args[:2] == ["kubectl", "get"]:
+                calls["n"] += 1
+                return empty if calls["n"] == 1 else listed
+            if args[:2] == ["kubectl", "wait"]:
+                return waited
+            raise AssertionError(args)
+
+        with patch("cluster.subprocess.run", side_effect=fake_run):
+            wait_ready("eval-ns", timeout_s=5)
+        self.assertEqual(calls["n"], 2)
 
 
 if __name__ == "__main__":
