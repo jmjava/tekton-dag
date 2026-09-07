@@ -2,11 +2,11 @@
 
 Workshop and tool-demo reviewers accept **functional** evidence if claims stay inside it. Research-track and SEIP reviewers will not. This inventory lists what already exists in-tree so the paper does not invent numbers.
 
-**Short answer: no, the testing work is not “all done.”** There is a real, passing *local* unit/static suite, now **gated on GitHub PRs**. Cluster E2E, Kind isolation *measurements*, and every comparative study a research PC would ask for remain incomplete or unenforced.
+**Short answer: no, the testing work is not “all done.”** There is a real, passing *local* unit/static suite, now **gated on GitHub PRs**. Full Kind cluster CI (`run-cluster-ci.sh`: Tekton Phase 2 + Newman) and every comparative study a research PC would ask for remain incomplete or unenforced.
 
 ## What actually ran (this packaging branch)
 
-On 2026-09-07, `bash scripts/run-regression-stream.sh --local-only --require-lang-tests` is the CI path (Phase 1 + pytest + vitest + isolation-eval protocol + Maven + PHPUnit + operator `go test`). Playwright, Newman, `stack-dag-verify`, Tekton Results, intercept E2E, and `run-isolation-eval.sh --cluster` were **not** run here (`kubectl` not installed).
+On 2026-09-07, `bash scripts/run-regression-stream.sh --local-only --require-lang-tests` is the CI path (Phase 1 + pytest + vitest + isolation-eval protocol + Maven + PHPUnit + operator `go test`). Playwright later ran locally (**69 passed**, Vite only). Nested Docker + Kind were added on this Cloud Agent VM: `run-isolation-eval.sh --cluster` measured **6/6** `isolation_ok=true` (dummy echo stacks, widths 1/3/5, clone and intercept). **`run-cluster-ci.sh` (Phase 2 + Newman) was not run.** GitHub `cluster-regression` was not dispatched.
 
 | Suite | Collected / result |
 |-------|-------------------|
@@ -15,13 +15,13 @@ On 2026-09-07, `bash scripts/run-regression-stream.sh --local-only --require-lan
 | pytest `tekton-dag-common` | **47 passed** (README still says 14) |
 | pytest management-gui backend | **61 passed** (README still says 56) |
 | pytest baggage-python | **17 passed** |
-| pytest isolation-eval | **7 passed** |
+| pytest isolation-eval | **9 passed** |
 | vitest baggage-node | **15 passed** |
 | PHPUnit baggage-php | **19 passed** |
 | Maven Java baggage | both modules OK (`--require-lang-tests`) |
 | operator `go test` | `internal/pipeline` + `internal/controller` OK |
 
-`--local-only` **skips** Playwright on purpose. This environment later ran `npx playwright test` in `management-gui/frontend`: **69 passed** (Vite only, no cluster). Kind/`run-cluster-ci.sh` was **not** run here (no Docker).
+`--local-only` **skips** Playwright on purpose. This environment ran `npx playwright test` in `management-gui/frontend`: **69 passed** (Vite only, no cluster). Kind isolation-eval **did** run here after Docker (fuse-overlayfs) + kube-proxy nftables. `run-cluster-ci.sh` (Tekton + Newman) was **not** run.
 
 ## What exists but is *not* CI-gated on every PR
 
@@ -59,7 +59,7 @@ Same header-filter idea is documented as parity with Telepresence `--http-match`
 ./scripts/run-e2e-with-intercepts.sh --intercept-backend mirrord
 ```
 
-**How to report:** “In a controlled Kind deployment of the three-app exemplar, unmatched requests remained on the baseline replica; matched requests were stolen (5/5 each).” Cite the **script**, not a run from this Cloud Agent environment (no `kubectl` here).
+**How to report:** “In a controlled Kind deployment of the three-app exemplar, unmatched requests remained on the baseline replica; matched requests were stolen (5/5 each).” Cite [`docs/mirrord-poc-results.md`](../mirrord-poc-results.md) for that smoke, and `run-isolation-eval.sh --cluster` for dummy-stack probes (this Cloud Agent: 6/6 `isolation_ok`). Neither is a site measurement (S21).
 **Do not report:** production latency, multi-tenant interference, or statistical significance. N=5 is a **smoke test**, not an experiment.
 
 ### Pipeline and resolver behavior (C1)

@@ -48,7 +48,11 @@ else
   echo "  Creating kind cluster: $KIND_CLUSTER_NAME ..."
   cat <<EOF | kind create cluster --name "${KIND_CLUSTER_NAME}" --config=-
 kind: Cluster
-apiVersion: kind.x.k8s.io/v1alpha4
+apiVersion: kind.x-k8s.io/v1alpha4
+# Nested Cloud Agent VMs lack xt_statistic; kube-proxy iptables mode fails
+# to program ClusterIP rules. nftables does not need that module.
+networking:
+  kubeProxyMode: nftables
 containerdConfigPatches:
 - |-
   [plugins."io.containerd.grpc.v1.cri".registry]

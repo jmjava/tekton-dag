@@ -6,9 +6,10 @@ strategy and pod count, not Kaniko. Requires kubectl.
 
 from __future__ import annotations
 
-import os
+import socket
 import subprocess
 import time
+import urllib.request
 
 HEADER_NAME = "x-dev-session"
 HEADER_VALUE = "pr-eval"
@@ -206,7 +207,18 @@ def delete_ns(ns: str) -> None:
 
 
 def wait_ready(ns: str, timeout_s: int = 180) -> None:
-    kubectl(["wait", "--for=condition=Ready", "pod", "--all", "-n", ns, f"--timeout={timeout_s}s"])
+    kubectl(
+        [
+            "wait",
+            "--for=condition=Ready",
+            "pod",
+            "-l",
+            "eval.tektondag.io/role",
+            "-n",
+            ns,
+            f"--timeout={timeout_s}s",
+        ]
+    )
 
 
 def pod_count(ns: str) -> int:
@@ -215,29 +227,49 @@ def pod_count(ns: str) -> int:
     return len([ln for ln in cp.stdout.splitlines() if ln.strip()])
 
 
+def _free_port() -> int:
+    s = socket.socket()
+    s.bind(("127.0.0.1", 0))
+    port = s.getsockname()[1]
+    s.close()
+    return port
+
+
 def curl_entry(ns: str, header: bool) -> str:
-    name = f"eval-probe-{os.getpid()}-{int(time.time() * 1000)}"
-    args = [
-        "kubectl",
-        "run",
-        name,
-        "-n",
-        ns,
-        "--rm",
-        "-i",
-        "--restart=Never",
-        "--image=curlimages/curl:8.11.1",
-        "--",
-        "curl",
-        "-sf",
-        "--max-time",
-        "15",
-    ]
-    if header:
-        args.extend(["-H", f"{HEADER_NAME}: {HEADER_VALUE}"])
-    args.append(f"http://entry.{ns}.svc.cluster.local/")
-    cp = subprocess.run(args, capture_output=True, text=True, timeout=90)
-    if cp.returncode != 0:
-        err = (cp.stderr or cp.stdout or "").strip().replace("\n", " ")
-        return f"probe-error:{err}"
-    return (cp.stdout or "").strip()
+    """Hit svc/entry via kubectl port-forward.
+
+    Nested Kind (Cloud Agent Docker-in-Docker) often cannot program ClusterIP
+    iptables (missing xt_statistic). Port-forward goes through the API server
+    to the pod and still exercises the intercept router on that pod.
+    """
+    port = _free_port()
+    pf = subprocess.Popen(
+        ["kubectl", "-n", ns, "port-forward", "svc/entry", f"{port}:80"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+    url = f"http://127.0.0.1:{port}/"
+    last_err = "port-forward never accepted a connection"
+    try:
+        deadline = time.time() + 20
+        while time.time() < deadline:
+            try:
+                req = urllib.request.Request(url)
+                if header:
+                    req.add_header(HEADER_NAME, HEADER_VALUE)
+                with urllib.request.urlopen(req, timeout=8) as resp:
+                    return resp.read().decode("utf-8", "replace").strip()
+            except Exception as exc:
+                last_err = str(exc)
+                if pf.poll() is not None:
+                    out = pf.stdout.read() if pf.stdout else ""
+                    return f"probe-error:port-forward:{out or last_err}"
+                time.sleep(0.2)
+        return f"probe-error:{last_err}"
+    finally:
+        pf.terminate()
+        try:
+            pf.wait(timeout=5)
+        except Exception:
+            pf.kill()
