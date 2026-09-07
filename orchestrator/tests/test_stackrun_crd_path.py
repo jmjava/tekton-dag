@@ -1,4 +1,4 @@
-"""STACKRUN_VIA_CRD=true creates StackRun CRs instead of PipelineRuns."""
+"""Flask always creates StackRun CRs (M16: STACKRUN_VIA_CRD hatch retired)."""
 
 import json
 from unittest.mock import patch
@@ -6,8 +6,7 @@ from unittest.mock import patch
 
 @patch("routes.k8s_client.create_stackrun")
 @patch("routes.k8s_client.create_pipelinerun")
-def test_api_run_bootstrap_via_crd(mock_pr, mock_sr, client, flask_app):
-    flask_app.config["STACKRUN_VIA_CRD"] = True
+def test_api_run_bootstrap_creates_stackrun(mock_pr, mock_sr, client):
     mock_sr.return_value = "stackrun-bootstrap-abc12"
     rv = client.post(
         "/api/run",
@@ -28,10 +27,7 @@ def test_api_run_bootstrap_via_crd(mock_pr, mock_sr, client, flask_app):
 
 
 @patch("routes.k8s_client.create_stackrun")
-@patch("routes.builder.build_pr_pipelinerun")
-def test_webhook_via_crd(mock_build_pr, mock_sr, client, flask_app):
-    flask_app.config["STACKRUN_VIA_CRD"] = True
-    mock_build_pr.return_value = {"kind": "PipelineRun"}
+def test_webhook_creates_stackrun(mock_sr, client):
     mock_sr.return_value = "stackrun-pr-xyz"
     payload = {
         "action": "opened",
@@ -55,9 +51,8 @@ def test_webhook_via_crd(mock_build_pr, mock_sr, client, flask_app):
 
 @patch("routes.k8s_client.create_stackrun")
 @patch("routes.k8s_client.create_pipelinerun")
-def test_api_run_promote_via_crd_waits_for_approval(mock_pr, mock_sr, client, flask_app):
+def test_api_run_promote_without_approved_by_creates_stackrun(mock_pr, mock_sr, client):
     """CRD path matches GUI: require_approval without approved_by is PendingApproval."""
-    flask_app.config["STACKRUN_VIA_CRD"] = True
     mock_sr.return_value = "stackrun-promote-wait"
     rv = client.post(
         "/api/run",
@@ -79,3 +74,13 @@ def test_api_run_promote_via_crd_waits_for_approval(mock_pr, mock_sr, client, fl
     spec = mock_sr.call_args.args[0]["spec"]
     assert spec["requireApproval"] is True
     assert "approvedBy" not in spec
+
+
+def test_create_app_ignores_stackrun_via_crd_false(monkeypatch, tmp_path):
+    monkeypatch.setenv("STACKRUN_VIA_CRD", "false")
+    monkeypatch.setenv("STACKS_DIR", str(tmp_path))
+    monkeypatch.setenv("TEAMS_DIR", str(tmp_path))
+    from app import create_app
+
+    app = create_app()
+    assert "STACKRUN_VIA_CRD" not in app.config

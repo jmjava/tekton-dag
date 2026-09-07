@@ -150,9 +150,6 @@ if [[ "$SKIP_NEWMAN" != "true" ]]; then
   kubectl apply -f "$REPO_ROOT/orchestrator/k8s-deployment.yaml"
   kubectl patch deployment tekton-dag-orchestrator -n "$NAMESPACE" --type=strategic \
     -p '{"spec":{"template":{"spec":{"containers":[{"name":"orchestrator","imagePullPolicy":"IfNotPresent"}]}}}}'
-  if [[ "$WITH_OPERATOR" != "true" ]]; then
-    kubectl set env deployment/tekton-dag-orchestrator -n "$NAMESPACE" STACKRUN_VIA_CRD=false
-  fi
   kubectl rollout status deployment/tekton-dag-orchestrator -n "$NAMESPACE" --timeout=180s
 
   newman_args=(--skip-integration)

@@ -44,7 +44,6 @@ def flask_app():
         PIPELINE_TIMEOUT="2h",
         MAX_RETRIES=2,
         REGISTRIES_FILE="",
-        STACKRUN_VIA_CRD=False,
     )
     resolver = MagicMock(name="StackResolver")
     resolver.list_stacks.return_value = [

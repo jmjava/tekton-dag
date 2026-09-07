@@ -55,8 +55,8 @@ spec:
             - name: REGISTRIES_FILE
               value: {{ .Values.orchestrationService.registriesFile | quote }}
             - name: STACKRUN_VIA_CRD
-              # On when operator is enabled (unless stackrunViaCrd is explicitly false).
-              value: {{ if and .Values.operator.enabled (ne .Values.orchestrationService.stackrunViaCrd false) }}"true"{{ else }}"false"{{ end }}
+              # Retired M16: Flask always creates StackRuns. Kept true so mixed-image rollouts stay on the CRD path.
+              value: "true"
             - name: STACKS_DIR
               value: /stacks
             - name: TEAMS_DIR

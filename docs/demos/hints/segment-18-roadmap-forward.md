@@ -21,8 +21,7 @@ docgen:
           Results/Neo4j backup polish.
       - >-
           Post-M14: M15 control-plane hygiene (idempotent PipelineRun create).
-          Remaining M16: Team CR as Flask/GUI source, Stack admission webhook with
-          certs, retire --pipeline-run / STACKRUN_VIA_CRD=false escape hatches.
+          Remaining M16: demo spoken narration/MP4 rebuild. S34 intercept E2E is parked.
       context:
         paths:
         - milestones/milestone-13.md

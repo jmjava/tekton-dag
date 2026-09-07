@@ -1,7 +1,8 @@
 """
 tekton-dag orchestration service.
 
-Receives GitHub webhooks, resolves stacks, creates Tekton PipelineRuns.
+Receives GitHub webhooks, resolves stacks, creates StackRun CRs.
+The operator reconciles those into Tekton PipelineRuns.
 Runs as an in-cluster pod alongside Tekton.
 """
 
@@ -46,9 +47,7 @@ def create_app():
             "REGISTRIES_FILE",
             os.path.join(os.environ.get("STACKS_DIR", "/stacks"), "registries.yaml"),
         ),
-        # M14: when true, create StackRun CRs instead of PipelineRuns directly.
-        STACKRUN_VIA_CRD=os.environ.get("STACKRUN_VIA_CRD", "false").lower()
-        in ("1", "true", "yes"),
+        # Retired M16: Flask always creates StackRun CRs. STACKRUN_VIA_CRD env is ignored.
     )
 
     stacks_dir = os.environ.get("STACKS_DIR", "/stacks")

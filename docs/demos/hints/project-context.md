@@ -19,7 +19,7 @@ docgen:
           only remaining open items when discussing production hardening.
         - >-
           The Kubernetes operator under operator/ is CRD-primary (Stack + StackRun + Team,
-          tektondag.io/v1alpha1). Flask STACKRUN_VIA_CRD and Helm operator.enabled default on.
+          tektondag.io/v1alpha1). Flask always creates StackRun CRs. Helm operator.enabled defaults on.
         - >-
           Demo video for this bundle is Manim + TTS + ffmpeg compose only (current docgen). Do not
           narrate VHS, ttyd, or terminal-tape capture as a pipeline stage.

@@ -67,9 +67,6 @@ orchestrationService:
   # Verify GitHub webhooks when the named Secret exists (key: secret|value|webhook-secret)
   webhookVerifySignature: true
   registriesFile: "/stacks/registries.yaml"
-  # M14: when operator.enabled, defaults to creating StackRun CRs.
-  # Set explicitly to false to keep direct PipelineRun creation while operator is installed.
-  stackrunViaCrd: true
   resources:
     requests:
       cpu: "100m"

@@ -3,10 +3,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
 # generate-run.sh — Generate and optionally apply a StackRun (operator)
-# for a given stack. Pass --pipeline-run to emit a raw Tekton PipelineRun.
+# for a given stack. Raw PipelineRun emit (--pipeline-run) was removed in M16.
 
-# a given stack, triggered either as a PR test or a merge release.
-#
 # Usage:
 #   ./generate-run.sh --mode pr    --repo demo-fe --pr 42
 #   ./generate-run.sh --mode merge --repo demo-fe
@@ -30,9 +28,8 @@ source "$SCRIPT_DIR/common.sh"
 #   --namespace          Target namespace (default: tekton-pipelines)
 #   --storage-class      PVC storage class
 #   --intercept-backend  telepresence (default) | mirrord (M7)
-#   --apply              kubectl create the StackRun (or PipelineRun with --pipeline-run)
+#   --apply              kubectl create the StackRun
 #   --dry-run            Print the YAML without applying
-#   --pipeline-run       Emit a Tekton PipelineRun instead of a StackRun
 
 REGISTRY_FILE="$STACKS_DIR/registry.yaml"
 
@@ -52,7 +49,10 @@ APPLY=false
 BUILD_IMAGES="${BUILD_IMAGES:-true}"
 BUILD_IMAGE_TAG="${BUILD_IMAGE_TAG:-latest}"
 INTERCEPT_BACKEND="${INTERCEPT_BACKEND:-telepresence}"
-EMIT_PIPELINERUN="${GENERATE_PIPELINE_RUN:-false}"
+
+if [[ "${GENERATE_PIPELINE_RUN:-false}" == "true" ]]; then
+  die "--pipeline-run / GENERATE_PIPELINE_RUN was removed in M16; emit a StackRun (default) instead"
+fi
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -75,7 +75,7 @@ while [[ $# -gt 0 ]]; do
     --intercept-backend)  INTERCEPT_BACKEND="$2"; shift 2 ;;
     --apply)              APPLY=true; shift ;;
     --dry-run)            APPLY=false; shift ;;
-    --pipeline-run)       EMIT_PIPELINERUN=true; shift ;;
+    --pipeline-run)       die "--pipeline-run was removed in M16; emit a StackRun (default) instead" ;;
     *)                    die "Unknown option: $1" ;;
   esac
 done
@@ -111,16 +111,15 @@ fi
 STACK_REF="${STACK%.yaml}"
 STACK_REF="${STACK_REF%.yml}"
 
-if [[ "$EMIT_PIPELINERUN" != "true" ]]; then
-  if [[ "$MODE" == "pr" ]]; then
-    [[ -n "$PR" ]] || die "--pr is required for pr mode"
-    [[ -n "$APP" ]] || die "PR mode tests one app at a time: --app is required (e.g. --app demo-fe)"
-    PR_REPO_URL=""
-    if [[ "$APP_REVISIONS" != "{}" && -n "$APP" ]]; then
-      REPO_SLUG=$(yq -r ".apps[] | select(.name == \"$APP\") | .repo" "$STACKS_DIR/$STACK" 2>/dev/null || true)
-      [[ -n "$REPO_SLUG" && "$REPO_SLUG" != "null" ]] && PR_REPO_URL="https://github.com/${REPO_SLUG}.git"
-    fi
-    cat <<EOF
+if [[ "$MODE" == "pr" ]]; then
+  [[ -n "$PR" ]] || die "--pr is required for pr mode"
+  [[ -n "$APP" ]] || die "PR mode tests one app at a time: --app is required (e.g. --app demo-fe)"
+  PR_REPO_URL=""
+  if [[ "$APP_REVISIONS" != "{}" && -n "$APP" ]]; then
+    REPO_SLUG=$(yq -r ".apps[] | select(.name == \"$APP\") | .repo" "$STACKS_DIR/$STACK" 2>/dev/null || true)
+    [[ -n "$REPO_SLUG" && "$REPO_SLUG" != "null" ]] && PR_REPO_URL="https://github.com/${REPO_SLUG}.git"
+  fi
+  cat <<EOF
 apiVersion: tektondag.io/v1alpha1
 kind: StackRun
 metadata:
@@ -142,8 +141,8 @@ spec:
   imageRegistry: ${PIPELINE_IMAGE_REGISTRY}
   interceptBackend: ${INTERCEPT_BACKEND}
 EOF
-  elif [[ "$MODE" == "merge" ]]; then
-    cat <<EOF
+elif [[ "$MODE" == "merge" ]]; then
+  cat <<EOF
 apiVersion: tektondag.io/v1alpha1
 kind: StackRun
 metadata:
@@ -161,170 +160,13 @@ spec:
   changedApp: ${APP}
   imageRegistry: ${PIPELINE_IMAGE_REGISTRY}
 EOF
-  else
-    die "Unknown mode: $MODE (must be pr or merge)"
-  fi
-
-  if [[ "$APPLY" == "true" ]]; then
-    echo "---"
-    echo "# Applying StackRun..."
-    "$0" --mode "$MODE" --stack "$STACK" --app "$APP" \
-      ${PR:+--pr "$PR"} \
-      --intercept-backend "$INTERCEPT_BACKEND" \
-      --app-revisions-json "$APP_REVISIONS" \
-      --version-overrides "$VERSION_OVERRIDES" \
-      --git-url "$GIT_URL" --git-revision "$GIT_REV" \
-      --registry "$IMAGE_REGISTRY" \
-      --namespace "$NAMESPACE" \
-      --ssh-secret "$GIT_SSH_SECRET_NAME" \
-      $([ "$BUILD_IMAGES" = "true" ] && echo "--build-images ") \
-      --storage-class "$STORAGE_CLASS" | kubectl create -f -
-  fi
-  exit 0
-fi
-
-if [[ "$MODE" == "pr" ]]; then
-  [[ -n "$PR" ]] || die "--pr is required for pr mode"
-  [[ -n "$APP" ]] || die "PR mode tests one app at a time: --app is required (e.g. --app demo-fe)"
-  # When PR is in app repo (app-revisions set), resolve app repo URL so post-pr-comment targets the right repo
-  PR_REPO_URL=""
-  if [[ "$APP_REVISIONS" != "{}" && -n "$APP" ]]; then
-    REPO_SLUG=$(yq -r ".apps[] | select(.name == \"$APP\") | .repo" "$STACKS_DIR/$STACK" 2>/dev/null || true)
-    [[ -n "$REPO_SLUG" && "$REPO_SLUG" != "null" ]] && PR_REPO_URL="https://github.com/${REPO_SLUG}.git"
-  fi
-
-  cat <<EOF
-apiVersion: tekton.dev/v1
-kind: PipelineRun
-metadata:
-  generateName: stack-pr-${PR}-
-  namespace: ${NAMESPACE}
-spec:
-  pipelineRef:
-    name: stack-pr-test
-  taskRunTemplate:
-    serviceAccountName: tekton-pr-sa
-    podTemplate:
-      securityContext:
-        fsGroup: 65532
-  params:
-    - name: git-url
-      value: "${GIT_URL}"
-    - name: git-revision
-      value: "${GIT_REV}"
-    - name: stack-file
-      value: "${STACK_PATH}"
-    - name: changed-app
-      value: "${APP}"
-    - name: pr-number
-      value: "${PR}"
-    - name: app-revisions
-      value: '${APP_REVISIONS}'
-    - name: pr-repo-url
-      value: "${PR_REPO_URL}"
-    - name: image-registry
-      value: "${PIPELINE_IMAGE_REGISTRY}"
-    - name: version-overrides
-      value: '${VERSION_OVERRIDES}'
-    - name: intercept-backend
-      value: "${INTERCEPT_BACKEND}"
-    $([ "$BUILD_IMAGES" = "true" ] && [ -n "$IMAGE_REGISTRY" ] && echo "
-    - name: compile-image-npm
-      value: \"${COMPILE_IMAGE_REGISTRY}/tekton-dag-build-node:${BUILD_IMAGE_TAG}\"
-    - name: compile-image-maven
-      value: \"${COMPILE_IMAGE_REGISTRY}/tekton-dag-build-maven:${BUILD_IMAGE_TAG}\"
-    - name: compile-image-gradle
-      value: \"${COMPILE_IMAGE_REGISTRY}/tekton-dag-build-gradle:${BUILD_IMAGE_TAG}\"
-    - name: compile-image-pip
-      value: \"${COMPILE_IMAGE_REGISTRY}/tekton-dag-build-python:${BUILD_IMAGE_TAG}\"
-    - name: compile-image-php
-      value: \"${COMPILE_IMAGE_REGISTRY}/tekton-dag-build-php:${BUILD_IMAGE_TAG}\"
-    - name: compile-image-mirrord
-      value: \"${COMPILE_IMAGE_REGISTRY}/tekton-dag-build-mirrord:${BUILD_IMAGE_TAG}\"
-    ")
-  workspaces:
-    - name: shared-workspace
-      volumeClaimTemplate:
-        spec:
-          accessModes: [ReadWriteOnce]
-          $([ -n "$STORAGE_CLASS" ] && echo "storageClassName: $STORAGE_CLASS")
-          resources:
-            requests:
-              storage: 5Gi
-    - name: ssh-key
-      secret:
-        secretName: "${GIT_SSH_SECRET_NAME}"
-    - name: build-cache
-      persistentVolumeClaim:
-        claimName: build-cache
-EOF
-
-elif [[ "$MODE" == "merge" ]]; then
-
-  cat <<EOF
-apiVersion: tekton.dev/v1
-kind: PipelineRun
-metadata:
-  generateName: stack-merge-
-  namespace: ${NAMESPACE}
-spec:
-  pipelineRef:
-    name: stack-merge-release
-  taskRunTemplate:
-    serviceAccountName: tekton-pr-sa
-    podTemplate:
-      securityContext:
-        fsGroup: 65532
-  params:
-    - name: git-url
-      value: "${GIT_URL}"
-    - name: git-revision
-      value: "${GIT_REV}"
-    - name: stack-file
-      value: "${STACK_PATH}"
-    - name: changed-app
-      value: "${APP}"
-    - name: image-registry
-      value: "${PIPELINE_IMAGE_REGISTRY}"
-    - name: version-overrides
-      value: '${VERSION_OVERRIDES}'
-    $([ "$BUILD_IMAGES" = "true" ] && [ -n "$IMAGE_REGISTRY" ] && echo "
-    - name: compile-image-npm
-      value: \"${COMPILE_IMAGE_REGISTRY}/tekton-dag-build-node:${BUILD_IMAGE_TAG}\"
-    - name: compile-image-maven
-      value: \"${COMPILE_IMAGE_REGISTRY}/tekton-dag-build-maven:${BUILD_IMAGE_TAG}\"
-    - name: compile-image-gradle
-      value: \"${COMPILE_IMAGE_REGISTRY}/tekton-dag-build-gradle:${BUILD_IMAGE_TAG}\"
-    - name: compile-image-pip
-      value: \"${COMPILE_IMAGE_REGISTRY}/tekton-dag-build-python:${BUILD_IMAGE_TAG}\"
-    - name: compile-image-php
-      value: \"${COMPILE_IMAGE_REGISTRY}/tekton-dag-build-php:${BUILD_IMAGE_TAG}\"
-    ")
-  workspaces:
-    - name: shared-workspace
-      volumeClaimTemplate:
-        spec:
-          accessModes: [ReadWriteOnce]
-          $([ -n "$STORAGE_CLASS" ] && echo "storageClassName: $STORAGE_CLASS")
-          resources:
-            requests:
-              storage: 5Gi
-    - name: ssh-key
-      secret:
-        secretName: "${GIT_SSH_SECRET_NAME}"
-    - name: build-cache
-      persistentVolumeClaim:
-        claimName: build-cache
-EOF
-
 else
   die "Unknown mode: $MODE (must be pr or merge)"
 fi
 
-# Apply if requested (re-invoke with all params so app-revisions and ssh-secret are preserved)
 if [[ "$APPLY" == "true" ]]; then
   echo "---"
-  echo "# Applying PipelineRun..."
+  echo "# Applying StackRun..."
   "$0" --mode "$MODE" --stack "$STACK" --app "$APP" \
     ${PR:+--pr "$PR"} \
     --intercept-backend "$INTERCEPT_BACKEND" \

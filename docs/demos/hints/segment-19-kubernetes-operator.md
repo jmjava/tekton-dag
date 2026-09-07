@@ -21,11 +21,12 @@ docgen:
           Flow: GitHub/API -> Flask (HMAC+resolve) -> StackRun -> tekton-dag-operator ->
           PipelineRun (orphaned on delete for Results history).
       - >-
-          Enablement: Helm operator.enabled and Kind STACKRUN_VIA_CRD default on. Golden
-          Python↔Go PipelineRun builders.
+          Enablement: Helm operator.enabled default on. Flask always creates StackRuns.
+          Golden Python↔Go PipelineRun builders.
       - >-
-          Status: CRD-primary is the default runtime; M15 hygiene (idempotent
-          create) in progress. Webhook certs and Team CR as API source remain M16.
+          Status: CRD-primary is the default runtime; M15 hygiene and M16 Team overlay /
+          continueFrom / webhook installer / escape-hatch retirement are landed. Spoken
+          demo rebuild remains M16.
       context:
         paths:
         - operator/README.md
