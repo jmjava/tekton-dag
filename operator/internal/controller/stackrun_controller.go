@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -207,12 +208,44 @@ func (r *StackRunReconciler) optionsFromStackRun(ctx context.Context, run *tekto
 		Timeout:            run.Spec.Timeout,
 		ServiceAccountName: run.Spec.ServiceAccountName,
 	}
+	if opt.PRNumber == 0 {
+		if s := run.Annotations["tektondag.io/pr-number"]; s != "" {
+			if n, err := strconv.Atoi(s); err == nil {
+				opt.PRNumber = n
+			}
+		}
+	}
 	if run.Spec.PipelineNamespace != "" {
 		opt.Namespace = run.Spec.PipelineNamespace
 	}
 	if run.Spec.MaxRetries != nil {
 		v := int(*run.Spec.MaxRetries)
 		opt.MaxRetries = &v
+	}
+	if run.Spec.StackRef == "" && opt.StackFile == "" {
+		stack, appName, err := r.lookupStack(ctx, run)
+		if err != nil {
+			return opt, err
+		}
+		if stack != nil {
+			run.Spec.StackRef = stack.Name
+			if opt.StackFile == "" {
+				if stack.Spec.StackFile != "" {
+					opt.StackFile = stack.Spec.StackFile
+				} else {
+					opt.StackFile = fmt.Sprintf("stacks/%s.yaml", stack.Spec.Name)
+				}
+			}
+			if opt.GitURL == "" {
+				opt.GitURL = stack.Spec.GitURL
+			}
+			if opt.ImageRegistry == "" && stack.Spec.Defaults != nil {
+				opt.ImageRegistry = stack.Spec.Defaults.ImageRegistry
+			}
+			if appName != "" {
+				opt.ChangedApp = appName
+			}
+		}
 	}
 	if run.Spec.StackRef != "" {
 		var stack tektondagv1alpha1.Stack
@@ -258,6 +291,40 @@ func (r *StackRunReconciler) optionsFromStackRun(ctx context.Context, run *tekto
 		return opt, fmt.Errorf("unknown mode %q", run.Spec.Mode)
 	}
 	return opt, nil
+}
+
+func repoShort(repo string) string {
+	for i := len(repo) - 1; i >= 0; i-- {
+		if repo[i] == '/' {
+			return repo[i+1:]
+		}
+	}
+	return repo
+}
+
+func (r *StackRunReconciler) lookupStack(ctx context.Context, run *tektondagv1alpha1.StackRun) (*tektondagv1alpha1.Stack, string, error) {
+	var list tektondagv1alpha1.StackList
+	if err := r.List(ctx, &list, client.InNamespace(run.Namespace)); err != nil {
+		return nil, "", err
+	}
+	needle := run.Spec.ChangedApp
+	for i := range list.Items {
+		st := &list.Items[i]
+		if run.Spec.StackFile != "" && (st.Spec.StackFile == run.Spec.StackFile || st.Name == run.Spec.StackFile) {
+			return st, needle, nil
+		}
+		for _, app := range st.Spec.Apps {
+			if needle != "" && (app.Name == needle || repoShort(app.Repo) == needle) {
+				return st, app.Name, nil
+			}
+		}
+	}
+	if needle != "" || run.Spec.Mode == tektondagv1alpha1.StackRunModeBootstrap {
+		if len(list.Items) == 1 && run.Spec.Mode == tektondagv1alpha1.StackRunModeBootstrap {
+			return &list.Items[0], "", nil
+		}
+	}
+	return nil, "", nil
 }
 
 func buildFromMode(mode tektondagv1alpha1.StackRunMode, opt pipeline.Options) (*unstructured.Unstructured, error) {

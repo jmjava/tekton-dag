@@ -87,6 +87,8 @@ type StackAppBuild struct {
 	Runtime      string `json:"runtime,omitempty"`
 	JavaVersion  string `json:"javaVersion,omitempty"`
 	NodeVersion  string `json:"nodeVersion,omitempty"`
+	PythonVersion string `json:"pythonVersion,omitempty"`
+	PhpVersion   string `json:"phpVersion,omitempty"`
 	BuildCommand string `json:"buildCommand,omitempty"`
 }
 
@@ -113,6 +115,15 @@ type StackStatus struct {
 
 	// TopoOrder is the resolved app order (entry first).
 	TopoOrder []string `json:"topoOrder,omitempty"`
+
+	// MissingSecrets referenced by apps but absent in the injection namespace.
+	MissingSecrets []string `json:"missingSecrets,omitempty"`
+
+	// MissingConfigMaps referenced by apps but absent in the injection namespace.
+	MissingConfigMaps []string `json:"missingConfigMaps,omitempty"`
+
+	// InjectionNamespace is where Secrets/ConfigMaps were checked.
+	InjectionNamespace string `json:"injectionNamespace,omitempty"`
 
 	// Conditions represent the latest available observations.
 	Conditions []metav1.Condition `json:"conditions,omitempty"`

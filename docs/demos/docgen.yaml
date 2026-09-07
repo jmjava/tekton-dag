@@ -271,11 +271,10 @@ narration_from_source:
   max_context_bytes: 120000
   hints:
   - 'Ground every script in the Jul 2026 tree: four pipelines (bootstrap, PR, merge, promote), M13 foundations shipped, M14
-    operator foundations present but not default-on.'
+    operator default-on (Stack/StackRun/Team CRs).'
   - Do not frame milestone 13 as entirely future work. Say foundations are shipped and name only remaining open items when
     discussing production hardening.
-  - The Kubernetes operator under operator/ is CRD-primary (Stack + StackRun, tektondag.io/v1alpha1). Flask STACKRUN_VIA_CRD
-    and Helm operator.enabled default false — do not claim the operator is the default runtime path.
+  - The Kubernetes operator under operator/ is CRD-primary (Stack + StackRun + Team, tektondag.io/v1alpha1). Helm operator.enabled defaults on. Flask STACKRUN_VIA_CRD is true when the operator is installed.
   - Demo video for this bundle is Manim + TTS + ffmpeg compose only (current docgen). Do not narrate VHS, ttyd, or terminal-tape
     capture as a pipeline stage.
   - 'Timestamps for this bundle must use Whisper (timestamps.engine: whisper). Do not use the local silencedetect aligner
@@ -298,9 +297,8 @@ narration_from_source:
         propagation roles.'
       - 'Name the four pipelines clearly: bootstrap, PR (intercept), merge/release, and promote (stack-promote + stacks/registries.yaml).
         Promote is shipped with M13 foundations — not future work.'
-      - Mention the Flask orchestrator as webhook/API brain. Optionally note that when STACKRUN_VIA_CRD is enabled, runs become
-        StackRun CRs reconciled by the operator (segment 19) — do not claim that path is default-on (Helm operator.enabled
-        defaults false).
+      - Mention the Flask orchestrator as webhook/API brain. Runs become StackRun CRs reconciled by the operator (segment 19);
+        Helm operator.enabled defaults on.
       - Cover polyglot stacks, hook tasks, management GUI, Helm multi-team, Tekton Results + Neo4j briefly as the high-level
         picture.
       context:
@@ -382,7 +380,7 @@ narration_from_source:
         - docs/demos/hints/narration-tts.md
     09:
       hints:
-      - 'Helm multi-team: per-team releases, scoped ConfigMaps, shared Tasks/Pipelines. operator.enabled is off by default.'
+      - 'Helm multi-team: per-team releases, scoped ConfigMaps, shared Tasks/Pipelines. operator.enabled defaults on.'
       context:
         paths:
         - README.md
@@ -463,8 +461,8 @@ narration_from_source:
         timeouts/retries/classifier/profiles, promote+registries).'
       - 'Remaining M13 open items only: intercept secret wiring, Helm appConfig/ESO templates, GUI panels, Prometheus/cost
         labels, cross-cluster deploy, Results/Neo4j backup polish.'
-      - 'Post-M14 follow-ons: default-on operator.enabled after soak, Team CR, GUI native StackRun views / promote approve
-        via StackRun.spec.approvedBy, Stack admission webhook, retire direct PipelineRun path once CRD is default.'
+      - 'Post-M14 follow-ons: GUI native StackRun views / promote approve via StackRun.spec.approvedBy, enable Stack
+        admission webhook with certs, retire --pipeline-run / STACKRUN_VIA_CRD=false escape hatches.'
       context:
         paths:
         - milestones/milestone-13.md
@@ -477,8 +475,8 @@ narration_from_source:
       - 'CRDs: Stack (validate/topo status) vs StackRun (mode pr|bootstrap|merge|promote -> PipelineRun).'
       - 'Flow: GitHub/API -> Flask (HMAC+resolve) -> StackRun -> tekton-dag-operator -> PipelineRun (orphaned on delete for
         Results history).'
-      - 'Enablement: STACKRUN_VIA_CRD + Helm operator.enabled (default off). Golden Python↔Go PipelineRun builders.'
-      - 'Status: foundations shipped under operator/; not default runtime yet.'
+      - 'Enablement: Helm operator.enabled and Kind STACKRUN_VIA_CRD default on. Golden Python↔Go PipelineRun builders.'
+      - 'Status: CRD-primary is the default runtime; webhook certs and GUI StackRun views remain follow-ons.'
       context:
         paths:
         - operator/README.md
@@ -507,7 +505,7 @@ manim_scene_generation:
       class_name: StackDAGScene
       hints:
       - Title tekton-dag, then DAG of demo-fe -> demo-bff -> demo-api with propagation roles.
-      - 'Four pipeline boxes: Bootstrap, PR, Merge, Promote. Small callout Optional CRD path pointing forward, not default.'
+      - 'Four pipeline boxes: Bootstrap, PR, Merge, Promote. Small callout CRD-primary path (StackRun) as the default create path.'
       context:
         paths:
         - docs/demos/hints/manim-scene-specs.md
@@ -652,7 +650,7 @@ manim_scene_generation:
       class_name: OperatorCRDScene
       hints:
       - 'Flow diagram pages: Webhook/API -> Flask -> StackRun -> Operator -> PipelineRun; side boxes Stack CRD and StackRun
-        CRD; footer Not default-on.'
+        CRD; footer Default-on.'
       context:
         paths:
         - docs/demos/hints/manim-scene-specs.md

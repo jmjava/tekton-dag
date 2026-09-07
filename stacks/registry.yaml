@@ -1,12 +1,14 @@
 # Stack Registry — maps repository names to their stack definition files.
-# The EventListener CEL overlays and the generate-run.sh script both
-# reference this to determine which stack a given repo belongs to.
+# Flask webhook routing still uses this file. EventListener templates create
+# StackRuns with changedApp=repo short name; the operator resolves that to a
+# Stack CR (app name or repo path). generate-run.sh emits StackRuns by default.
 #
 # When onboarding a new app or stack:
 #   1. Create a new stack YAML in stacks/
 #   2. Add a versions.yaml entry for each app
 #   3. Add the repo→stack mapping below
-#   4. Update the CEL overlay in pipeline/triggers.yaml
+#   4. Apply Stack CRs (`scripts/apply-stack-crs.sh` or Helm package) so the
+#      operator can resolve the repo without a CEL overlay map
 
 repos:
   # --- Stack One: 3-tier demo ---

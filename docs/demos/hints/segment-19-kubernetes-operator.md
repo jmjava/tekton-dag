@@ -21,10 +21,11 @@ docgen:
           Flow: GitHub/API -> Flask (HMAC+resolve) -> StackRun -> tekton-dag-operator ->
           PipelineRun (orphaned on delete for Results history).
       - >-
-          Enablement: STACKRUN_VIA_CRD + Helm operator.enabled (default off). Golden
+          Enablement: Helm operator.enabled and Kind STACKRUN_VIA_CRD default on. Golden
           Python↔Go PipelineRun builders.
       - >-
-          Status: foundations shipped under operator/; not default runtime yet.
+          Status: CRD-primary is the default runtime; webhook certs and GUI StackRun views
+          remain follow-ons.
       context:
         paths:
         - operator/README.md
@@ -36,7 +37,7 @@ docgen:
       hints:
       - >-
           Flow diagram pages: Webhook/API -> Flask -> StackRun -> Operator -> PipelineRun;
-          side boxes Stack CRD and StackRun CRD; footer Not default-on.
+          side boxes Stack CRD and StackRun CRD; footer Default-on.
       context:
         paths:
           - docs/demos/hints/manim-scene-specs.md

@@ -202,18 +202,36 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controller.StackReconciler{
+	stackRec := &controller.StackReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+	}
+	if err = stackRec.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Stack")
 		os.Exit(1)
+	}
+	// Admission webhook needs TLS certs + ValidatingWebhookConfiguration.
+	// Kind/Helm leave ENABLE_WEBHOOKS unset; controller status still validates Stacks.
+	if os.Getenv("ENABLE_WEBHOOKS") == "true" {
+		if err = stackRec.SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "Stack")
+			os.Exit(1)
+		}
+	} else {
+		setupLog.Info("Stack admission webhook disabled (set ENABLE_WEBHOOKS=true with certs)")
 	}
 	if err = (&controller.StackRunReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "StackRun")
+		os.Exit(1)
+	}
+	if err = (&controller.TeamReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Team")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

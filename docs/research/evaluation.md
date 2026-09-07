@@ -35,7 +35,7 @@ On 2026-09-07, `bash scripts/run-regression-stream.sh --local-only --require-lan
 
 | Suite | Approx. cases | How you run it today |
 |-------|---------------|----------------------|
-| Go `operator/` e2e | present | Kind soak via `run-cluster-ci.sh --with-operator` (opt-in; not default cluster-regression) |
+| Go `operator/` e2e | present | Kind soak via `run-cluster-ci.sh` (operator on by default; `--skip-operator` to opt out) |
 | Playwright GUI | 69 `test(` | cluster-regression Playwright job; `npx playwright test` locally |
 | Newman orchestrator | collection grew past the README “15 requests / 30 assertions” | `run-cluster-ci.sh` (live orchestrator Service) |
 | Newman graph (M9) | ~10 requests in `tests/postman/graph-tests.json` | `run-cluster-ci.sh --with-graph` |

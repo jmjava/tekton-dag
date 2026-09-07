@@ -192,21 +192,26 @@ def test_list_taskruns(mock_list, client):
     assert len(resp.get_json()["items"]) == 1
 
 
-@patch("k8s_client.create_pipelinerun")
+@patch("k8s_client.create_stackrun")
 def test_trigger_bootstrap(mock_create, client):
-    mock_create.return_value = "stack-bootstrap-xyz"
+    mock_create.return_value = "stackrun-bootstrap-xyz"
     resp = client.post(
         "/api/teams/default/trigger",
         data=json.dumps({"pipelineType": "bootstrap", "stack": "stacks/stack-one.yaml"}),
         content_type="application/json",
     )
     assert resp.status_code == 200
-    assert resp.get_json()["pipelineRun"] == "stack-bootstrap-xyz"
+    body = resp.get_json()
+    assert body["pipelineRun"] == "stackrun-bootstrap-xyz"
+    assert body["stackrun"] == "stackrun-bootstrap-xyz"
+    manifest = mock_create.call_args.args[2]
+    assert manifest["kind"] == "StackRun"
+    assert manifest["spec"]["stackRef"] == "stack-one"
 
 
-@patch("k8s_client.create_pipelinerun")
+@patch("k8s_client.create_stackrun")
 def test_trigger_pr(mock_create, client):
-    mock_create.return_value = "stack-pr-42-abc"
+    mock_create.return_value = "stackrun-pr-abc"
     resp = client.post(
         "/api/teams/default/trigger",
         data=json.dumps({
@@ -216,7 +221,7 @@ def test_trigger_pr(mock_create, client):
         content_type="application/json",
     )
     assert resp.status_code == 200
-    assert "stack-pr-42" in resp.get_json()["pipelineRun"]
+    assert resp.get_json()["stackrun"] == "stackrun-pr-abc"
 
 
 def test_trigger_missing_stack(client):

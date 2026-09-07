@@ -61,6 +61,10 @@ spec:
                           type: string
                         nodeVersion:
                           type: string
+                        phpVersion:
+                          type: string
+                        pythonVersion:
+                          type: string
                         runtime:
                           type: string
                         tool:
@@ -242,6 +246,21 @@ spec:
                   - status
                   - type
                   type: object
+                type: array
+              injectionNamespace:
+                description: InjectionNamespace is where Secrets/ConfigMaps were checked.
+                type: string
+              missingConfigMaps:
+                description: MissingConfigMaps referenced by apps but absent in the
+                  injection namespace.
+                items:
+                  type: string
+                type: array
+              missingSecrets:
+                description: MissingSecrets referenced by apps but absent in the injection
+                  namespace.
+                items:
+                  type: string
                 type: array
               observedGeneration:
                 description: ObservedGeneration is the last reconciled metadata.generation.

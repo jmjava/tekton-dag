@@ -80,7 +80,7 @@ orchestrationService:
 
 # M14 Go operator (Kubebuilder): reconciles Stack + StackRun → Tekton PipelineRuns
 operator:
-  enabled: false
+  enabled: true
   image: "localhost:5000/tekton-dag-operator:latest"
   # Always: nested Kind often cannot kind-load overlayfs; pull from the local registry.
   imagePullPolicy: Always

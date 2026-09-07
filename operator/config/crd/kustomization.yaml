@@ -2,8 +2,9 @@
 # since it depends on service name and namespace that are out of this kustomize package.
 # It should be run by config/default
 resources:
-- bases/tektondag.tektondag.io_stacks.yaml
-- bases/tektondag.tektondag.io_stackruns.yaml
+- bases/tektondag.io_stacks.yaml
+- bases/tektondag.io_stackruns.yaml
+- bases/tektondag.io_teams.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches:

@@ -2,7 +2,9 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
-# generate-run.sh — Generate and optionally apply a PipelineRun for
+# generate-run.sh — Generate and optionally apply a StackRun (operator)
+# for a given stack. Pass --pipeline-run to emit a raw Tekton PipelineRun.
+
 # a given stack, triggered either as a PR test or a merge release.
 #
 # Usage:
@@ -28,8 +30,9 @@ source "$SCRIPT_DIR/common.sh"
 #   --namespace          Target namespace (default: tekton-pipelines)
 #   --storage-class      PVC storage class
 #   --intercept-backend  telepresence (default) | mirrord (M7)
-#   --apply              kubectl create the PipelineRun immediately
+#   --apply              kubectl create the StackRun (or PipelineRun with --pipeline-run)
 #   --dry-run            Print the YAML without applying
+#   --pipeline-run       Emit a Tekton PipelineRun instead of a StackRun
 
 REGISTRY_FILE="$STACKS_DIR/registry.yaml"
 
@@ -41,8 +44,6 @@ STACK=""
 APP=""
 REPO=""
 PR=""
-GIT_URL=""
-GIT_REV=""
 APP_REVISIONS="{}"
 _IMAGE_REGISTRY=""
 STORAGE_CLASS="${STORAGE_CLASS:-}"
@@ -51,6 +52,7 @@ APPLY=false
 BUILD_IMAGES="${BUILD_IMAGES:-true}"
 BUILD_IMAGE_TAG="${BUILD_IMAGE_TAG:-latest}"
 INTERCEPT_BACKEND="${INTERCEPT_BACKEND:-telepresence}"
+EMIT_PIPELINERUN="${GENERATE_PIPELINE_RUN:-false}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -73,6 +75,7 @@ while [[ $# -gt 0 ]]; do
     --intercept-backend)  INTERCEPT_BACKEND="$2"; shift 2 ;;
     --apply)              APPLY=true; shift ;;
     --dry-run)            APPLY=false; shift ;;
+    --pipeline-run)       EMIT_PIPELINERUN=true; shift ;;
     *)                    die "Unknown option: $1" ;;
   esac
 done
@@ -103,6 +106,81 @@ PIPELINE_IMAGE_REGISTRY="${IMAGE_REGISTRY}"
 if [[ "$IMAGE_REGISTRY" == "localhost:5001" ]]; then
   COMPILE_IMAGE_REGISTRY="localhost:5000"
   PIPELINE_IMAGE_REGISTRY="localhost:5000"
+fi
+
+STACK_REF="${STACK%.yaml}"
+STACK_REF="${STACK_REF%.yml}"
+
+if [[ "$EMIT_PIPELINERUN" != "true" ]]; then
+  if [[ "$MODE" == "pr" ]]; then
+    [[ -n "$PR" ]] || die "--pr is required for pr mode"
+    [[ -n "$APP" ]] || die "PR mode tests one app at a time: --app is required (e.g. --app demo-fe)"
+    PR_REPO_URL=""
+    if [[ "$APP_REVISIONS" != "{}" && -n "$APP" ]]; then
+      REPO_SLUG=$(yq -r ".apps[] | select(.name == \"$APP\") | .repo" "$STACKS_DIR/$STACK" 2>/dev/null || true)
+      [[ -n "$REPO_SLUG" && "$REPO_SLUG" != "null" ]] && PR_REPO_URL="https://github.com/${REPO_SLUG}.git"
+    fi
+    cat <<EOF
+apiVersion: tektondag.io/v1alpha1
+kind: StackRun
+metadata:
+  generateName: stackrun-pr-
+  namespace: ${NAMESPACE}
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+    tektondag.io/mode: pr
+spec:
+  mode: pr
+  stackFile: ${STACK_PATH}
+  stackRef: ${STACK_REF}
+  gitUrl: ${GIT_URL}
+  gitRevision: ${GIT_REV}
+  changedApp: ${APP}
+  prNumber: ${PR}
+  appRevisions: '${APP_REVISIONS}'
+  prRepoUrl: "${PR_REPO_URL}"
+  imageRegistry: ${PIPELINE_IMAGE_REGISTRY}
+  interceptBackend: ${INTERCEPT_BACKEND}
+EOF
+  elif [[ "$MODE" == "merge" ]]; then
+    cat <<EOF
+apiVersion: tektondag.io/v1alpha1
+kind: StackRun
+metadata:
+  generateName: stackrun-merge-
+  namespace: ${NAMESPACE}
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+    tektondag.io/mode: merge
+spec:
+  mode: merge
+  stackFile: ${STACK_PATH}
+  stackRef: ${STACK_REF}
+  gitUrl: ${GIT_URL}
+  gitRevision: ${GIT_REV}
+  changedApp: ${APP}
+  imageRegistry: ${PIPELINE_IMAGE_REGISTRY}
+EOF
+  else
+    die "Unknown mode: $MODE (must be pr or merge)"
+  fi
+
+  if [[ "$APPLY" == "true" ]]; then
+    echo "---"
+    echo "# Applying StackRun..."
+    "$0" --mode "$MODE" --stack "$STACK" --app "$APP" \
+      ${PR:+--pr "$PR"} \
+      --intercept-backend "$INTERCEPT_BACKEND" \
+      --app-revisions-json "$APP_REVISIONS" \
+      --version-overrides "$VERSION_OVERRIDES" \
+      --git-url "$GIT_URL" --git-revision "$GIT_REV" \
+      --registry "$IMAGE_REGISTRY" \
+      --namespace "$NAMESPACE" \
+      --ssh-secret "$GIT_SSH_SECRET_NAME" \
+      $([ "$BUILD_IMAGES" = "true" ] && echo "--build-images ") \
+      --storage-class "$STORAGE_CLASS" | kubectl create -f -
+  fi
+  exit 0
 fi
 
 if [[ "$MODE" == "pr" ]]; then

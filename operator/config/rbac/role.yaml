@@ -7,6 +7,7 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - configmaps
   - secrets
   verbs:
   - get
@@ -35,6 +36,7 @@ rules:
   resources:
   - stackruns
   - stacks
+  - teams
   verbs:
   - create
   - delete
@@ -48,6 +50,7 @@ rules:
   resources:
   - stackruns/finalizers
   - stacks/finalizers
+  - teams/finalizers
   verbs:
   - update
 - apiGroups:
@@ -55,6 +58,7 @@ rules:
   resources:
   - stackruns/status
   - stacks/status
+  - teams/status
   verbs:
   - get
   - patch

@@ -11,6 +11,7 @@
 #   ./scripts/run-cluster-ci.sh
 #   ./scripts/run-cluster-ci.sh --skip-newman
 #   ./scripts/run-cluster-ci.sh --with-operator
+#   ./scripts/run-cluster-ci.sh --skip-operator
 #   ./scripts/run-cluster-ci.sh --isolation-repeats 3
 #   ./scripts/run-cluster-ci.sh --help
 set -euo pipefail
@@ -25,11 +26,11 @@ SKIP_ISOLATION=false
 SKIP_PHASE2=false
 SKIP_NEWMAN=false
 WITH_GRAPH=false
-WITH_OPERATOR="${CLUSTER_CI_WITH_OPERATOR:-false}"
-if [[ "$WITH_OPERATOR" == "1" || "$WITH_OPERATOR" == "true" || "$WITH_OPERATOR" == "yes" ]]; then
-  WITH_OPERATOR=true
-else
+WITH_OPERATOR="${CLUSTER_CI_WITH_OPERATOR:-true}"
+if [[ "$WITH_OPERATOR" == "0" || "$WITH_OPERATOR" == "false" || "$WITH_OPERATOR" == "no" ]]; then
   WITH_OPERATOR=false
+else
+  WITH_OPERATOR=true
 fi
 ISOLATION_REPEATS="${ISOLATION_EVAL_REPEATS:-1}"
 HELP=false
@@ -49,6 +50,7 @@ while [[ $# -gt 0 ]]; do
     --skip-newman)    SKIP_NEWMAN=true; shift ;;
     --with-graph)     WITH_GRAPH=true; shift ;;
     --with-operator)  WITH_OPERATOR=true; shift ;;
+    --skip-operator)  WITH_OPERATOR=false; shift ;;
     --isolation-repeats) ISOLATION_REPEATS="$2"; shift 2 ;;
     --out)            ISOLATION_OUT="$2"; shift 2 ;;
     --help|-h)        HELP=true; shift ;;
@@ -57,7 +59,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ "$HELP" == "true" ]]; then
-  sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
   exit 0
 fi
 
@@ -149,8 +151,8 @@ if [[ "$SKIP_NEWMAN" != "true" ]]; then
   kubectl patch deployment tekton-dag-orchestrator -n "$NAMESPACE" --type=json \
     -p '[{"op":"add","path":"/spec/template/spec/containers/0/imagePullPolicy","value":"IfNotPresent"}]' \
     >/dev/null || true
-  if [[ "$WITH_OPERATOR" == "true" ]]; then
-    kubectl set env deployment/tekton-dag-orchestrator -n "$NAMESPACE" STACKRUN_VIA_CRD=true
+  if [[ "$WITH_OPERATOR" != "true" ]]; then
+    kubectl set env deployment/tekton-dag-orchestrator -n "$NAMESPACE" STACKRUN_VIA_CRD=false
   fi
   kubectl rollout status deployment/tekton-dag-orchestrator -n "$NAMESPACE" --timeout=180s
 

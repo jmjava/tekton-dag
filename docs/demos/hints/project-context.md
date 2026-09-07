@@ -13,14 +13,13 @@ docgen:
       hints:
         - >-
           Ground every script in the Jul 2026 tree: four pipelines (bootstrap, PR, merge, promote),
-          M13 foundations shipped, M14 operator foundations present but not default-on.
+          M13 foundations shipped, M14 operator default-on (Stack/StackRun/Team CRs).
         - >-
           Do not frame milestone 13 as entirely future work. Say foundations are shipped and name
           only remaining open items when discussing production hardening.
         - >-
-          The Kubernetes operator under operator/ is CRD-primary (Stack + StackRun,
-          tektondag.io/v1alpha1). Flask STACKRUN_VIA_CRD and Helm operator.enabled default false —
-          do not claim the operator is the default runtime path.
+          The Kubernetes operator under operator/ is CRD-primary (Stack + StackRun + Team,
+          tektondag.io/v1alpha1). Flask STACKRUN_VIA_CRD and Helm operator.enabled default on.
         - >-
           Demo video for this bundle is Manim + TTS + ffmpeg compose only (current docgen). Do not
           narrate VHS, ttyd, or terminal-tape capture as a pipeline stage.

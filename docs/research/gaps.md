@@ -52,7 +52,7 @@ Until a **recorded** cluster-regression artifact exists for a tagged commit, do 
 | **S38** | `install-tekton.sh` tracked `latest`; v1.6 rejected `taskRef.name: $(params.pre-build-task)`. Hooks use cluster resolver; pin Pipelines/Triggers. | Landed |
 | **S39** | `common.sh` defaulted host `localhost:5001` while `kind-with-registry.sh` listens on **`:5000`**. Newman image push failed (`connection refused` on 5001). Phase 2 `stack-dag-verify` **Succeeded**. | Landed |
 | **S33 local** | `run-cluster-ci.sh` on this Cloud Agent Kind: isolation 6/6, Phase 2 Succeeded, Newman 18 req / 36 asserts. `kind load` overlayfs warning (nested Docker); registry pull worked. | Local log only; GHA not dispatched |
-| **M14 soak** | `install-operator-kind.sh` + Newman `STACKRUN_VIA_CRD=true`: 6/6 StackRuns → labeled PipelineRuns. Helm `operator.enabled` still default **false**. Some PRs then `CouldntGetTask` (task catalog). | Kind soak recorded; default-on still open |
+| **M14 soak** | Default-on: Helm `operator.enabled=true`, Kind `STACKRUN_VIA_CRD=true`. Newman 18/18 and 6/6 StackRun → PipelineRun. Team `default` Ready; Stacks `valid` + `injectionNamespace`. Some PRs then `CouldntGetTask` (task catalog). | Landed (product); GHA cluster-regression still not the proof |
 | **S34** | Phase 2 ≠ intercept E2E. Dummy isolation-eval ≠ Telepresence/mirrord. Bootstrap skipped SSH/GitHub secrets. | Open |
 | Lessons | Dual-port registry, Kaniko stdout vs results, intercept vs Pod Security: see [seip/lessons-learned.md](seip/lessons-learned.md). | Registry default paid in S39; intercept PSS still S34 |
 

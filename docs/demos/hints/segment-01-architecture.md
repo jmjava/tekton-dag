@@ -19,10 +19,8 @@ docgen:
           promote (stack-promote + stacks/registries.yaml). Promote is shipped with M13
           foundations — not future work.
       - >-
-          Mention the Flask orchestrator as webhook/API brain. Optionally note that when
-          STACKRUN_VIA_CRD is enabled, runs become StackRun CRs reconciled by the operator
-          (segment 19) — do not claim that path is default-on (Helm operator.enabled
-          defaults false).
+          Mention the Flask orchestrator as webhook/API brain. Runs become StackRun CRs
+          reconciled by the operator (segment 19); Helm operator.enabled defaults on.
       - >-
           Cover polyglot stacks, hook tasks, management GUI, Helm multi-team, Tekton
           Results + Neo4j briefly as the high-level picture.
@@ -38,8 +36,8 @@ docgen:
           Title tekton-dag, then DAG of demo-fe -> demo-bff -> demo-api with propagation
           roles.
       - >-
-          Four pipeline boxes: Bootstrap, PR, Merge, Promote. Small callout Optional CRD
-          path pointing forward, not default.
+          Four pipeline boxes: Bootstrap, PR, Merge, Promote. Small callout CRD-primary
+          path (StackRun) as the default create path.
       context:
         paths:
           - docs/demos/hints/manim-scene-specs.md
