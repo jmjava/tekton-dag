@@ -32,7 +32,7 @@ kubectl apply -f config/samples/
 
 Helm `operator.enabled` defaults **on**. Kind: `../scripts/install-operator-kind.sh` (applies Stack/Team CRs from Git YAML).
 
-The Stack **validating webhook** is implemented in-process (`SetupWebhookWithManager`) but Kind/Helm do **not** install `ValidatingWebhookConfiguration` until certs exist; the controller still validates in status.
+The Stack **validating webhook** is implemented in-process (`SetupWebhookWithManager`). Kind/Helm leave `ENABLE_WEBHOOKS` unset so the process does not bind admission TLS until certs exist; they also do **not** install `ValidatingWebhookConfiguration`. The controller still validates in status.
 
 Do not add more CRD kinds for promote, intercepts, hooks, or registries. See [milestones/milestone-14.md](../milestones/milestone-14.md).
 
