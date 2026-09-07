@@ -38,12 +38,11 @@ See **[seip-tasks.md](seip-tasks.md)**. No ICSE 2027 date. Gate 0 is a real site
 
 Engineering completeness is separate from the HotCRP PDF. As of this branch:
 
-- `--local-only` regression **passes** (Phase 1 + 230 pytest + 15 vitest).
-- GitHub Actions does **not** run that suite on pull requests.
-- Java, PHP, servlet, operator Go, Playwright (on `--local-only`), Newman, Phase 2, and intercept E2E are **out of band**.
+- `--local-only --require-lang-tests` **passes** (Phase 1 + pytest + vitest + isolation-eval protocol + Maven + PHPUnit + operator `go test`) and is **gated** by [`.github/workflows/local-regression.yml`](../../.github/workflows/local-regression.yml).
+- Playwright (on `--local-only`), Newman, Phase 2, intercept E2E, and Kind isolation **measurements** are **out of band**.
 - README milestone test counts are **stale**.
 
-Until a PR workflow runs `--local-only` and a recorded cluster log exists for the tagged release, do not tell reviewers the platform is continuously verified.
+Until a recorded cluster log exists for a tagged release, do not tell reviewers the *platform* (Tekton/intercepts) is continuously verified. Local unit/static CI is the honest claim.
 
 ## Must-not-do
 

@@ -1,0 +1,63 @@
+name: local regression
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: local-regression-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  local-only:
+    name: --local-only + Java/PHP/operator
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          cache-dependency-path: |
+            libs/baggage-spring-boot-starter/pom.xml
+            libs/baggage-servlet-filter/pom.xml
+
+      - name: Set up PHP
+        uses: shivamathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          tools: composer
+          coverage: none
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache-dependency-path: operator/go.sum
+
+      - name: Bootstrap Python venv
+        run: ./scripts/bootstrap-regression-venv.sh
+
+      - name: Regression --local-only --require-lang-tests
+        run: bash scripts/run-regression-stream.sh --local-only --require-lang-tests

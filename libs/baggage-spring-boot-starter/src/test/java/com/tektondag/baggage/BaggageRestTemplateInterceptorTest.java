@@ -1,16 +1,15 @@
 package com.tektondag.baggage;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 
 import java.net.URI;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.client.ClientHttpRequestExecution;
-import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.mock.http.client.MockClientHttpRequest;
+import org.springframework.mock.http.client.MockClientHttpResponse;
 
 class BaggageRestTemplateInterceptorTest {
 
@@ -103,9 +102,7 @@ class BaggageRestTemplateInterceptorTest {
     assertTrue(baggage.contains("dev-session=my-session"));
   }
 
-  private static ClientHttpRequestExecution mockExecution() throws Exception {
-    ClientHttpRequestExecution exec = mock(ClientHttpRequestExecution.class);
-    when(exec.execute(any(), any())).thenReturn(mock(ClientHttpResponse.class));
-    return exec;
+  private static ClientHttpRequestExecution mockExecution() {
+    return (request, body) -> new MockClientHttpResponse(EMPTY, HttpStatus.OK);
   }
 }

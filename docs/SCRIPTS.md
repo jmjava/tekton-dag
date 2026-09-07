@@ -11,7 +11,9 @@ Shared helpers live in [`scripts/common.sh`](../scripts/common.sh) (sourced by m
 
 | Script | Purpose |
 |--------|---------|
-| [`run-regression.sh`](../scripts/run-regression.sh) | **Main regression driver** — pytest, vitest, Playwright, cluster/Newman, optional DAG verify & Results DB. See [REGRESSION.md](REGRESSION.md). |
+| [`run-regression.sh`](../scripts/run-regression.sh) | **Main regression driver** — pytest, vitest, isolation-eval protocol, Java/PHP/operator unit tests, Playwright, cluster/Newman, optional DAG verify & Results DB. See [REGRESSION.md](REGRESSION.md). |
+| [`run-lang-unit-tests.sh`](../scripts/run-lang-unit-tests.sh) | Maven (both baggage modules), PHPUnit, operator `go test ./internal/... ./api/...`. |
+| [`run-isolation-eval.sh`](../scripts/run-isolation-eval.sh) | Clone-vs-intercept harness: `--offline` plan CSV; `--cluster` Kind measurements. |
 | [`run-regression-agent.sh`](../scripts/run-regression-agent.sh) | Streamed output for **agents** (Cursor); wraps tiers for iterative fix loops. [AGENT-REGRESSION.md](AGENT-REGRESSION.md) |
 | [`run-regression-agent-full.sh`](../scripts/run-regression-agent-full.sh) | Full agent-oriented run (heavier than default agent script). |
 | [`run-regression-stream.sh`](../scripts/run-regression-stream.sh) | Regression with streaming log-friendly behavior. |

@@ -11,9 +11,9 @@ Do **not** confuse these:
 | Scope | What runs | Typical trigger |
 |-------|-----------|-----------------|
 | **Application PR** (`stack-pr-test` on an **app** repo) | Stack-defined tests only — e.g. that app’s Newman/Playwright/Artillery as declared in `stacks/*.yaml`, against the intercept build. | Every PR on the **application** repository (when webhooks/Tekton are wired). |
-| **Platform regression** (`scripts/run-regression*.sh` on **this** repo) | **System / integration** tiers: Phase 1 + orchestrator + shared libs + GUI pytest, Playwright for **management-gui**, real **`stack-dag-verify`** PipelineRun, Newman against **orchestrator** API, optional Tekton Results, optional Kind E2E. | **Manual**, **scheduled**, **pre-release**, or **agent loop** — **not** “automatically on every pull request” unless *you* add GitHub Actions (or similar) to do so. |
+| **Platform regression** (`scripts/run-regression*.sh` on **this** repo) | **System / integration** tiers: Phase 1 + orchestrator + shared libs + GUI pytest, Playwright for **management-gui**, real **`stack-dag-verify`** PipelineRun, Newman against **orchestrator** API, optional Tekton Results, optional Kind E2E. | **PRs / `main`:** GitHub Actions [`.github/workflows/local-regression.yml`](../.github/workflows/local-regression.yml) runs **`--local-only --require-lang-tests`**. Cluster tiers remain **manual**, **scheduled**, **pre-release**, or **agent loop**. |
 
-So: **not all tests run on every PR.** The full regression driver is a **system test** bar for the platform; app PRs run a narrower, stack-scoped test stage.
+So: **not all tests run on every PR.** `--local-only` (including Java/PHP/operator) is CI-gated; Kind / Newman / Phase 2 are not. App PRs run a narrower, stack-scoped test stage.
 
 **Streaming / timestamps:** use **`scripts/run-regression-stream.sh`** — same arguments, prefixes each line with `[HH:MM:SS]` and preserves the real exit code (plain `| while read` does not).
 
@@ -34,8 +34,10 @@ So: **not all tests run on every PR.** The full regression driver is a **system 
 | Tier | What | When |
 |------|------|------|
 | **A — Local static DAG** | [scripts/verify-dag-phase1.sh](../scripts/verify-dag-phase1.sh) (repo layout, `stack-graph.sh`, registry/versions via **yq**) | Always |
-| **A — Python** | pytest in `orchestrator/`, `libs/tekton-dag-common/`, `management-gui/backend/`, `libs/baggage-python/` | Always |
+| **A — Python** | pytest in `orchestrator/`, `libs/tekton-dag-common/`, `management-gui/backend/`, `libs/baggage-python/`, `scripts/isolation_eval/` | Always |
 | **A — Node** | vitest in `libs/baggage-node` | Always |
+| **A — Java / PHP / Go** | Maven both baggage modules, PHPUnit `libs/baggage-php`, `go test` operator `internal/` + `api/` | **auto** if `mvn`, `php`, `composer`, `go` on PATH; **required** with `--require-lang-tests`; **off** with `--skip-lang-tests` |
+| **A — Isolation eval (offline)** | Protocol pytest + plan CSV (`run-isolation-eval.sh --offline`) | Always (plan only; `--cluster` is Kind measurements) |
 | **B — Browser** | Playwright in `management-gui/frontend` | Default; skip with `--local-only` or `--skip-playwright` |
 | **C — Tekton DAG pipeline** | [scripts/verify-dag-phase2.sh](../scripts/verify-dag-phase2.sh) — **`stack-dag-verify`** to **Succeeded** | **Auto** if `kubectl` works and `Pipeline/stack-dag-verify` exists in `NAMESPACE`. **Skipped** when [run-full-test-and-verify-results.sh](../scripts/run-full-test-and-verify-results.sh) will run (it already includes Phase 2). **Forced failure if missing** with `--require-dag-verify`. **Off** with `--skip-dag-verify` or `REGRESSION_DAG_VERIFY=skip`. |
 | **D — Cluster API** | Newman via [run-orchestrator-tests.sh](../scripts/run-orchestrator-tests.sh) `--all` | **Auto** if orchestrator `Service` exists and `newman` on `PATH`; **required** with `--cluster` |
@@ -52,6 +54,7 @@ So: **not all tests run on every PR.** The full regression driver is a **system 
 
 - **`yq`** (Mike Farah YAML processor) on `PATH` — required for Phase 1.
 - **Node.js + npm** for baggage-node and Playwright.
+- **Optional local / required in GitHub Actions:** `mvn` (Java 21), PHP 8.3 + Composer, Go 1.23 — see `--require-lang-tests`.
 - **Cluster:** `kubectl`, Tekton `Pipeline/stack-dag-verify` + tasks for **Tier C**, orchestrator **Service** for Newman, optional Tekton Results for **Tier E**.
 
 ## Common commands
@@ -59,8 +62,15 @@ So: **not all tests run on every PR.** The full regression driver is a **system 
 ```bash
 chmod +x scripts/run-regression.sh   # once, if needed
 
-# Fast (no browser, no cluster): Phase 1 + pytest + vitest
+# Fast (no browser, no cluster): Phase 1 + pytest + vitest + isolation protocol
+# Java/PHP/Go run if those tools are installed
 ./scripts/run-regression.sh --local-only
+
+# CI: fail if Maven/PHPUnit/Go toolchains missing
+./scripts/run-regression.sh --local-only --require-lang-tests
+
+# Kind measurement (not PR CI): clone vs intercept dummy stacks → CSV
+./scripts/run-isolation-eval.sh --cluster --repeats 3 --out /tmp/eval.csv
 
 # Default: local + Playwright + Tekton stack-dag-verify (if pipeline exists) + Newman + Results script (if API exists)
 ./scripts/run-regression.sh

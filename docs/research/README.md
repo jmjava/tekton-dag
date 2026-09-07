@@ -14,11 +14,11 @@ It does **not** invent a new platform. It maps what is already in this repo (and
 | **Contribution claims** | Draft | [`contributions.md`](contributions.md) — honest about engineering vs. research novelty |
 | **Related work** | Draft | [`related-work.md`](related-work.md) + [`paper/refs.bib`](paper/refs.bib) |
 | **Multi-repo artifact map** | Draft | [`artifact-map.md`](artifact-map.md) |
-| **Evaluation evidence** | Partial | [`evaluation.md`](evaluation.md) — `--local-only` green (105+47+61+17 pytest, 15 vitest). **No** PR CI, **no** Java/PHP/operator in the driver, **no** cluster E2E in this environment, **no** comparative study |
+| **Evaluation evidence** | Partial | [`evaluation.md`](evaluation.md) — PR CI runs `--local-only --require-lang-tests`. **No** cluster E2E in this environment, Kind isolation CSV is **plan-only** until `--cluster`, **no** site study |
 | **ACM artifact badges** | Partial | [`artifact-checklist.md`](artifact-checklist.md) — Available is blocked until Zenodo/Software Heritage DOI; Reusable needs a reviewer-timed Kind path |
 | **SEIP / full research track** | Not this cycle | Standing backlog: [seip-tasks.md](seip-tasks.md). Gate 0 is industrial context. No ICSE 2027 deadline. |
 
-**Short answer: no, the testing work is not “all done.”** There is a real, passing *local* unit/static suite. Cluster E2E, several language libraries, the operator, GitHub Actions coverage, and every comparative study a workshop PC might still ask for are incomplete or unenforced.
+**Short answer: no, the testing work is not “all done.”** Local unit/static tests are PR-gated. Cluster E2E, Kind isolation measurements, and comparative studies are not.
 
 See [`evaluation.md`](evaluation.md) for counts from a live `--local-only` run.
 

@@ -56,13 +56,14 @@ Reviewers will clone GitHub. A green local suite that Actions never runs undermi
 
 Each slice is independently useful even if Gate 0 is still open.
 
-- [ ] **S30** GitHub Actions workflow: `run-regression.sh --local-only` on pull requests (Phase 1 + pytest + vitest). Badge or README line that cites **CI**, not milestone tables.
-- [ ] **S31** Add Java (`mvn test` in both baggage modules) and PHPUnit to that same driver or a second CI job.
-- [ ] **S32** Add `go test ./internal/...` for `operator/`.
-- [ ] **S33** Nightly or manual cluster job: Playwright + Newman + `stack-dag-verify`. Record a log on a tagged release; do not pretend every PR ran Kind.
+- [x] **S30** GitHub Actions workflow: `run-regression.sh --local-only` on pull requests (Phase 1 + pytest + vitest). Badge or README line that cites **CI**, not milestone tables.
+- [x] **S31** Add Java (`mvn test` in both baggage modules) and PHPUnit to that same driver or a second CI job.
+- [x] **S32** Add `go test ./internal/...` for `operator/`.
+- [ ] **S33** Nightly or manual cluster job: Playwright + Newman + `stack-dag-verify` (and optionally `run-isolation-eval.sh --cluster`). Record a log on a tagged release; do not pretend every PR ran Kind.
 - [ ] **S34** On a chosen tag: `run-e2e-with-intercepts.sh` for Telepresence **and** mirrord; attach logs to the release.
 - [ ] **S35** Refresh README / milestone test counts from CI (orchestrator is already 105 pytest, not 62).
 - [ ] **S36** License + `CITATION.cff` already landed; add a Zenodo DOI when you freeze a “paper artifact” tag (any year).
+- [x] **S37** Scripted Kind isolation harness: clone-vs-intercept, stack width, probes, CSV (`scripts/run-isolation-eval.sh`). Offline plan is in `--local-only`; `--cluster` is measured Kind data, **not** site evidence (S21).
 
 C can proceed indefinitely around other jobs. It is **necessary for trust**, not sufficient for SEIP.
 
@@ -110,7 +111,7 @@ Do this only when you have picked a specific year/track. Not now.
 ## Suggested iteration order (when a slice of time appears)
 
 1. **S00–S03** if you have even a short window with the site — or skip SEIP and stay on the artifact (C).
-2. **S30** when you next touch GitHub Actions anyway.
+2. **S33** (cluster job / tagged log) when you next have a Kind environment; S30–S32 and S37 already landed.
 3. **S11 / S24 / lessons-learned** whenever you hit a real incident; one paragraph per incident is enough.
 4. **S20–S22** once a metrics window exists (needs the site or a real staging fleet).
 5. **S40+** last. Prose without B is what gets rejected.

@@ -2,11 +2,11 @@
 
 Workshop and tool-demo reviewers accept **functional** evidence if claims stay inside it. Research-track and SEIP reviewers will not. This inventory lists what already exists in-tree so the paper does not invent numbers.
 
-**Short answer: no, the testing work is not “all done.”** There is a real, passing *local* unit/static suite. Cluster E2E, several language libraries, the operator, GitHub Actions coverage, and every comparative study a workshop PC might still ask for are incomplete or unenforced.
+**Short answer: no, the testing work is not “all done.”** There is a real, passing *local* unit/static suite, now **gated on GitHub PRs**. Cluster E2E, Kind isolation *measurements*, and every comparative study a research PC would ask for remain incomplete or unenforced.
 
 ## What actually ran (this packaging branch)
 
-On 2026-09-07, `bash scripts/run-regression-stream.sh --local-only` exited **0** in a laptop-style environment (`kubectl` not installed). That path is **Phase 1 + pytest + vitest only**. Playwright, Newman, `stack-dag-verify`, Tekton Results, and intercept E2E were **not** run.
+On 2026-09-07, `bash scripts/run-regression-stream.sh --local-only --require-lang-tests` is the CI path (Phase 1 + pytest + vitest + isolation-eval protocol + Maven + PHPUnit + operator `go test`). Playwright, Newman, `stack-dag-verify`, Tekton Results, intercept E2E, and `run-isolation-eval.sh --cluster` were **not** run here (`kubectl` not installed).
 
 | Suite | Collected / result |
 |-------|-------------------|
@@ -19,16 +19,12 @@ On 2026-09-07, `bash scripts/run-regression-stream.sh --local-only` exited **0**
 
 `--local-only` **skips** Playwright on purpose. The 69 Playwright files are still in `management-gui/frontend/e2e/`; they were not executed here.
 
-## What exists but is *not* in `run-regression.sh`
+## What exists but is *not* CI-gated on every PR
 
-These tests are in the tree. The encompassing regression driver does **not** invoke them. GitHub Actions on this repo also does **not** run them (workflows are Pages deploy + a `docgen demo-function` smoke only).
+`--local-only --require-lang-tests` **does** run on pull requests ([`.github/workflows/local-regression.yml`](../../.github/workflows/local-regression.yml)): Phase 1, pytest (including isolation-eval protocol), vitest, Maven (both Java baggage modules), PHPUnit, operator `go test ./internal/... ./api/...`. The suites below still need a cluster, a browser, or a manual Kind job.
 
 | Suite | Approx. cases | How you run it today |
 |-------|---------------|----------------------|
-| JUnit `libs/baggage-spring-boot-starter` | 18 `@Test` | `mvn test` in that module |
-| JUnit `libs/baggage-servlet-filter` | 13 `@Test` | `mvn test` in that module |
-| PHPUnit `libs/baggage-php` | 19 methods | phpunit in that module |
-| Go `operator/` unit | 4 `Test*` | `go test ./internal/...` |
 | Go `operator/` e2e | present | needs a cluster |
 | Playwright GUI | 69 `test(` | `npx playwright test` (regression default, **not** `--local-only`) |
 | Newman orchestrator | collection grew past the README “15 requests / 30 assertions” | needs live orchestrator Service |
@@ -36,9 +32,10 @@ These tests are in the tree. The encompassing regression driver does **not** inv
 | Newman management GUI | optional | `--gui-newman` |
 | `stack-dag-verify` PipelineRun | one real Tekton run | cluster + `--require-dag-verify` |
 | Intercept E2E both backends | scripts exist | `run-e2e-with-intercepts.sh` |
+| Kind clone-vs-intercept **measurements** | CSV rows | `run-isolation-eval.sh --cluster` (offline *plan* CSV is in `--local-only`) |
 | Sample **app-repo** tests (Newman/Playwright/Artillery in the six `tekton-dag-*` repos) | declared in stack YAML | only during `stack-pr-test`, not platform regression |
 
-C2 (polyglot baggage) is therefore only **partially** regression-gated: Python and Node yes; Java and PHP no. C3 (intercept isolation) is **scripted**, not CI-gated. C4 (test-plan) has mocked pytest + a Postman collection; `milestones/milestone-9.md` still says **Planned** even though `query-test-plan` is wired in `stack-pr-pipeline.yaml`.
+C2 (polyglot baggage **unit** tests) is PR-gated for Python, Node, Java, and PHP. In-cluster hop validation (`validate-stack-propagation`) remains a pipeline task. C3 isolation **probes on Kind** are scripted (`run-isolation-eval.sh --cluster`) but not CI-gated. C4 (test-plan) has mocked pytest + a Postman collection; `milestones/milestone-9.md` still says **Planned** even though `query-test-plan` is wired in `stack-pr-pipeline.yaml`.
 
 ## What we can cite today (with location)
 
@@ -72,10 +69,10 @@ Same header-filter idea is documented as parity with Telepresence `--http-match`
 
 ### Propagation libraries (C2)
 
-Unit tests exist for five ecosystems. Only Python + Node are in the default local regression. Java/PHP tests exist but are ungated. Integration via stack test stacks and `validate-stack-propagation` is a **pipeline** task, not a laptop pytest.
+Unit tests exist for Python, Node, Java (Spring starter + servlet filter), and PHP. Those unit tests run on every PR via `--require-lang-tests`. Integration via stack test stacks and `validate-stack-propagation` is a **pipeline** task, not a laptop pytest.
 
-**How to report:** libraries exist; roles are encoded in YAML.
-**Do not report:** “all five libraries are CI-verified on every commit.”
+**How to report:** libraries exist; unit tests are CI-gated; roles are encoded in YAML.
+**Do not report:** “every hop was validated in-cluster on every commit.”
 
 ### Platform regression layers (C5)
 
@@ -83,12 +80,14 @@ From [`docs/TESTING-AND-REGRESSION-OVERVIEW.md`](../TESTING-AND-REGRESSION-OVERV
 
 | Layer | Proves | Typical command | Gated on GitHub PR? |
 |-------|--------|-----------------|---------------------|
-| Static DAG | YAML graph consistency | `verify-dag-phase1.sh` | No |
-| Python / Node unit | resolver, orchestrator, baggage (py/node) | pytest, vitest | No |
-| GUI | operator workflows | Playwright | No |
+| Static DAG | YAML graph consistency | `verify-dag-phase1.sh` | Yes (`local-regression.yml`) |
+| Python / Node unit | resolver, orchestrator, baggage (py/node), isolation-eval protocol | pytest, vitest | Yes |
+| Java / PHP / operator | baggage JUnit, PHPUnit, `go test ./internal/... ./api/...` | `run-lang-unit-tests.sh` | Yes (`--require-lang-tests`) |
+| GUI | operator workflows | Playwright | No (skipped by `--local-only`) |
 | Orchestrator API | HTTP contracts | Newman | No |
 | Live PipelineRun | `stack-dag-verify` Succeeded | `verify-dag-phase2.sh` | No |
 | Results DB | persistence | `verify-results-in-db.sh` | No |
+| Clone vs intercept (Kind) | dummy-stack isolation + pod counts | `run-isolation-eval.sh --cluster` | No (offline plan only on PRs) |
 
 Update paper numbers from **`pytest` collection on the submission tag**, not from milestone tables.
 
@@ -104,17 +103,14 @@ Code exists (`/api/test-plan`, `query-test-plan` task, Neo4j client, Postman gra
 
 | Missing study **or** missing engineering gate | Why it matters | Minimum next step |
 |-----------------------------------------------|----------------|-------------------|
-| PR CI for `--local-only` regression | Reviewers will clone HEAD and assume tests run in Actions | Add a workflow that runs `run-regression.sh --local-only` |
-| Java + PHP baggage in the driver | C2 is otherwise a documentation claim | `mvn test` / phpunit steps in regression |
-| Operator `go test` in the driver | M14 is otherwise untested in the encompassing suite | `go test ./internal/...` |
 | Cluster Phase 2 + intercept E2E on a tagged release | C1/C3 need a live PipelineRun | Kind job or recorded log from `run-regression-agent-full.sh` |
-| Cost/time vs. namespace-per-PR | Central *research* claim of routing vs. cloning | Wall-clock and node-minutes, ≥3 repeats |
+| Cost/time vs. namespace-per-PR (**measured**) | Central *research* claim of routing vs. cloning | `run-isolation-eval.sh --cluster --repeats 3` (harness exists; no measured CSV yet) |
 | Concurrent PRs | Multi-tenant intercepts | Two PRs, two headers, no cross-steal |
 | Developer study | Demo “envisioned users” | Even n=3 think-aloud |
 | Industrial case | SEIP | Named org |
 | TIA comparison | C4 | Tests selected vs. full e2e |
 
-Until the engineering gates exist, keep the paper in **tool / experience / exemplar** voice. Until the studies exist, do not promote the paper to SEIP or the research track.
+Until cluster E2E and the *studies* exist, keep the paper in **tool / experience / exemplar** voice. Do not promote it to SEIP or the research track.
 
 ## Threats to validity (pre-written for the paper)
 

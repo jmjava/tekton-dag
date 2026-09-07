@@ -2,7 +2,9 @@
 
 Standalone Tekton pipeline system for **local development and proof-of-concept**. Stack-aware CI/CD with header-based traffic interception, multi-framework support, and an in-cluster orchestration service.
 
-**Academic packaging (workshop / tool-demo):** [docs/research/](docs/research/) — contribution claims, venue map (ICSE 2027 Demonstrations / SESoS), artifact checklist, and a 4-page IEEE draft. Cite via [`CITATION.cff`](CITATION.cff). License: [Apache-2.0](LICENSE).
+**Academic packaging (workshop / tool-demo):** [docs/research/](docs/research/) — contribution claims, venue map, artifact checklist, and a 4-page IEEE draft. Cite via [`CITATION.cff`](CITATION.cff). License: [Apache-2.0](LICENSE).
+
+[![local regression](https://github.com/jmjava/tekton-dag/actions/workflows/local-regression.yml/badge.svg)](https://github.com/jmjava/tekton-dag/actions/workflows/local-regression.yml) runs `scripts/run-regression.sh --local-only --require-lang-tests` on every pull request (Phase 1, pytest, vitest, isolation-eval protocol, Maven, PHPUnit, operator `go test`).
 
 ## What's new (M13 foundations)
 
