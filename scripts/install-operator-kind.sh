@@ -53,6 +53,9 @@ kubectl apply -f "$REPO_ROOT/operator/config/kind/install.yaml"
 if [[ "$IMAGE" != "localhost:5000/tekton-dag-operator:latest" ]]; then
   kubectl set image deployment/tekton-dag-operator manager="$IMAGE" -n "$NAMESPACE"
 fi
+# Same tag (:latest) does not change the Deployment spec; restart so Kind
+# picks up the image we just built/loaded.
+kubectl rollout restart deployment/tekton-dag-operator -n "$NAMESPACE"
 kubectl rollout status deployment/tekton-dag-operator -n "$NAMESPACE" --timeout=180s
 kubectl wait --for=condition=Ready pod -l app=tekton-dag-operator -n "$NAMESPACE" --timeout=120s
 
