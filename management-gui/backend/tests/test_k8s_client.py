@@ -75,31 +75,6 @@ def test_list_taskruns_with_filter(mock_get_api):
 
 
 @patch("k8s_client.get_api")
-def test_create_pipelinerun(mock_get_api):
-    mock_api = MagicMock()
-    mock_api.create_namespaced_custom_object.return_value = {
-        "metadata": {"name": "run-xyz"}
-    }
-    mock_get_api.return_value = mock_api
-
-    manifest = {"kind": "PipelineRun", "metadata": {"generateName": "test-"}}
-    name = k8s_client.create_pipelinerun("ctx", "ns", manifest)
-    assert name == "run-xyz"
-
-
-@patch("k8s_client.get_api")
-def test_create_pipelinerun_error(mock_get_api):
-    from kubernetes.client.rest import ApiException
-    mock_api = MagicMock()
-    mock_api.create_namespaced_custom_object.side_effect = ApiException(status=403, reason="Forbidden")
-    mock_get_api.return_value = mock_api
-
-    import pytest
-    with pytest.raises(ApiException):
-        k8s_client.create_pipelinerun("ctx", "ns", {})
-
-
-@patch("k8s_client.get_api")
 def test_list_stackruns(mock_get_api):
     mock_api = MagicMock()
     mock_api.list_namespaced_custom_object.return_value = {

@@ -1,5 +1,5 @@
 """
-Kubernetes client wrapper for creating PipelineRuns and querying status.
+Kubernetes client wrapper for StackRuns and querying Tekton status.
 
 Uses in-cluster config when running as a pod, falls back to kubeconfig for local dev.
 """
@@ -39,29 +39,6 @@ def _get_core_api():
         _ensure_config()
         _core_api = client.CoreV1Api()
     return _core_api
-
-
-def create_pipelinerun(run_manifest, namespace="tekton-pipelines"):
-    """
-    Create a Tekton PipelineRun in the cluster.
-
-    Returns the created resource name, or raises on failure.
-    """
-    api = _get_api()
-    try:
-        result = api.create_namespaced_custom_object(
-            group="tekton.dev",
-            version="v1",
-            namespace=namespace,
-            plural="pipelineruns",
-            body=run_manifest,
-        )
-        name = result["metadata"]["name"]
-        logger.info("Created PipelineRun: %s in %s", name, namespace)
-        return name
-    except ApiException as e:
-        logger.error("Failed to create PipelineRun: %s", e.reason)
-        raise
 
 
 def get_pipelinerun(name, namespace="tekton-pipelines"):

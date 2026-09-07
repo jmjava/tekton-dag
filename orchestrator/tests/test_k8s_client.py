@@ -55,36 +55,6 @@ def test_get_api_falls_back_to_kubeconfig():
         mock_config.load_kube_config.assert_called_once()
 
 
-def test_create_pipelinerun_returns_name():
-    from unittest.mock import MagicMock
-
-    api = MagicMock()
-    api.create_namespaced_custom_object.return_value = {
-        "metadata": {"name": "run-xyz"},
-    }
-    with pytest.MonkeyPatch.context() as mp:
-        mp.setattr(k8s_client, "_get_api", lambda: api)
-        name = k8s_client.create_pipelinerun({"kind": "PipelineRun"}, namespace="ns1")
-    assert name == "run-xyz"
-    api.create_namespaced_custom_object.assert_called_once()
-    call_kw = api.create_namespaced_custom_object.call_args.kwargs
-    assert call_kw["namespace"] == "ns1"
-    assert call_kw["group"] == "tekton.dev"
-    assert call_kw["version"] == "v1"
-    assert call_kw["plural"] == "pipelineruns"
-
-
-def test_create_pipelinerun_propagates_api_exception():
-    from unittest.mock import MagicMock
-
-    api = MagicMock()
-    api.create_namespaced_custom_object.side_effect = ApiException(status=409, reason="Conflict")
-    with pytest.MonkeyPatch.context() as mp:
-        mp.setattr(k8s_client, "_get_api", lambda: api)
-        with pytest.raises(ApiException):
-            k8s_client.create_pipelinerun({}, namespace="ns")
-
-
 def test_get_pipelinerun_returns_body():
     from unittest.mock import MagicMock
 

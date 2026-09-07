@@ -25,7 +25,7 @@ M14 made CRD-primary the default. M15 removes the leftover dual-path bugs: a sec
 ## Exit criteria
 
 1. `cd operator && go test ./internal/...` covers adopt-existing, annotation `prNumber`, and `lookupStack`.
-2. Orchestrator pytest: CRD promote without `approved_by` returns 200; direct PipelineRun path still 400.
+2. Orchestrator pytest: promote without `approved_by` returns 200 (operator `PendingApproval`). Direct PipelineRun create was removed in M16.
 3. `bash scripts/run-regression-agent.sh` (or `--local-only` if no cluster) exits 0.
 4. GHA workflow YAML actually emits `--skip-operator` when the dispatch checkbox is false.
 
