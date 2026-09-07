@@ -294,3 +294,22 @@ def test_malformed_stack_yaml_does_not_crash(stack_and_team_dirs):
     (stacks / "broken.yaml").write_text("{ not valid yaml :::", encoding="utf-8")
     r = StackResolver(stacks_dir=str(stacks), teams_dir=str(teams))
     assert r.list_stacks() == []
+
+
+def test_team_cr_overlay(stack_and_team_dirs):
+    stacks, teams = stack_and_team_dirs
+    team_dir = teams / "squad-one"
+    team_dir.mkdir()
+    _write(
+        team_dir / "team.yaml",
+        """
+        name: squad-one
+        namespace: tekton-pipelines
+        """,
+    )
+
+    def loader():
+        return [{"spec": {"name": "squad-one", "imageRegistry": "from-cr:5000"}}]
+
+    r = StackResolver(stacks_dir=str(stacks), teams_dir=str(teams), team_cr_loader=loader)
+    assert r.list_teams()["squad-one"]["imageRegistry"] == "from-cr:5000"

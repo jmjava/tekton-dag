@@ -53,7 +53,20 @@ def create_app():
 
     stacks_dir = os.environ.get("STACKS_DIR", "/stacks")
     teams_dir = os.environ.get("TEAMS_DIR", "/teams")
-    resolver = StackResolver(stacks_dir=stacks_dir, teams_dir=teams_dir)
+    ns = app.config["NAMESPACE"]
+
+    def _team_crs():
+        try:
+            import k8s_client
+
+            return k8s_client.list_teams(namespace=ns)
+        except Exception as e:
+            logger.debug("Team CR load skipped: %s", e)
+            return []
+
+    resolver = StackResolver(
+        stacks_dir=stacks_dir, teams_dir=teams_dir, team_cr_loader=_team_crs
+    )
     app.config["RESOLVER"] = resolver
 
     register_routes(app)

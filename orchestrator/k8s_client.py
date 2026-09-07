@@ -103,6 +103,23 @@ def list_pipelineruns(namespace="tekton-pipelines", limit=20, label_selector="")
 STACKRUN_GROUP = "tektondag.io"
 STACKRUN_VERSION = "v1alpha1"
 STACKRUN_PLURAL = "stackruns"
+TEAM_PLURAL = "teams"
+
+
+def list_teams(namespace="tekton-pipelines"):
+    """List Team CRs; empty list if the API is missing or errors."""
+    api = _get_api()
+    try:
+        result = api.list_namespaced_custom_object(
+            group=STACKRUN_GROUP,
+            version=STACKRUN_VERSION,
+            namespace=namespace,
+            plural=TEAM_PLURAL,
+        )
+        return result.get("items", [])
+    except Exception as e:
+        logger.debug("list_teams: %s", e)
+        return []
 
 
 def create_stackrun(run_manifest, namespace="tekton-pipelines"):

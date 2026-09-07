@@ -28,6 +28,7 @@ def build_stackrun(
     intercept_backend: str = "",
     dashboard_url: str = "",
     pr_repo_url: str = "",
+    continue_from: str = "",
     release_version: str = "",
     target_environment: str = "",
     target_registry: str = "",
@@ -65,6 +66,8 @@ def build_stackrun(
         spec["dashboardUrl"] = dashboard_url
     if pr_repo_url:
         spec["prRepoUrl"] = pr_repo_url
+    if continue_from:
+        spec["continueFrom"] = continue_from
     if release_version:
         spec["releaseVersion"] = str(release_version)
     if target_environment:

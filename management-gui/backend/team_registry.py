@@ -18,14 +18,16 @@ logger = logging.getLogger("mgmt.teams")
 class TeamRegistry:
     """Loads team configs and resolves cluster context per team."""
 
-    def __init__(self, teams_dir, team_filter="*"):
+    def __init__(self, teams_dir, team_filter="*", team_cr_loader=None):
         """
         Args:
             teams_dir: path to teams/ directory containing <name>/team.yaml
             team_filter: "*" to load all teams, or a specific team name
+            team_cr_loader: optional callable returning Team CR dicts to overlay
         """
         self._teams_dir = teams_dir
         self._team_filter = team_filter
+        self._team_cr_loader = team_cr_loader
         self._teams = {}
         self.reload()
 
@@ -52,6 +54,17 @@ class TeamRegistry:
                             team_config.get("cluster", "default"))
             except Exception as e:
                 logger.error("Failed to load team %s: %s", config_path, e)
+
+        if self._team_cr_loader is not None:
+            try:
+                from tekton_dag_common.team_cr import overlay_team_configs
+
+                crs = self._team_cr_loader() or []
+                self._teams = overlay_team_configs(
+                    self._teams, crs, team_filter=self._team_filter
+                )
+            except Exception as e:
+                logger.warning("Team CR overlay skipped: %s", e)
 
         logger.info("Team registry: %d team(s) loaded", len(self._teams))
 

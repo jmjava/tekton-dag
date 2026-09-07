@@ -88,6 +88,11 @@ func (r *StackRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		if err != nil {
 			return r.fail(ctx, &run, "InvalidSpec", err.Error())
 		}
+		if opt.ContinueFrom != "" {
+			if err := r.fillContinue(ctx, &run, &opt); err != nil {
+				return r.fail(ctx, &run, "ContinueFailed", err.Error())
+			}
+		}
 		pr, err := buildFromMode(run.Spec.Mode, opt)
 		if err != nil {
 			return r.fail(ctx, &run, "BuildFailed", err.Error())
@@ -294,6 +299,7 @@ func (r *StackRunReconciler) optionsFromStackRun(ctx context.Context, run *tekto
 		ApprovedBy:         run.Spec.ApprovedBy,
 		Timeout:            run.Spec.Timeout,
 		ServiceAccountName: run.Spec.ServiceAccountName,
+		ContinueFrom:       run.Spec.ContinueFrom,
 	}
 	if opt.PRNumber == 0 {
 		if s := run.Annotations["tektondag.io/pr-number"]; s != "" {
@@ -331,6 +337,9 @@ func (r *StackRunReconciler) optionsFromStackRun(ctx context.Context, run *tekto
 	}
 	if stack != nil {
 		applyStackDefaults(&opt, stack)
+	}
+	if opt.ContinueFrom != "" {
+		return opt, nil
 	}
 	if opt.StackFile == "" {
 		return opt, fmt.Errorf("stackFile or stackRef required")
@@ -407,6 +416,9 @@ func (r *StackRunReconciler) lookupStack(ctx context.Context, run *tektondagv1al
 }
 
 func buildFromMode(mode tektondagv1alpha1.StackRunMode, opt pipeline.Options) (*unstructured.Unstructured, error) {
+	if opt.ContinueFrom != "" || opt.WorkspacePVC != "" {
+		return pipeline.BuildPRContinue(opt)
+	}
 	switch mode {
 	case tektondagv1alpha1.StackRunModePR:
 		return pipeline.BuildPR(opt)

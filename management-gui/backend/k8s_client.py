@@ -197,3 +197,23 @@ def create_pipelinerun(context, namespace, manifest):
     except ApiException as e:
         logger.error("Failed to create PipelineRun: %s", e.reason)
         raise
+
+
+def list_teams(context, namespace, limit=50):
+    """List Team CRs; empty list on API errors."""
+    api = get_api(context)
+    try:
+        result = api.list_namespaced_custom_object(
+            group="tektondag.io",
+            version="v1alpha1",
+            namespace=namespace,
+            plural="teams",
+            limit=limit,
+        )
+        return result.get("items", [])
+    except ApiException as e:
+        logger.error("Failed to list Teams: %s", e.reason)
+        return []
+    except Exception as e:
+        logger.debug("list_teams: %s", e)
+        return []

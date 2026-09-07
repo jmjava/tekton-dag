@@ -20,9 +20,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// TeamSpec is in-cluster team identity mirrored from teams/*/team.yaml.
-// Flask and the GUI still read Git YAML; this CR is applied for operator status
-// (M16 switches those APIs to the CR).
+	// TeamSpec is in-cluster team identity mirrored from teams/*/team.yaml.
+	// Flask and the GUI overlay these CRs onto Git YAML when the cluster is reachable.
 type TeamSpec struct {
 	// Name is the logical team name.
 	// +kubebuilder:validation:MinLength=1

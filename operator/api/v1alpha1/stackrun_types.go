@@ -55,6 +55,10 @@ type StackRunSpec struct {
 	// ChangedApp is required for pr/merge/promote.
 	ChangedApp string `json:"changedApp,omitempty"`
 
+	// ContinueFrom is a PipelineRun or StackRun name whose successful
+	// resolve/build results should feed stack-pr-continue (not a new CRD).
+	ContinueFrom string `json:"continueFrom,omitempty"`
+
 	// PRNumber is required for mode=pr.
 	PRNumber int32 `json:"prNumber,omitempty"`
 

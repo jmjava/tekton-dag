@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 func mr(v int) *int { return &v }
@@ -106,3 +108,30 @@ func TestBuildersMatchGolden(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildPRContinue(t *testing.T) {
+	opt := Options{
+		NameSuffix:         "fixed",
+		Namespace:          "tekton-pipelines",
+		GitURL:             "https://github.com/jmjava/tekton-dag.git",
+		GitRevision:        "main",
+		ChangedApp:         "demo-fe",
+		WorkspacePVC:       "ws-pvc",
+		ContinueStackJSON:  `{"apps":[]}`,
+		ContinueBuildApps:  "demo-fe",
+		ContinueImages:     `{"demo-fe":"img"}`,
+		ContinueFrom:       "stack-pr-1",
+	}
+	u, err := BuildPRContinue(opt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if u.GetName() != "stack-pr-continue-fixed" {
+		t.Fatalf("name=%s", u.GetName())
+	}
+	ref, _, _ := unstructured.NestedString(u.Object, "spec", "pipelineRef", "name")
+	if ref != "stack-pr-continue" {
+		t.Fatalf("pipelineRef=%s", ref)
+	}
+}
+

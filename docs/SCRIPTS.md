@@ -45,6 +45,7 @@ Shared helpers live in [`scripts/common.sh`](../scripts/common.sh) (sourced by m
 | [`install-postgres-kind.sh`](../scripts/install-postgres-kind.sh) | Postgres in Kind (Results / app DB). |
 | [`install-neo4j-kind.sh`](../scripts/install-neo4j-kind.sh) | Neo4j in Kind for graph features. |
 | [`bootstrap-namespace.sh`](../scripts/bootstrap-namespace.sh) | Bootstrap namespace resources for a stack. |
+| [`install-operator-webhook-kind.sh`](../scripts/install-operator-webhook-kind.sh) | Kind: TLS certs + Stack ValidatingWebhookConfiguration (`failurePolicy: Fail`). |
 
 ---
 
@@ -68,7 +69,7 @@ Shared helpers live in [`scripts/common.sh`](../scripts/common.sh) (sourced by m
 | [`run-valid-pr-flow.sh`](../scripts/run-valid-pr-flow.sh) | Scripted valid PR path against cluster. |
 | [`create-test-pr.sh`](../scripts/create-test-pr.sh) | Create a test PR (automation helper). |
 | [`merge-pr.sh`](../scripts/merge-pr.sh) | Merge helper for test PRs. |
-| [`rerun-pr-from.sh`](../scripts/rerun-pr-from.sh) | Re-trigger PR pipeline from a ref. |
+| [`rerun-pr-from.sh`](../scripts/rerun-pr-from.sh) | Create a StackRun with `spec.continueFrom` to re-run `stack-pr-continue` from a failed PR. |
 | [`configure-github-webhooks.sh`](../scripts/configure-github-webhooks.sh) | Wire GitHub webhooks to EventListener. |
 | [`run-e2e-with-intercepts.sh`](../scripts/run-e2e-with-intercepts.sh) | End-to-end with **telepresence** or **mirrord** intercept backend. |
 | [`run-all-setup-and-test.sh`](../scripts/run-all-setup-and-test.sh) | Broad setup + test orchestration (legacy-style “do a lot”). |
