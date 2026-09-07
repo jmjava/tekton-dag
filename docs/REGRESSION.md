@@ -55,7 +55,7 @@ So: **not all tests run on every PR.** `--local-only` (including Java/PHP/operat
 - **`yq`** (Mike Farah YAML processor) on `PATH` — required for Phase 1.
 - **Node.js + npm** for baggage-node and Playwright.
 - **Optional local / required in GitHub Actions:** `mvn` (Java 21), PHP 8.3 + Composer, Go 1.23 — see `--require-lang-tests`.
-- **Cluster:** `kubectl`, Tekton `Pipeline/stack-dag-verify` + tasks for **Tier C**, orchestrator **Service** for Newman, optional Tekton Results for **Tier E**.
+| **Cluster:** `kubectl`, Tekton `Pipeline/stack-dag-verify` + tasks for **Tier C**, orchestrator **Service** for Newman, optional Tekton Results for **Tier E**. Kind on Cloud Agent VMs: start Docker with [`cloud-agent-start-docker.sh`](../scripts/cloud-agent-start-docker.sh) (fuse-overlayfs). `kind-with-registry.sh` uses kube-proxy **nftables** (iptables mode needs `xt_statistic`, which these VMs lack).
 
 ## Common commands
 
@@ -109,3 +109,7 @@ Environment:
 4. **Kind E2E:** `--kind-e2e` when changing bootstrap, intercepts, or Results integration (heavy; occasional).
 
 After the tiers you care about are green, update [milestones/milestone-8.md](../milestones/milestone-8.md) and related testing docs.
+
+## Cloud Agent / nested VM notes
+
+On some Cursor Cloud Agent hosts, Docker’s default **overlay2** storage driver fails (`failed to mount overlay: invalid argument`). Use **fuse-overlayfs** (`scripts/cloud-agent-install.sh` / `scripts/cloud-agent-start-docker.sh`). Kind **kube-proxy iptables** can fail when the host cannot load `xt_statistic`; `scripts/kind-with-registry.sh` sets **`networking.kubeProxyMode: nftables`**. Isolation-eval HTTP probes use **`kubectl port-forward`** to the `entry` Service so they do not depend on ClusterIP from inside a curl pod.

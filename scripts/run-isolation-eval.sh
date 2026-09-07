@@ -57,7 +57,7 @@ need python3
 if [[ "$MODE" == "offline" ]]; then
   echo ">>> isolation-eval OFFLINE (plan CSV); not a cluster measurement"
   if [[ "$SKIP_PYTEST" != "true" ]]; then
-    (cd "$REPO_ROOT/scripts/isolation_eval" && python3 -m pytest test_protocol.py test_cluster_manifests.py -v --tb=short)
+    (cd "$REPO_ROOT/scripts/isolation_eval" && python3 -m pytest test_protocol.py test_cluster_manifests.py test_cluster.py -v --tb=short)
   fi
   TS="$(date -u +%Y%m%dT%H%M%SZ)"
   OUT="${OUT:-/tmp/isolation-eval-plan.csv}"

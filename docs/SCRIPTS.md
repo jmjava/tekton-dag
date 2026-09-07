@@ -33,7 +33,9 @@ Shared helpers live in [`scripts/common.sh`](../scripts/common.sh) (sourced by m
 
 | Script | Purpose |
 |--------|---------|
-| [`kind-with-registry.sh`](../scripts/kind-with-registry.sh) | Create Kind cluster with local registry (quick start). |
+| [`kind-with-registry.sh`](../scripts/kind-with-registry.sh) | Create Kind cluster with local registry (quick start). Nested VMs: `kind.x-k8s.io` + kube-proxy **nftables**. |
+| [`cloud-agent-install.sh`](../scripts/cloud-agent-install.sh) | Cloud Agent `install`: refresh regression venv + Newman. |
+| [`cloud-agent-start-docker.sh`](../scripts/cloud-agent-start-docker.sh) | Cloud Agent `start`: dockerd with fuse-overlayfs; does not create Kind. |
 | [`install-kind-default-storage.sh`](../scripts/install-kind-default-storage.sh) | Default StorageClass for Kind. |
 | [`install-tekton.sh`](../scripts/install-tekton.sh) | Install Tekton Pipelines (and related baseline). |
 | [`install-tekton-dashboard.sh`](../scripts/install-tekton-dashboard.sh) | Install Tekton Dashboard. |
