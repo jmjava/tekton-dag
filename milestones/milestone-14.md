@@ -1,6 +1,6 @@
 # Milestone 14 — Kubernetes Operator (CRD-primary)
 
-**Status:** In progress — CRD-primary is the **intended** control plane and the Kind default. Flask/GUI/Triggers create StackRuns; GUI Monitor lists them and can patch promote `approvedBy`. Remaining: webhook certs, retire PipelineRun escape hatches.
+**Status:** Partial — CRD-primary is the **intended** control plane and the Kind default. Flask/GUI/Triggers create StackRuns; GUI Monitor lists them and can patch promote `approvedBy`. Hygiene (idempotent PipelineRun create, GHA flag, Triggers `prNumber`) is [M15](milestone-15.md). Remaining product follow-ons: [M16](milestone-16.md).
 
 **Goal:** Make **Stack** and **StackRun** custom resources the source of truth for desired stack graphs and pipeline executions. The Flask orchestrator thins to webhook/API that creates CRs; a Go Kubebuilder operator reconciles StackRuns into Tekton PipelineRuns. Academic packaging in `docs/research/` may mention this as status; it must not keep `operator.enabled=false` as a permanent product choice.
 
@@ -60,10 +60,10 @@ Regenerate goldens: `python scripts/generate-pipelinerun-goldens.py`
 4. With `STACKRUN_VIA_CRD=true`, orchestrator API creates StackRuns.
 5. Docs + Helm `operator.enabled` documented.
 
-## Follow-ons (not in this ship slice)
+## Follow-ons
 
-- Enable the Stack validating webhook in-cluster (certs / `ValidatingWebhookConfiguration`; validation + webhook code already exist)
-- Retire `--pipeline-run` / Flask `STACKRUN_VIA_CRD=false` escape hatches once every cluster runs the operator
+- **[M15](milestone-15.md)** — control-plane hygiene (idempotent create, contracts, dead code)
+- **[M16](milestone-16.md)** — Team CR as API source, webhook certs, retire escape hatches, demo audio rebuild
 
 ## Control plane: what is a CR (and what is not)
 

@@ -122,7 +122,10 @@ spec:
       value: $(extensions.repo-name)
 
 ---
-# TriggerTemplates create StackRuns; the operator resolves repo → Stack CR.
+# TriggerTemplates create StackRuns. stackRef is omitted: the operator matches
+# spec.changedApp to a Stack CR app name or repo short name (lookupStack).
+# prNumber is unquoted so YAML parses as int32 after substitution. The
+# tektondag.io/pr-number annotation is a fallback if spec is dropped.
 
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerTemplate
@@ -150,6 +153,7 @@ spec:
         gitRevision: $(tt.params.git-revision)
         prRepoUrl: $(tt.params.git-url)
         changedApp: $(tt.params.changed-app)
+        prNumber: $(tt.params.pr-number)
         imageRegistry: localhost:5000
 
 ---

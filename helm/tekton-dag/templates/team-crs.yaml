@@ -1,5 +1,9 @@
 {{- if .Values.operator.enabled }}
-{{- range $path, $_ := .Files.Glob "raw/team-crs/*.yaml" }}
+{{- $teams := .Files.Glob "raw/team-crs/*.yaml" }}
+{{- if eq (len $teams) 0 }}
+{{- fail "operator.enabled requires Team CRs: run helm/tekton-dag/package.sh before helm template/install (raw/team-crs is empty)" }}
+{{- end }}
+{{- range $path, $_ := $teams }}
 ---
 {{ $.Files.Get $path }}
 {{- end }}

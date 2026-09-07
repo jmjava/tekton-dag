@@ -317,64 +317,6 @@ spec:
         claimName: build-cache
 EOF
 
-elif [[ "$MODE" == "merge" ]]; then
-
-  cat <<EOF
-apiVersion: tekton.dev/v1
-kind: PipelineRun
-metadata:
-  generateName: stack-merge-
-  namespace: ${NAMESPACE}
-spec:
-  pipelineRef:
-    name: stack-merge-release
-  taskRunTemplate:
-    serviceAccountName: tekton-pr-sa
-    podTemplate:
-      securityContext:
-        fsGroup: 65532
-  params:
-    - name: git-url
-      value: "${GIT_URL}"
-    - name: git-revision
-      value: "${GIT_REV}"
-    - name: stack-file
-      value: "${STACK_PATH}"
-    - name: changed-app
-      value: "${APP}"
-    - name: image-registry
-      value: "${PIPELINE_IMAGE_REGISTRY}"
-    - name: version-overrides
-      value: '${VERSION_OVERRIDES}'
-    $([ "$BUILD_IMAGES" = "true" ] && [ -n "$IMAGE_REGISTRY" ] && echo "
-    - name: compile-image-npm
-      value: \"${COMPILE_IMAGE_REGISTRY}/tekton-dag-build-node:${BUILD_IMAGE_TAG}\"
-    - name: compile-image-maven
-      value: \"${COMPILE_IMAGE_REGISTRY}/tekton-dag-build-maven:${BUILD_IMAGE_TAG}\"
-    - name: compile-image-gradle
-      value: \"${COMPILE_IMAGE_REGISTRY}/tekton-dag-build-gradle:${BUILD_IMAGE_TAG}\"
-    - name: compile-image-pip
-      value: \"${COMPILE_IMAGE_REGISTRY}/tekton-dag-build-python:${BUILD_IMAGE_TAG}\"
-    - name: compile-image-php
-      value: \"${COMPILE_IMAGE_REGISTRY}/tekton-dag-build-php:${BUILD_IMAGE_TAG}\"
-    ")
-  workspaces:
-    - name: shared-workspace
-      volumeClaimTemplate:
-        spec:
-          accessModes: [ReadWriteOnce]
-          $([ -n "$STORAGE_CLASS" ] && echo "storageClassName: $STORAGE_CLASS")
-          resources:
-            requests:
-              storage: 5Gi
-    - name: ssh-key
-      secret:
-        secretName: "${GIT_SSH_SECRET_NAME}"
-    - name: build-cache
-      persistentVolumeClaim:
-        claimName: build-cache
-EOF
-
 else
   die "Unknown mode: $MODE (must be pr or merge)"
 fi

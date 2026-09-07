@@ -27,7 +27,7 @@ kubectl apply -f config/samples/
 ## Controllers
 
 - **Stack** — structural validation, topo order, and injection gaps (missing Secrets/ConfigMaps) in status.
-- **StackRun** — builds a Tekton PipelineRun (PR/bootstrap/merge/promote); resolves `stackRef` or repo name to a Stack CR; PipelineRuns are **orphaned** on delete.
+- **StackRun** — builds a Tekton PipelineRun (PR/bootstrap/merge/promote) named **the same as the StackRun**; adopts an existing run by that name or `tektondag.io/stackrun` label; resolves `stackRef` or repo name to a Stack CR; PipelineRuns are **orphaned** on delete.
 - **Team** — tenant identity (namespace, registry, stack allowlist).
 
 Helm `operator.enabled` defaults **on**. Kind: `../scripts/install-operator-kind.sh` (applies Stack/Team CRs from Git YAML).
