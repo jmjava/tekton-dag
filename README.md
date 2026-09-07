@@ -2,6 +2,12 @@
 
 Standalone Tekton pipeline system for **local development and proof-of-concept**. Stack-aware CI/CD with header-based traffic interception, multi-framework support, and an in-cluster orchestration service.
 
+**Academic packaging (workshop / tool-demo):** [docs/research/](docs/research/) — contribution claims, venue map, artifact checklist, and a 4-page IEEE draft. Cite via [`CITATION.cff`](CITATION.cff). License: [Apache-2.0](LICENSE).
+
+[![local regression](https://github.com/jmjava/tekton-dag/actions/workflows/local-regression.yml/badge.svg)](https://github.com/jmjava/tekton-dag/actions/workflows/local-regression.yml) runs `scripts/run-regression.sh --local-only --require-lang-tests` on every pull request (Phase 1, pytest, vitest, isolation-eval protocol, Maven, PHPUnit, operator `go test`).
+
+[![cluster regression](https://github.com/jmjava/tekton-dag/actions/workflows/cluster-regression.yml/badge.svg)](https://github.com/jmjava/tekton-dag/actions/workflows/cluster-regression.yml) runs Playwright plus Kind (`scripts/run-cluster-ci.sh`: isolation-eval `--cluster`, `stack-dag-verify`, Newman) on **nightly / `workflow_dispatch` / `v*` tags** — not on pull requests.
+
 ## What's new (M13 foundations)
 
 Production-hardening building blocks are in the tree (see [milestones/milestone-13.md](milestones/milestone-13.md) and [DO-THIS-LOCAL.md](DO-THIS-LOCAL.md) for cluster smoke):
@@ -494,6 +500,7 @@ Pre-commit hook runs GitGuardian ggshield: `pip install pre-commit && pre-commit
 | `management-gui/` | Vue 3 + Flask management GUI (frontend + backend). See [Management GUI](#management-gui-m11) |
 | `tests/postman/` | Postman/Newman collections (orchestrator-tests.json, management-gui-tests.json) |
 | `docs/` | Architecture docs, diagrams, guides. See [docs/README.md](docs/README.md) |
+| `docs/research/` | Workshop / tool-demo packaging: claims, related work, IEEE draft |
 | `milestones/` | Milestone planning and status docs |
 | `session-notes/` | Session notes and debugging logs |
 | `reporting-gui/` | Vue + Node reporting GUI. See [reporting-gui/README.md](reporting-gui/README.md) |
@@ -514,4 +521,5 @@ Pre-commit hook runs GitGuardian ggshield: `pip install pre-commit && pre-commit
 - [docs/m7-mirrord-intercept-task.md](docs/m7-mirrord-intercept-task.md) — mirrord intercept task
 - [docs/demo-playbook.md](docs/demo-playbook.md) — demo recording playbook
 - [docs/README-FULL.md](docs/README-FULL.md) — full design doc
+- [docs/research/README.md](docs/research/README.md) — academic / workshop packaging
 - [SHARING-BACK.md](SHARING-BACK.md) — sharing back to reference-architecture

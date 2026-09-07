@@ -2,7 +2,8 @@
 # Comprehensive regression for tekton-dag. See docs/REGRESSION.md.
 #
 # Tiers (default = as much as your machine/cluster allows):
-#   A — Always local: Phase-1 DAG verify (yq + bash), pytest×4, vitest
+#   A — Always local: Phase-1 DAG verify (yq + bash), pytest×4, vitest,
+#       isolation-eval protocol, Java/PHP/operator unit tests (auto if tools exist)
 #   B — Local UI: Playwright (unless skipped)
 #   C — Cluster (auto if kubectl + orchestrator Service exist, or --cluster)
 #   D — Tekton DAG pipeline: verify-dag-phase2.sh (stack-dag-verify → Succeeded + CLI match)
@@ -11,6 +12,8 @@
 # Usage:
 #   ./scripts/run-regression.sh                    # A + B + C + D (auto) + E if Results API exists
 #   ./scripts/run-regression.sh --local-only       # A only (fast CI / laptop)
+#   ./scripts/run-regression.sh --require-lang-tests  # fail if mvn/php/composer/go missing
+#   ./scripts/run-regression.sh --skip-lang-tests     # skip Maven/PHPUnit/Go
 #   ./scripts/run-regression.sh --skip-playwright  # A + C (+ D flags) without browser E2E
 #   ./scripts/run-regression.sh --skip-cluster     # A + B only
 #   ./scripts/run-regression.sh --cluster          # require orchestrator in cluster (Newman)
@@ -20,6 +23,7 @@
 #   ./scripts/run-regression.sh --skip-dag-verify       # skip Phase 2 Tekton PipelineRun (not recommended)
 #   REGRESSION_RESULTS_VERIFY=auto|skip|yes
 #   REGRESSION_DAG_VERIFY=auto|skip|yes               # default auto: run Phase 2 when pipeline exists
+#   REGRESSION_LANG_TESTS=auto|skip|require           # Maven, PHPUnit, operator go test
 #   DAG_VERIFY_TIMEOUT=300                             # seconds for verify-dag-phase2.sh (--timeout)
 #   REGRESSION_FREE_PORTS=0                            # skip freeing 9091/8080 before cluster steps
 #   RESULTS_API_LOCAL_PORT                             # host port for Results API forward (default 8080); freed in prep + verify-results-in-db.sh
@@ -47,6 +51,7 @@ DAG_VERIFY_MODE="${REGRESSION_DAG_VERIFY:-auto}"
 RUN_GUI_NEWMAN=false
 RUN_KIND_E2E=false
 NEWMAN_SKIP_INTEGRATION=false
+LANG_TESTS_MODE="${REGRESSION_LANG_TESTS:-auto}"
 HELP=false
 
 for arg in "$@"; do
@@ -59,6 +64,8 @@ for arg in "$@"; do
     --skip-results-verify)     RESULTS_VERIFY_MODE=skip ;;
     --require-dag-verify)      DAG_VERIFY_MODE=yes ;;
     --skip-dag-verify)         DAG_VERIFY_MODE=skip ;;
+    --require-lang-tests)      LANG_TESTS_MODE=require ;;
+    --skip-lang-tests)         LANG_TESTS_MODE=skip ;;
     --gui-newman)              RUN_GUI_NEWMAN=true ;;
     --kind-e2e)                RUN_KIND_E2E=true ;;
     --newman-skip-integration) NEWMAN_SKIP_INTEGRATION=true ;;
@@ -68,7 +75,7 @@ for arg in "$@"; do
 done
 
 if [[ "$HELP" == "true" ]]; then
-  sed -n '2,45p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,50p' "$0" | sed 's/^# \{0,1\}//'
   exit 0
 fi
 
@@ -138,6 +145,18 @@ echo ""
 echo ">>> vitest: libs/baggage-node"
 need npm
 (cd "$REPO_ROOT/libs/baggage-node" && npm install --silent && npm run test)
+
+echo ""
+echo ">>> pytest: isolation-eval protocol (scripts/isolation_eval)"
+(cd "$REPO_ROOT/scripts/isolation_eval" && python3 -m pytest test_protocol.py test_cluster_manifests.py -v --tb=short)
+
+echo ""
+echo ">>> isolation-eval offline plan CSV"
+bash "$SCRIPT_DIR/run-isolation-eval.sh" --offline --skip-pytest --out /tmp/isolation-eval-plan.csv
+
+echo ""
+echo ">>> lang unit tests (Maven / PHPUnit / operator Go) mode=$LANG_TESTS_MODE"
+REGRESSION_LANG_TESTS="$LANG_TESTS_MODE" bash "$SCRIPT_DIR/run-lang-unit-tests.sh"
 
 if [[ "$SKIP_PLAYWRIGHT" != "true" ]]; then
   echo ""

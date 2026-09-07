@@ -1,0 +1,246 @@
+% IEEE conference paper draft — ICSE 2027 Tool Demonstration / workshop retarget.
+% Compile: pdflatex && bibtex && pdflatex && pdflatex
+% Format: ICSE 2027 Demonstrations CFP — IEEEtran 10pt conference, max 4 pages incl. refs.
+% Do not add the compsoc option.
+\documentclass[10pt,conference]{IEEEtran}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{cite}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true,linkcolor=black,citecolor=black,urlcolor=blue}
+
+\hyphenation{Tek-ton Kubernetes Tele-presence mir-rord}
+
+\begin{document}
+
+\title{Tekton-DAG: Stack-Aware Pull-Request Isolation\\for Polyglot Microservice Ecosystems}
+
+\author{
+\IEEEauthorblockN{John Menke}
+\IEEEauthorblockA{Independent Researcher\\
+Email: jmjava@gmail.com\\
+ORCID: \textit{(to be added before camera-ready)}}
+}
+
+\maketitle
+
+\begin{abstract}
+Previewing a change to one service in a polyglot microservice stack usually means cloning an entire environment or hoping every hop forwards a routing key. We present \emph{Tekton-DAG}, an open artifact that treats the application group as a directed acyclic graph and derives a single Tekton pipeline family from that graph. Pull requests rebuild only the changed node(s); W3C baggage and a session header identify the run; Telepresence or mirrord steal matching traffic while unmatched requests continue to hit the baseline deployment. Five language ecosystems ship originator/forwarder/terminal middleware that can be excluded from production builds. This 4-page tool paper states the problem, the model, the public artifact (platform repository, sample apps, Kind regression, narrated demos), and the functional validation we can currently defend---not an industrial case study. A 3--5~minute demonstration video and usage instructions accompany the submission.
+\textit{Demo (Pages):} \url{https://jmjava.github.io/tekton-dag/}
+\textit{Source:} \url{https://github.com/jmjava/tekton-dag}
+\textit{Review video:} \textit{(YouTube URL, 3--5~min, to be inserted)}.
+\end{abstract}
+
+\begin{IEEEkeywords}
+continuous integration, microservices, preview environments, Tekton, Kubernetes, W3C baggage, intercept routing
+\end{IEEEkeywords}
+
+\section{Introduction}
+
+Continuous integration is now ordinary industrial practice~\cite{hilton2016usage,shahin2017continuous,humble2010continuous}, yet a recurring gap remains when the \emph{unit of change} is one repository inside a \emph{runtime graph} of many services. Task DAGs in GitHub Actions, GitLab, Argo Workflows, or Tekton answer which \emph{jobs} may run in parallel. They do not answer which \emph{running service} must receive the pull-request (PR) binary, how a request still reaches that service through polyglot hops, or how baseline traffic avoids the PR pod.
+
+Two common workarounds exist. \emph{Clone-the-stack} preview environments (namespace- or review-app-per-PR) isolate well and scale poorly with stack width. \emph{Mesh or flag routing} (Istio header match, feature-flag SDKs) isolates cheaply only if every constituent forwards the key---a social and technical problem across independently versioned codebases~\cite{dragoni2017microservices}.
+
+Tekton-DAG is a public, Kind-runnable platform that makes the \emph{application} DAG the source of CI behavior. This paper is a \textbf{tool demonstration}: we describe envisioned users, the workflow, the artifact, and functional checks. We do \emph{not} claim a controlled cost comparison against namespace cloning, nor an industrial deployment study; those are listed as future work.
+
+\paragraph{Envisioned users.}
+Platform engineers who own a shared CI cluster; application teams who open PRs against one service in a multi-repo stack; developers who attach a local process to an in-cluster graph (mirrord / Telepresence).
+
+\paragraph{Contributions} (elaborated in Section~\ref{sec:approach}).
+(C1)~Stack YAML as the sole driver of a four-pipeline family.
+(C2)~Originator / forwarder / terminal session roles with five-framework libraries.
+(C3)~Header-matched intercepts for \texttt{changed-app} only, with an original-traffic safety check, on two intercept backends.
+(C4)~Optional test-to-node selection from a trace graph.
+(C5)~A citable artifact: Apache-2.0 hub repo, sample apps, regression driver, and regenerable demos.
+
+\paragraph{User workflow} (what the demonstration video walks through).
+(1)~A platform engineer commits a stack file (apps, \texttt{downstream} edges, header name).
+(2)~Bootstrap deploys the baseline graph once.
+(3)~A developer opens a PR in \emph{one} app repo; the orchestrator resolves the repo to a stack and sets \texttt{changed-app}.
+(4)~The PR pipeline builds that node, attaches an intercept for the run header, validates that the header still appears along the chain, validates that unmatched traffic is unstolen, and runs the tests declared for the selected nodes.
+(5)~Optionally the developer repeats the same header from an IDE via mirrord or Telepresence.
+(6)~On merge, the release pipeline promotes the RC image and bumps the next development version.
+
+\section{Related Work}
+\label{sec:rw}
+
+\paragraph{CI and delivery.}
+Hilton et al.\ quantify OSS CI adoption and costs~\cite{hilton2016usage,hilton2017tradeoffs}. Shahin et al.\ survey continuous practices~\cite{shahin2017continuous}. Humble and Farley~\cite{humble2010continuous} and Bass et al.~\cite{bass2015devops} set the process vocabulary. We assume CI is worthwhile; the gap is graph-aware PR isolation.
+
+\paragraph{Task graphs, not application graphs.}
+Tekton Pipelines~\cite{tekton}, Argo Workflows~\cite{argoworkflows}, and GitHub Actions \texttt{needs:} model job dependencies. Dagger and Earthly similarly encode build DAGs. Our DAG is the user architecture (\texttt{downstream:} edges); job order is derived.
+
+\paragraph{Preview environments and meshes.}
+PaaS review apps and Kubernetes namespace-per-PR duplicate the graph. Istio and Envoy can match HTTP headers~\cite{istio} if every sidecar and application cooperates. We keep one baseline stack and steal only matching requests (Section~\ref{sec:c3}).
+
+\paragraph{Developer intercepts.}
+Telepresence~\cite{telepresence} and mirrord~\cite{mirrord} already implement header filters from a laptop. We place those dataplanes from CI, using the same header the DAG roles propagate, and add unmatched-traffic validation.
+
+\paragraph{Context propagation.}
+W3C Trace Context and Baggage~\cite{w3cbaggage} and OpenTelemetry~\cite{opentelemetry} standardize key propagation. Feature-flag SDKs thread targeting keys. We reuse baggage as a \emph{dev-session} identifier with explicit graph roles and production-exclusion of the libraries.
+
+\paragraph{Test selection.}
+Ekstazi~\cite{gligoric2015ekstazi} and related test-impact analysis operate on code dependencies. Our optional test-plan query (C4) maps \emph{HTTP tests} to \emph{service nodes} from traces. It is complementary, not a replacement for class-level RTS.
+
+\section{Approach}
+\label{sec:approach}
+
+\subsection{C1: Stack DAG as pipeline source}
+A \emph{stack} is one YAML document: nodes (apps with repo, toolchain, tests) and caller$\rightarrow$callee edges. The graph must be acyclic; resolve-time topological sort fails otherwise. From the graph the resolver emits topological order, the \emph{entry} app (no inbound edge), the propagation chain, \texttt{build-apps} (the PR's \texttt{changed-app} or the full topo list on merge), and a per-run intercept header (e.g.\ \texttt{x-dev-session: pr-42}).
+
+Four pipelines share that JSON: \texttt{stack-bootstrap} (deploy the baseline once), \texttt{stack-pr-test} (build intercepts, validate, test), \texttt{stack-merge-release} (promote RC to release), and \texttt{stack-promote} (copy images to a target registry). Adding a stack does not add a pipeline YAML file.
+
+Table~\ref{tab:stackone} sketches the three-node exemplar \texttt{stack-one}. Table~\ref{tab:compare} places the strategy against the two workarounds from the introduction: we claim a \emph{different isolation mechanism}, not a measured cost win.
+
+\begin{table}[!t]
+\centering
+\caption{PR isolation strategies (qualitative).}
+\label{tab:compare}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.19\columnwidth}
+                >{\raggedright\arraybackslash}p{0.22\columnwidth}
+                >{\raggedright\arraybackslash}p{0.22\columnwidth}
+                >{\raggedright\arraybackslash}p{0.22\columnwidth}@{}}
+\toprule
+ & Clone stack / namespace & Mesh header routing & This artifact \\
+\midrule
+What is duplicated & Whole graph & Canary pods & PR pods for \texttt{changed-app} only \\
+Who must cooperate & Cluster quota & Every sidecar + app & Apps with a propagation role \\
+Baseline traffic & Separate copy & Requires careful matchers & Explicit unmatched probe \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[!t]
+\centering
+\caption{Exemplar stack-one (caller $\rightarrow$ callee).}
+\label{tab:stackone}
+\begin{tabular}{@{}lll@{}}
+\toprule
+App & Role & Toolchain \\
+\midrule
+\texttt{demo-fe} & originator & Vue / npm \\
+\texttt{release-lifecycle-demo} & forwarder & Spring Boot / Maven \\
+\texttt{demo-api} & terminal & Spring Boot / Maven \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{C2: Three propagation roles}
+\label{sec:c2}
+Traffic is tagged with a stack-configured header and optional W3C baggage key. \textbf{Originator} (usually the entry UI) sets the header on outbound calls. \textbf{Forwarder} accepts, stores in request context, and forwards. \textbf{Terminal} accepts and never forwards. Roles may be declared or inferred (no downstream $\Rightarrow$ terminal; frontend $\Rightarrow$ originator).
+
+Standalone libraries live under \texttt{libs/} for Spring Boot, Java servlet/WAR, Node, Flask/WSGI, and PHP PSR-15. They are consumed as \emph{dev} dependencies (Maven profile, \texttt{require-dev}, \texttt{devDependencies}) so production builds can omit them; runtime flags keep the code inert if accidentally packaged.
+
+\subsection{C3: Intercepts and original-traffic safety}
+\label{sec:c3}
+On a PR the pipeline builds only \texttt{build-apps}, deploys PR pods, and attaches intercepts whose match is the run header. Unmatched requests must remain on the baseline Service. We implemented two backends behind \texttt{intercept-backend}: Telepresence (\texttt{--http-match}) and mirrord (\texttt{header\_filter}). A dedicated task sends traffic \emph{without} the header while intercepts are active (\texttt{validate-original-traffic}).
+
+Local debugging uses the same header: mirrord or Telepresence can steal from a laptop against the in-cluster graph (VS Code launch configs in the hub repo).
+
+\subsection{C4: Test-to-node selection (optional)}
+Nightly traces (mock Datadog API) populate a Neo4j graph of tests versus nodes. The orchestrator exposes a test plan for \texttt{changed-app}. When no tests map, the area is flagged rather than silently skipped. We treat C4 as a capability in this paper, not as a measured improvement over full e2e suites.
+
+\subsection{Control plane}
+An in-cluster Flask orchestrator maps GitHub webhooks and REST calls to PipelineRuns; a Helm chart plus optional Argo~CD ApplicationSet instantiates per-team namespaces. An optional Kubebuilder operator (\texttt{Stack} / \texttt{StackRun} CRDs) can own PipelineRun creation. These are packaging, not additional research claims.
+
+\section{Artifact}
+\label{sec:artifact}
+
+The hub repository \texttt{jmjava/tekton-dag} (Apache License 2.0) holds pipelines, stack schema, orchestrator, Helm chart, baggage libraries, regression scripts, and demo sources. Six sample application repositories under the same GitHub user form the runtime graph; they are cloned by the pipeline rather than vendored as submodules. Narrated segments (Manim + optional VHS + TTS) are published on GitHub Pages and can be regenerated with the \texttt{docgen} toolchain.
+
+\paragraph{Reviewer-timed path (no cluster).}
+\texttt{./scripts/run-regression.sh -{}-local-only} checks stack YAML, the resolver, and unit tests. This is the path we expect demonstration reviewers to run, if any.
+
+\paragraph{Cluster path (not required of demo reviewers).}
+Kind + local registry + Tekton install is documented in the README and \texttt{DO-THIS-LOCAL.md}. Full intercept E2E is \texttt{run-e2e-with-intercepts.sh}. That path exceeds a typical 30-minute artifact-evaluation budget unless a preloaded cluster image is provided later.
+
+Citation metadata is in \texttt{CITATION.cff}. A Zenodo DOI of a tagged release is the remaining step for an ACM ``Artifacts Available'' badge; a GitHub URL is not archival~\cite{acmbadges}.
+
+\section{Preliminary Validation}
+\label{sec:eval}
+
+Claims are scoped to \emph{functional} evidence.
+
+\paragraph{Header isolation.}
+On Kind, against stack-one's BFF, five unmatched HTTP requests stayed on the baseline pod and five header-matched requests were stolen by the intercept process~\cite{mirrordpoc}. The same header predicate is used for Telepresence. Scripts exercise the PR pipeline with \texttt{intercept-backend=telepresence} and \texttt{=mirrord}.
+
+\paragraph{Resolver and pipelines.}
+Phase-1 scripts compare \texttt{stack-graph.sh} to stack YAML without a cluster; phase-2 waits for a \texttt{stack-dag-verify} PipelineRun to succeed and match CLI resolution. Several stack files (three-tier, vendor, single-app, mixed-hop) exist in-tree.
+
+\paragraph{Libraries and platform tests.}
+Baggage packages have unit tests; mixed-role test stacks drive propagation validation. The hub regression driver layers pytest, vitest, Playwright (management GUI), Newman (orchestrator API), and optional Tekton Results checks. Counts drift with the tree; the submission tag should reprint numbers from that commit.
+
+\paragraph{What we do not report.}
+No wall-clock or node-minute comparison versus namespace-per-PR; no concurrent multi-PR statistical study; no developer-user study; no TIA precision/recall. Stating those as results would be unsupported.
+
+Local Kind runs and selective demo regeneration keep the evaluation footprint small; we do not report a kilogram-scale carbon figure.
+
+\section{Threats to Validity}
+
+\emph{Construct:} isolation is HTTP routing, not storage or IAM isolation. \emph{Internal:} PoC repetitions are small and author-run; Kind is not a production control plane; intercept agents require elevated capabilities. \emph{External:} sample apps were written to fit the platform. \emph{Reliability:} cluster E2E is timing-sensitive; we cite scripts, not a single laptop run.
+
+\section{Conclusion}
+
+Tekton-DAG makes an application DAG the source of CI behavior so a PR can rebuild and intercept one node of a polyglot stack without cloning the world and without dropping the session header. The public artifact is intended as a workshop-quality exemplar: inspectable, Kind-reproducible at the unit/resolver layer, and demonstrated in short videos. Next steps that would lift the work toward Software Engineering in Practice or a research track are (i)~a measured comparison of intercept versus namespace clone, (ii)~concurrent-PR isolation tests, and (iii)~a named industrial deployment.
+
+\section*{Acknowledgment}
+
+Demo narration and some documentation were edited with generative writing tools; the author reviewed all technical claims against the repository. Affiliation and ORCID will be completed before camera-ready. This draft is not yet submitted.
+
+\begin{thebibliography}{00}
+
+\bibitem{hilton2016usage}
+M.~Hilton, T.~Tunnell, K.~Huang, D.~Marinov, and D.~Dig, ``Usage, costs, and benefits of continuous integration in open-source projects,'' in \emph{ASE}, 2016, pp.~426--437.
+
+\bibitem{hilton2017tradeoffs}
+M.~Hilton, N.~Nelson, T.~Tunnell, D.~Marinov, and D.~Dig, ``Trade-offs in continuous integration: assurance, security, and flexibility,'' in \emph{ESEC/FSE}, 2017, pp.~197--207.
+
+\bibitem{shahin2017continuous}
+M.~Shahin, M.~A.~Babar, and L.~Zhu, ``Continuous integration, delivery and deployment: a systematic review on approaches, tools, challenges and practices,'' \emph{IEEE Access}, vol.~5, pp.~3909--3943, 2017.
+
+\bibitem{humble2010continuous}
+J.~Humble and D.~Farley, \emph{Continuous Delivery}. Addison-Wesley, 2010.
+
+\bibitem{bass2015devops}
+L.~Bass, I.~Weber, and L.~Zhu, \emph{DevOps: A Software Architect's Perspective}. Addison-Wesley, 2015.
+
+\bibitem{dragoni2017microservices}
+N.~Dragoni \emph{et al.}, ``Microservices: yesterday, today, and tomorrow,'' in \emph{Present and Ulterior Software Engineering}. Springer, 2017, pp.~195--216.
+
+\bibitem{tekton}
+Tekton Authors, ``Tekton Pipelines,'' \url{https://tekton.dev/}, 2026.
+
+\bibitem{argoworkflows}
+Argo Project, ``Argo Workflows,'' \url{https://argoproj.github.io/workflows/}, 2026.
+
+\bibitem{istio}
+Istio Authors, ``Istio traffic management,'' \url{https://istio.io/latest/docs/concepts/traffic-management/}, 2026.
+
+\bibitem{telepresence}
+Ambassador Labs, ``Telepresence,'' \url{https://www.telepresence.io/}, 2026.
+
+\bibitem{mirrord}
+MetalBear, ``mirrord,'' \url{https://mirrord.dev/}, 2026.
+
+\bibitem{w3cbaggage}
+W3C, ``Baggage,'' W3C Proposed Recommendation, \url{https://www.w3.org/TR/baggage/}, 2022.
+
+\bibitem{opentelemetry}
+OpenTelemetry Authors, ``OpenTelemetry specification,'' \url{https://opentelemetry.io/docs/specs/otel/}, 2026.
+
+\bibitem{gligoric2015ekstazi}
+M.~Gligoric, L.~Eloussi, and D.~Marinov, ``Practical regression test selection with dynamic file dependencies,'' in \emph{ISSTA}, 2015, pp.~211--222.
+
+\bibitem{acmbadges}
+ACM, ``Artifact review and badging version 1.1,'' \url{https://www.acm.org/publications/policies/artifact-review-and-badging-current}, 2020.
+
+\bibitem{mirrordpoc}
+J.~Menke, ``Milestone 5: MetalBear mirrord PoC results,'' tekton-dag repository, \texttt{docs/mirrord-poc-results.md}, 2026.
+
+\end{thebibliography}
+
+\end{document}

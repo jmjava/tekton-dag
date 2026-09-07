@@ -1,0 +1,7 @@
+timestamp_utc,run_id,mode,strategy,stack_file,stack_width,changed_app,repeat,keep_baseline,wall_clock_s,pod_count,matched_body,unmatched_body,matched_ok,unmatched_ok,isolation_ok,notes
+2026-09-07T00:28:35Z,20260907T002835Z,estimated,clone,stacks/single-app.yaml,1,inventory-api,1,true,,2,,,,,,offline estimate; run --cluster for measurements
+2026-09-07T00:28:35Z,20260907T002835Z,estimated,intercept,stacks/single-app.yaml,1,inventory-api,1,true,,3,,,,,,offline estimate; run --cluster for measurements
+2026-09-07T00:28:35Z,20260907T002835Z,estimated,clone,stacks/stack-one.yaml,3,demo-fe,1,true,,6,,,,,,offline estimate; run --cluster for measurements
+2026-09-07T00:28:35Z,20260907T002835Z,estimated,intercept,stacks/stack-one.yaml,3,demo-fe,1,true,,5,,,,,,offline estimate; run --cluster for measurements
+2026-09-07T00:28:35Z,20260907T002835Z,estimated,clone,stacks/stack-two-vendor.yaml,5,vendor-fe,1,true,,10,,,,,,offline estimate; run --cluster for measurements
+2026-09-07T00:28:35Z,20260907T002835Z,estimated,intercept,stacks/stack-two-vendor.yaml,5,vendor-fe,1,true,,7,,,,,,offline estimate; run --cluster for measurements
