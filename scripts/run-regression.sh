@@ -148,7 +148,7 @@ need npm
 
 echo ""
 echo ">>> pytest: isolation-eval protocol (scripts/isolation_eval)"
-(cd "$REPO_ROOT/scripts/isolation_eval" && python3 -m pytest test_protocol.py test_cluster_manifests.py -v --tb=short)
+(cd "$REPO_ROOT/scripts/isolation_eval" && python3 -m pytest test_protocol.py test_cluster_manifests.py test_cluster.py -v --tb=short)
 
 echo ""
 echo ">>> isolation-eval offline plan CSV"
