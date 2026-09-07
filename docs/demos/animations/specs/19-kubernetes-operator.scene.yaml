@@ -145,12 +145,12 @@ pages:
 - rows:
   - run_time: 1.5
     boxes:
-    - label: Not default runtime
-      color: C_ORANGE
+    - label: CRD-primary default
+      color: C_GREEN
       width: 3.5
       height: 0.9
       font_size: 16
-    - label: Enable with env vars
+    - label: Flask always StackRuns
       color: C_TEAL
       width: 3.5
       height: 0.9

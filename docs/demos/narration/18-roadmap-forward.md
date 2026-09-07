@@ -8,8 +8,6 @@ The observability aspect will benefit from the integration of Prometheus metrics
 
 The cross-cluster deployment feature aims to facilitate application promotion across different Kubernetes clusters, further streamlining the deployment process.
 
-As we shift focus to milestone fourteen, the introduction of a Kubernetes operator will serve as the primary control mechanism for managing application deployment workflows. This operator will utilize custom resources for stacks and stack runs, enabling more dynamic and flexible orchestration.
-
-Post-milestone fourteen follow-ons will include making the operator.enabled setting default-on after thorough testing. Future enhancements will also introduce team-specific custom resources, GUI views for stack runs, and an admission webhook for stacks.
+Milestone fourteen shipped the Kubernetes operator as the primary control plane, with Stack and StackRun custom resources. Milestone fifteen and sixteen finished the remaining dual sources of truth. Team custom resources overlay the Flask and GUI team lists. StackRun continue from reruns a pull request from a failed task. Kind can install the Stack admission webhook with certificates. Flask always creates StackRuns, and the pipeline-run escape hatch is gone.
 
 Overall, the roadmap emphasizes a commitment to building a reliable, efficient, and user-friendly CI/CD system that meets the demands of modern development workflows.
