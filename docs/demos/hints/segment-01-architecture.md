@@ -46,6 +46,6 @@ docgen:
 
 # Narration focus (segment 01 — 01-architecture)
 
-Architecture overview. Emphasize four pipelines including promote; optional CRD path teaser only.
+Architecture overview. Emphasize four pipelines including promote; StackRun is the default create path.
 
 Keep spoken output plain prose (see narration-tts.md). Bullets here steer narration-generate / scene-spec-generate only.
