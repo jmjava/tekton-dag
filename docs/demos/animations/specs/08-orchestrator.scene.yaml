@@ -69,7 +69,7 @@ pages:
 - rows:
   - run_time: 1.5
     boxes:
-    - label: PipelineRuns Creation
+    - label: Creates StackRuns
       color: C_BLUE
       width: 3.5
       height: 0.9
