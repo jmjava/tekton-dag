@@ -64,3 +64,36 @@ Regenerate goldens: `python scripts/generate-pipelinerun-goldens.py`
 - GUI native StackRun views / promote approve via patching `StackRun.spec.approvedBy`
 - Validating admission webhook for Stack
 - Retire direct PipelineRun creation path once CRD path is default-on
+
+## Control plane: what is a CR (and what is not)
+
+Two kinds are the execution control plane: **Stack** (desired DAG) and **StackRun** (one run). Do not add a third execution CR (`Promotion`, `PRBuild`, `InterceptSession`, …). Those are `StackRun.spec.mode` (plus fields already on the spec: intercept backend, promote target, `approvedBy`).
+
+The gaps that actually hurt are **split sources of truth** and **bypasses**, not missing CRD types.
+
+### Do this on the existing CRs / operator
+
+| Gap | Today | Product move |
+|-----|--------|----------------|
+| Stack YAML vs Stack CR | Git `stacks/*.yaml` + ConfigMap `tekton-dag-stacks` is what Flask/Tekton read. Stack CRs are samples / kubectl only. Flask never sets `stackRef`. | Make **Stack CR the in-cluster desired state**. Orchestrator/GUI resolve from Stacks; Tekton still gets a stack-file param (operator can copy spec → ConfigMap or pass `stackRef`). Git remains the GitOps source; Helm/Argo apply Stacks. |
+| GUI / scripts skip the operator | Management GUI `create_pipelinerun`; `generate-run.sh`; EventListener templates create PipelineRuns. Hardcoded CEL repo→stack in `pipeline/triggers.yaml`. | Same create path as Flask: **StackRun only**. Point GitHub at the orchestrator (or a TriggerTemplate that creates a StackRun). Delete the CEL overlay map; resolve from Stack CRs. |
+| `stack-pr-continue` | Separate Pipeline + `rerun-pr-from.sh` | New StackRun (`mode=pr` + continue-from) or a field on the failed StackRun — **not** a new CRD. |
+| Injection / approval UX | Flask `injection-status` lists Secrets; promote `approvedBy` is already on StackRun spec | Put missing Secret/ConfigMap names on **Stack.status**. GUI patches **StackRun.spec.approvedBy**. |
+| Team identity | `teams/*/team.yaml` ConfigMaps | **Team** CR (already named). One per tenant: namespace, registry, stack allowlist, intercept default. |
+
+### Do not invent CRs for
+
+| Tempting CR | Why not |
+|-------------|---------|
+| Pipeline / Task / PipelineRun | Tekton owns execution. Operator creates PipelineRuns. |
+| InterceptSession / PreviewNamespace | Ephemeral PR runtime. Telepresence/mirrord (and our intercept tasks) already create those objects. Lifecycle belongs to the StackRun’s PipelineRun. |
+| HookPolicy / CustomHook | Hook names are Pipeline params that resolve to **Tekton Tasks**. |
+| Registry / Environment / Cluster | `stacks/registries.yaml` + StackRun promote fields. A Cluster CR only pays off when cross-cluster **deploy** exists (M13); promote copy is not that. |
+| AppVersion / CompileImage | `versions.yaml` and Helm `compileImageVariants` are install/build config. |
+| WebhookConfig | HMAC Secret + Flask (or Triggers EventListener). Credentials stay Secrets. |
+| Graph / TestPlan / Results | Neo4j and Tekton Results are stores, not desired state. |
+| IsolationEval | Measurement harness (`run-isolation-eval.sh`), not platform API. |
+
+**Admission webhook** for Stack is the right next *operator* feature. It is not a new CRD.
+
+**Default `operator.enabled=true`** is how this becomes the control plane. Extra kinds before that would freeze the dual path in place.
