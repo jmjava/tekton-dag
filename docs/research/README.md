@@ -14,11 +14,11 @@ It does **not** invent a new platform. It maps what is already in this repo (and
 | **Contribution claims** | Draft | [`contributions.md`](contributions.md) — honest about engineering vs. research novelty |
 | **Related work** | Draft | [`related-work.md`](related-work.md) + [`paper/refs.bib`](paper/refs.bib) |
 | **Multi-repo artifact map** | Draft | [`artifact-map.md`](artifact-map.md) |
-| **Evaluation evidence** | Partial | [`evaluation.md`](evaluation.md) — PR CI runs `--local-only --require-lang-tests`. **No** cluster E2E in this environment, Kind isolation CSV is **plan-only** until `--cluster`, **no** site study |
+| **Evaluation evidence** | Partial | [`evaluation.md`](evaluation.md) — PR CI is `--local-only`. Cluster job exists ([cluster-regression.yml](../../.github/workflows/cluster-regression.yml)) but is **not** on PRs; no site study |
 | **ACM artifact badges** | Partial | [`artifact-checklist.md`](artifact-checklist.md) — Available is blocked until Zenodo/Software Heritage DOI; Reusable needs a reviewer-timed Kind path |
 | **SEIP / full research track** | Not this cycle | Standing backlog: [seip-tasks.md](seip-tasks.md). Gate 0 is industrial context. No ICSE 2027 deadline. |
 
-**Short answer: no, the testing work is not “all done.”** Local unit/static tests are PR-gated. Cluster E2E, Kind isolation measurements, and comparative studies are not.
+**Short answer: no, the testing work is not “all done.”** Local unit/static tests are PR-gated. Cluster Kind CI is nightly/manual. Intercept E2E and comparative studies are not gated.
 
 See [`evaluation.md`](evaluation.md) for counts from a live `--local-only` run.
 

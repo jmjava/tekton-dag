@@ -6,6 +6,8 @@ Standalone Tekton pipeline system for **local development and proof-of-concept**
 
 [![local regression](https://github.com/jmjava/tekton-dag/actions/workflows/local-regression.yml/badge.svg)](https://github.com/jmjava/tekton-dag/actions/workflows/local-regression.yml) runs `scripts/run-regression.sh --local-only --require-lang-tests` on every pull request (Phase 1, pytest, vitest, isolation-eval protocol, Maven, PHPUnit, operator `go test`).
 
+[![cluster regression](https://github.com/jmjava/tekton-dag/actions/workflows/cluster-regression.yml/badge.svg)](https://github.com/jmjava/tekton-dag/actions/workflows/cluster-regression.yml) runs Playwright plus Kind (`scripts/run-cluster-ci.sh`: isolation-eval `--cluster`, `stack-dag-verify`, Newman) on **nightly / `workflow_dispatch` / `v*` tags** — not on pull requests.
+
 ## What's new (M13 foundations)
 
 Production-hardening building blocks are in the tree (see [milestones/milestone-13.md](milestones/milestone-13.md) and [DO-THIS-LOCAL.md](DO-THIS-LOCAL.md) for cluster smoke):

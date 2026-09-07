@@ -1,0 +1,123 @@
+# Cluster-backed regression (S33). Not on pull requests — Kind/Tekton is too
+# slow and too easy to confuse with the PR-gated --local-only job.
+#
+# Runs: Playwright (no cluster) + Kind (isolation-eval --cluster, Phase 2
+# stack-dag-verify, Newman vs orchestrator).
+name: cluster regression
+
+on:
+  workflow_dispatch:
+    inputs:
+      isolation_repeats:
+        description: isolation-eval --repeats
+        required: false
+        default: "1"
+      skip_newman:
+        description: Skip orchestrator Newman (Kind + Phase 2 + isolation only)
+        type: boolean
+        default: false
+  schedule:
+    # GitHub only fires this on the default branch after merge.
+    - cron: "17 6 * * *"
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: cluster-regression-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  playwright:
+    name: Playwright (management-gui, no cluster)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: management-gui/frontend/package-lock.json
+
+      - name: Install and run Playwright
+        working-directory: management-gui/frontend
+        run: |
+          npm ci
+          npx playwright install chromium --with-deps
+          npx playwright test
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: management-gui/frontend/playwright-report/
+          if-no-files-found: ignore
+
+  kind:
+    name: Kind isolation-eval + Phase 2 + Newman
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node (Newman)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Kind
+        run: |
+          curl -fsSL -o /tmp/kind "https://kind.sigs.k8s.io/dl/v0.27.0/kind-linux-amd64"
+          chmod +x /tmp/kind
+          sudo mv /tmp/kind /usr/local/bin/kind
+          kind version
+          kubectl version --client
+
+      - name: Bootstrap Python venv
+        run: ./scripts/bootstrap-regression-venv.sh
+
+      - name: Install Newman
+        run: npm install -g newman
+
+      - name: Cluster CI
+        env:
+          CLUSTER_CI_GIT_REVISION: ${{ github.sha }}
+          CLUSTER_CI_GIT_URL: https://github.com/${{ github.repository }}.git
+          ISOLATION_EVAL_REPEATS: ${{ github.event.inputs.isolation_repeats || '1' }}
+          ISOLATION_EVAL_OUT: ${{ github.workspace }}/isolation-eval-measured.csv
+        run: |
+          set -o pipefail
+          extra=()
+          if [[ "${{ github.event.inputs.skip_newman || false }}" == "true" ]]; then
+            extra+=(--skip-newman)
+          fi
+          bash scripts/run-cluster-ci.sh --isolation-repeats "$ISOLATION_EVAL_REPEATS" \
+            --out "$ISOLATION_EVAL_OUT" "${extra[@]}" 2>&1 | tee cluster-ci.log
+
+      - name: Upload cluster CI log and CSV
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cluster-ci-${{ github.sha }}
+          path: |
+            cluster-ci.log
+            isolation-eval-measured.csv
+          if-no-files-found: warn
+          retention-days: 30

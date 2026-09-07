@@ -25,21 +25,21 @@ On 2026-09-07, `bash scripts/run-regression-stream.sh --local-only --require-lan
 
 ## What exists but is *not* CI-gated on every PR
 
-`--local-only --require-lang-tests` **does** run on pull requests ([`.github/workflows/local-regression.yml`](../../.github/workflows/local-regression.yml)): Phase 1, pytest (including isolation-eval protocol), vitest, Maven (both Java baggage modules), PHPUnit, operator `go test ./internal/... ./api/...`. The suites below still need a cluster, a browser, or a manual Kind job.
+`--local-only --require-lang-tests` **does** run on pull requests ([`.github/workflows/local-regression.yml`](../../.github/workflows/local-regression.yml)). The suites below are **not** on PRs; they run on [`.github/workflows/cluster-regression.yml`](../../.github/workflows/cluster-regression.yml) (nightly / dispatch / tags) unless noted.
 
 | Suite | Approx. cases | How you run it today |
 |-------|---------------|----------------------|
-| Go `operator/` e2e | present | needs a cluster |
-| Playwright GUI | 69 `test(` | `npx playwright test` (regression default, **not** `--local-only`) |
-| Newman orchestrator | collection grew past the README “15 requests / 30 assertions” | needs live orchestrator Service |
-| Newman graph (M9) | ~10 requests in `tests/postman/graph-tests.json` | `--all` on orchestrator-tests script |
-| Newman management GUI | optional | `--gui-newman` |
-| `stack-dag-verify` PipelineRun | one real Tekton run | cluster + `--require-dag-verify` |
-| Intercept E2E both backends | scripts exist | `run-e2e-with-intercepts.sh` |
-| Kind clone-vs-intercept **measurements** | CSV rows | `run-isolation-eval.sh --cluster` (offline *plan* CSV is in `--local-only`) |
+| Go `operator/` e2e | present | needs a cluster; not in cluster-regression |
+| Playwright GUI | 69 `test(` | cluster-regression Playwright job; `npx playwright test` locally |
+| Newman orchestrator | collection grew past the README “15 requests / 30 assertions” | `run-cluster-ci.sh` (live orchestrator Service) |
+| Newman graph (M9) | ~10 requests in `tests/postman/graph-tests.json` | `run-cluster-ci.sh --with-graph` |
+| Newman management GUI | optional | `--gui-newman` (not in cluster-regression) |
+| `stack-dag-verify` PipelineRun | one real Tekton run | `run-cluster-ci.sh` / `--require-dag-verify` |
+| Intercept E2E both backends | scripts exist | S34: `run-e2e-with-intercepts.sh` |
+| Kind clone-vs-intercept **measurements** | CSV rows | `run-cluster-ci.sh` / `run-isolation-eval.sh --cluster` |
 | Sample **app-repo** tests (Newman/Playwright/Artillery in the six `tekton-dag-*` repos) | declared in stack YAML | only during `stack-pr-test`, not platform regression |
 
-C2 (polyglot baggage **unit** tests) is PR-gated for Python, Node, Java, and PHP. In-cluster hop validation (`validate-stack-propagation`) remains a pipeline task. C3 isolation **probes on Kind** are scripted (`run-isolation-eval.sh --cluster`) but not CI-gated. C4 (test-plan) has mocked pytest + a Postman collection; `milestones/milestone-9.md` still says **Planned** even though `query-test-plan` is wired in `stack-pr-pipeline.yaml`.
+C2 (polyglot baggage **unit** tests) is PR-gated for Python, Node, Java, and PHP. In-cluster hop validation (`validate-stack-propagation`) remains a pipeline task. C3 isolation **probes on Kind** run in cluster-regression (dummy HTTP stacks, not Telepresence). C4 (test-plan) has mocked pytest + a Postman collection; `milestones/milestone-9.md` still says **Planned** even though `query-test-plan` is wired in `stack-pr-pipeline.yaml`.
 
 ## What we can cite today (with location)
 
@@ -82,16 +82,16 @@ Unit tests exist for Python, Node, Java (Spring starter + servlet filter), and P
 
 From [`docs/TESTING-AND-REGRESSION-OVERVIEW.md`](../TESTING-AND-REGRESSION-OVERVIEW.md) and [`docs/REGRESSION.md`](../REGRESSION.md):
 
-| Layer | Proves | Typical command | Gated on GitHub PR? |
-|-------|--------|-----------------|---------------------|
-| Static DAG | YAML graph consistency | `verify-dag-phase1.sh` | Yes (`local-regression.yml`) |
-| Python / Node unit | resolver, orchestrator, baggage (py/node), isolation-eval protocol | pytest, vitest | Yes |
-| Java / PHP / operator | baggage JUnit, PHPUnit, `go test ./internal/... ./api/...` | `run-lang-unit-tests.sh` | Yes (`--require-lang-tests`) |
-| GUI | operator workflows | Playwright | No (skipped by `--local-only`) |
-| Orchestrator API | HTTP contracts | Newman | No |
-| Live PipelineRun | `stack-dag-verify` Succeeded | `verify-dag-phase2.sh` | No |
-| Results DB | persistence | `verify-results-in-db.sh` | No |
-| Clone vs intercept (Kind) | dummy-stack isolation + pod counts | `run-isolation-eval.sh --cluster` | No (offline plan only on PRs) |
+| Layer | Proves | Typical command | Gated where? |
+|-------|--------|-----------------|--------------|
+| Static DAG | YAML graph consistency | `verify-dag-phase1.sh` | PR (`local-regression.yml`) |
+| Python / Node unit | resolver, orchestrator, baggage (py/node), isolation-eval protocol | pytest, vitest | PR |
+| Java / PHP / operator | baggage JUnit, PHPUnit, `go test ./internal/... ./api/...` | `run-lang-unit-tests.sh` | PR (`--require-lang-tests`) |
+| GUI | operator workflows | Playwright | Nightly/dispatch/tags (`cluster-regression.yml`), **not** PRs |
+| Orchestrator API | HTTP contracts | Newman | Nightly/dispatch/tags (`run-cluster-ci.sh`) |
+| Live PipelineRun | `stack-dag-verify` Succeeded | `verify-dag-phase2.sh` | Nightly/dispatch/tags |
+| Results DB | persistence | `verify-results-in-db.sh` | No (optional `--with-results-verify`) |
+| Clone vs intercept (Kind) | dummy-stack isolation + pod counts | `run-isolation-eval.sh --cluster` | Nightly/dispatch/tags (offline plan still on PRs) |
 
 Update paper numbers from **`pytest` collection on the submission tag**, not from milestone tables.
 
@@ -107,8 +107,9 @@ Code exists (`/api/test-plan`, `query-test-plan` task, Neo4j client, Postman gra
 
 | Missing study **or** missing engineering gate | Why it matters | Minimum next step |
 |-----------------------------------------------|----------------|-------------------|
-| Cluster Phase 2 + intercept E2E on a tagged release | C1/C3 need a live PipelineRun | Kind job or recorded log from `run-regression-agent-full.sh` |
-| Cost/time vs. namespace-per-PR (**measured**) | Central *research* claim of routing vs. cloning | `run-isolation-eval.sh --cluster --repeats 3` (harness exists; no measured CSV yet) |
+| Recorded cluster-regression log on a tag | C1/C3 need a live PipelineRun **artifact**, not only a workflow file | `workflow_dispatch` on [cluster-regression.yml](../../.github/workflows/cluster-regression.yml) or push a `v*` tag after merge |
+| Intercept E2E both backends | C3 beyond dummy-stack probes | S34: `run-e2e-with-intercepts.sh` on a chosen tag |
+| Cost/time vs. namespace-per-PR (**measured**, ≥3 repeats) | Central *research* claim of routing vs. cloning | Dispatch cluster CI with `isolation_repeats=3`; cite the artifact CSV, not the plan |
 | Concurrent PRs | Multi-tenant intercepts | Two PRs, two headers, no cross-steal |
 | Developer study | Demo “envisioned users” | Even n=3 think-aloud |
 | Industrial case | SEIP | Named org |

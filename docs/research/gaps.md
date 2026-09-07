@@ -38,11 +38,12 @@ See **[seip-tasks.md](seip-tasks.md)**. No ICSE 2027 date. Gate 0 is a real site
 
 Engineering completeness is separate from the HotCRP PDF. As of this branch:
 
-- `--local-only --require-lang-tests` **passes** (Phase 1 + pytest + vitest + isolation-eval protocol + Maven + PHPUnit + operator `go test`) and is **gated** by [`.github/workflows/local-regression.yml`](../../.github/workflows/local-regression.yml).
-- Playwright (on `--local-only`), Newman, Phase 2, intercept E2E, and Kind isolation **measurements** are **out of band**.
+- `--local-only --require-lang-tests` **passes** and is **gated** by [`.github/workflows/local-regression.yml`](../../.github/workflows/local-regression.yml).
+- Playwright, Newman, Phase 2, and Kind isolation **measurements** are gated by [`.github/workflows/cluster-regression.yml`](../../.github/workflows/cluster-regression.yml) (**not** on pull requests). A log exists only after that workflow has run (dispatch / nightly on default branch / `v*` tag).
+- Intercept E2E (Telepresence + mirrord) is still **out of band** (S34).
 - README milestone test counts are **stale**.
 
-Until a recorded cluster log exists for a tagged release, do not tell reviewers the *platform* (Tekton/intercepts) is continuously verified. Local unit/static CI is the honest claim.
+Until a **recorded** cluster-regression artifact exists for a tagged commit, do not tell reviewers the *platform* (Tekton/intercepts) is continuously verified on every PR. Local unit/static CI plus an on-demand Kind job is the honest claim.
 
 ## Must-not-do
 

@@ -11,9 +11,9 @@ Do **not** confuse these:
 | Scope | What runs | Typical trigger |
 |-------|-----------|-----------------|
 | **Application PR** (`stack-pr-test` on an **app** repo) | Stack-defined tests only — e.g. that app’s Newman/Playwright/Artillery as declared in `stacks/*.yaml`, against the intercept build. | Every PR on the **application** repository (when webhooks/Tekton are wired). |
-| **Platform regression** (`scripts/run-regression*.sh` on **this** repo) | **System / integration** tiers: Phase 1 + orchestrator + shared libs + GUI pytest, Playwright for **management-gui**, real **`stack-dag-verify`** PipelineRun, Newman against **orchestrator** API, optional Tekton Results, optional Kind E2E. | **PRs / `main`:** GitHub Actions [`.github/workflows/local-regression.yml`](../.github/workflows/local-regression.yml) runs **`--local-only --require-lang-tests`**. Cluster tiers remain **manual**, **scheduled**, **pre-release**, or **agent loop**. |
+| **Platform regression** (`scripts/run-regression*.sh` on **this** repo) | **System / integration** tiers: Phase 1 + orchestrator + shared libs + GUI pytest, Playwright for **management-gui**, real **`stack-dag-verify`** PipelineRun, Newman against **orchestrator** API, optional Tekton Results, optional Kind E2E. | **PRs / `main`:** [`.github/workflows/local-regression.yml`](../.github/workflows/local-regression.yml) runs **`--local-only --require-lang-tests`**. **Nightly / dispatch / `v*` tags:** [`.github/workflows/cluster-regression.yml`](../.github/workflows/cluster-regression.yml) runs Playwright + Kind (`scripts/run-cluster-ci.sh`). Full intercept E2E remains **manual**. |
 
-So: **not all tests run on every PR.** `--local-only` (including Java/PHP/operator) is CI-gated; Kind / Newman / Phase 2 are not. App PRs run a narrower, stack-scoped test stage.
+So: **not all tests run on every PR.** `--local-only` (including Java/PHP/operator) is PR-gated. Playwright, Newman, Phase 2, and Kind isolation measurements run on **cluster-regression** (nightly / `workflow_dispatch` / version tags), not on pull requests. App PRs run a narrower, stack-scoped test stage.
 
 **Streaming / timestamps:** use **`scripts/run-regression-stream.sh`** — same arguments, prefixes each line with `[HH:MM:SS]` and preserves the real exit code (plain `| while read` does not).
 
@@ -71,6 +71,9 @@ chmod +x scripts/run-regression.sh   # once, if needed
 
 # Kind measurement (not PR CI): clone vs intercept dummy stacks → CSV
 ./scripts/run-isolation-eval.sh --cluster --repeats 3 --out /tmp/eval.csv
+
+# Nightly/manual cluster CI entrypoint (Kind + Phase 2 + Newman). Same as Actions.
+./scripts/run-cluster-ci.sh
 
 # Default: local + Playwright + Tekton stack-dag-verify (if pipeline exists) + Newman + Results script (if API exists)
 ./scripts/run-regression.sh
