@@ -39,11 +39,22 @@ See **[seip-tasks.md](seip-tasks.md)**. No ICSE 2027 date. Gate 0 is a real site
 Engineering completeness is separate from the HotCRP PDF. As of this branch:
 
 - `--local-only --require-lang-tests` **passes** and is **gated** by [`.github/workflows/local-regression.yml`](../../.github/workflows/local-regression.yml).
-- Playwright, Newman, Phase 2, and Kind isolation **measurements** are gated by [`.github/workflows/cluster-regression.yml`](../../.github/workflows/cluster-regression.yml) (**not** on pull requests). A log exists only after that workflow has run (dispatch / nightly on default branch / `v*` tag).
+- Playwright, Newman, Phase 2, and Kind isolation **measurements** are gated by [`.github/workflows/cluster-regression.yml`](../../.github/workflows/cluster-regression.yml) (**not** on pull requests). A **GitHub Actions** log exists only after that workflow has run (dispatch / nightly on default branch / `v*` tag). This Cloud Agent recorded a local Kind run (isolation 6/6, Phase 2 Succeeded, Newman 18/18); that is not an Actions artifact.
 - Intercept E2E (Telepresence + mirrord) is still **out of band** (S34).
 - README milestone test counts are **stale**.
 
 Until a **recorded** cluster-regression artifact exists for a tagged commit, do not tell reviewers the *platform* (Tekton/intercepts) is continuously verified on every PR. Local unit/static CI plus an on-demand Kind job is the honest claim.
+
+**Kind cluster-ci design debt (2026-09-07 run, not site evidence):**
+
+| Id | Finding | Status |
+|----|---------|--------|
+| **S38** | `install-tekton.sh` tracked `latest`; v1.6 rejected `taskRef.name: $(params.pre-build-task)`. Hooks use cluster resolver; pin Pipelines/Triggers. | Landed |
+| **S39** | `common.sh` defaulted host `localhost:5001` while `kind-with-registry.sh` listens on **`:5000`**. Newman image push failed (`connection refused` on 5001). Phase 2 `stack-dag-verify` **Succeeded**. | Landed |
+| **S33 local** | `run-cluster-ci.sh` on this Cloud Agent Kind: isolation 6/6, Phase 2 Succeeded, Newman 18 req / 36 asserts. `kind load` overlayfs warning (nested Docker); registry pull worked. | Local log only; GHA not dispatched |
+| **M14 soak** | `install-operator-kind.sh` + Newman `STACKRUN_VIA_CRD=true`: 6/6 StackRuns → labeled PipelineRuns. Helm `operator.enabled` still default **false**. Some PRs then `CouldntGetTask` (task catalog). | Kind soak recorded; default-on still open |
+| **S34** | Phase 2 ≠ intercept E2E. Dummy isolation-eval ≠ Telepresence/mirrord. Bootstrap skipped SSH/GitHub secrets. | Open |
+| Lessons | Dual-port registry, Kaniko stdout vs results, intercept vs Pod Security: see [seip/lessons-learned.md](seip/lessons-learned.md). | Registry default paid in S39; intercept PSS still S34 |
 
 ## Must-not-do
 

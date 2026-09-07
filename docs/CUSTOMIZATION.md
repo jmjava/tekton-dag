@@ -128,14 +128,14 @@ compileImageVariants:
 
 1. **Helm** — set `imageRegistry`, `cacheRepo`, `compileImages`, `compileImageVariants`, and `orchestrationService.image` in `values.yaml` or a team override file.
 
-2. **Scripts / local env** — `scripts/common.sh` defaults `IMAGE_REGISTRY` to `localhost:5001`; override with environment or a repo `.env`:
+2. **Scripts / local env** — `scripts/common.sh` defaults `IMAGE_REGISTRY` to `localhost:5000` (same port `kind-with-registry.sh` publishes). Override with environment or a repo `.env`:
 
 ```bash
 export IMAGE_REGISTRY=my.registry.io:443
 ./scripts/publish-build-images.sh   # uses load_env + REGISTRY
 ```
 
-`publish-build-images.sh` calls `build-images/build-and-push.sh`, which honors `REGISTRY` and positional args. For Kind, `resolve_compile_registry` maps `localhost:5001` → `localhost:5000` for in-cluster references.
+`publish-build-images.sh` calls `build-images/build-and-push.sh`, which honors `REGISTRY` and positional args. `resolve_compile_registry` maps the legacy host port `localhost:5001` → `localhost:5000` for in-cluster refs.
 
 ---
 
@@ -190,7 +190,7 @@ spec:
 
 2. **Apply** the Task to the pipeline namespace (`kubectl apply -f tasks/my-pre-build.yaml -n tekton-pipelines` or include it in chart packaging).
 
-3. **Pass the Task name** as a pipeline parameter (`pre-build-task`, `post-build-task`, `pre-test-task`, or `post-test-task`). Empty string skips the hook. Pipelines use a `WhenExpression` on the param so missing Tasks are not required until you set the name.
+3. **Pass the Task name** as a pipeline parameter (`pre-build-task`, `post-build-task`, `pre-test-task`, or `post-test-task`). Empty string skips the hook. Pipelines use a `WhenExpression` on the param so missing Tasks are not required until you set the name. Hook `taskRef` uses the **cluster resolver** (Tekton v1.6+ rejects `$(params.*)` in `taskRef.name` at apply time). The Task must live in the PipelineRun namespace.
 
 ---
 

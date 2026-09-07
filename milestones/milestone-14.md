@@ -1,8 +1,8 @@
 # Milestone 14 — Kubernetes Operator (CRD-primary)
 
-**Status:** In progress — foundations shipped (Stack/StackRun CRDs, Go reconciler, Flask `STACKRUN_VIA_CRD` bridge, Helm `operator.enabled`).
+**Status:** In progress — CRD-primary is the **intended** control plane. Foundations shipped (Stack/StackRun CRDs, Go reconciler, Flask `STACKRUN_VIA_CRD` bridge, Helm `operator.enabled`). Remaining work is Kind soak and default-on, not a paper-driven deferral.
 
-**Goal:** Make **Stack** and **StackRun** custom resources the source of truth for desired stack graphs and pipeline executions. The Flask orchestrator thins to webhook/API that creates CRs; a Go Kubebuilder operator reconciles StackRuns into Tekton PipelineRuns.
+**Goal:** Make **Stack** and **StackRun** custom resources the source of truth for desired stack graphs and pipeline executions. The Flask orchestrator thins to webhook/API that creates CRs; a Go Kubebuilder operator reconciles StackRuns into Tekton PipelineRuns. Academic packaging in `docs/research/` may mention this as status; it must not keep `operator.enabled=false` as a permanent product choice.
 
 ## Architecture
 
@@ -46,8 +46,8 @@ Regenerate goldens: `python scripts/generate-pipelinerun-goldens.py`
 - [x] StackRun reconciler (create PipelineRun, sync status) + Stack validation
 - [x] Flask `STACKRUN_VIA_CRD` path + Helm wiring
 - [x] Milestone / README / DO-THIS-LOCAL smoke notes
-- [ ] Kind: build/push operator image + live StackRun → PipelineRun create
-- [ ] Newman with `STACKRUN_VIA_CRD=true` against cluster
+- [x] Kind: build/push operator image + live StackRun → PipelineRun create (`scripts/install-operator-kind.sh`)
+- [x] Newman with `STACKRUN_VIA_CRD=true` against cluster (`run-cluster-ci.sh --with-operator`)
 - [ ] Default `operator.enabled=true` after soak
 
 ## Exit criteria

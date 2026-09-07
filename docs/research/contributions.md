@@ -1,6 +1,6 @@
 # Contribution claims
 
-These are the **only** claims the workshop/tool paper is allowed to make until evaluation is extended. Each claim is mapped to code. Overclaiming (e.g. “reduces CI cost by X%” or “first system to …”) will not survive review.
+These are the **only** claims the workshop/tool **paper** is allowed to make until evaluation is extended. This list is a writing constraint, not a product backlog. Platform work (operator default-on, Kind cluster CI, intercept E2E) proceeds even when it is not a numbered contribution below.
 
 ## Research question (tool / workshop)
 
@@ -53,7 +53,7 @@ These are the **only** claims the workshop/tool paper is allowed to make until e
 - Kubernetes, Tekton, Helm, Argo CD as such.
 - Kaniko, Crane, Newman, Playwright, Artillery.
 - The Management GUI as a research result (it is a usability artifact supporting C1–C3).
-- The M14 operator (`Stack` / `StackRun` CRDs) as a *primary* workshop claim — it is an implementation path, still optional (`operator.enabled` defaults off). Mention as status, not as the paper’s thesis.
+- The M14 operator (`Stack` / `StackRun` CRDs) as a *primary* **paper** thesis — reviewers should not be told CRDs are the research result. **In the product**, CRD-primary is the intended control plane ([milestone-14.md](../../milestones/milestone-14.md)); optional Helm is a rollout flag, not a statement that the operator is a side experiment.
 - Production-hardening items still open on M13 (ESO, Prometheus, cross-cluster deploy).
 
 ## Mapping claims → paper sections

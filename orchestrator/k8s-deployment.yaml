@@ -58,6 +58,9 @@ spec:
               value: "2"
             - name: REGISTRIES_FILE
               value: /stacks/registries.yaml
+            # Direct PipelineRuns by default. cluster-ci --with-operator sets true.
+            - name: STACKRUN_VIA_CRD
+              value: "false"
             - name: NEO4J_URI
               value: neo4j://graph-db:7687
             - name: NEO4J_USER

@@ -2,7 +2,7 @@
 # Build and push the management-gui backend Docker image.
 #
 # Usage:
-#   ./scripts/publish-management-gui-image.sh              # defaults: localhost:5001, tag latest
+#   ./scripts/publish-management-gui-image.sh              # defaults: $IMAGE_REGISTRY (localhost:5000), tag latest
 #   ./scripts/publish-management-gui-image.sh myreg:5000   # override registry
 #   ./scripts/publish-management-gui-image.sh myreg:5000 v2
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

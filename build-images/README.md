@@ -22,10 +22,10 @@ From this directory:
 ./build-and-push.sh [REGISTRY] [TAG]
 ```
 
-- **REGISTRY** (default: `localhost:5001` for Kind test env) — override for other registries.
+- **REGISTRY** (default: `localhost:5000` for Kind) — override for other registries.
 - **TAG** (default: `latest`).
 
-From repo root (defaults to Kind registry on port 5001):
+From repo root (defaults to Kind registry on port 5000):
 
 ```bash
 ./scripts/publish-build-images.sh
@@ -55,4 +55,4 @@ Pipelines can pass these refs explicitly or derive them from a single registry +
 
 ## Kind (test env default)
 
-The default publish target is **localhost:5001** — the Kind registry on the host. The cluster pulls via `kind-registry:5000`. Run `./scripts/publish-build-images.sh` with no args to push there. Override with the first argument (e.g. `./scripts/publish-build-images.sh ghcr.io/your-org`) for other registries.
+The default publish target is **localhost:5000** — the Kind registry on the host (`kind-with-registry.sh`). Run `./scripts/publish-build-images.sh` with no args to push there. Override with the first argument (e.g. `./scripts/publish-build-images.sh ghcr.io/your-org`) for other registries.

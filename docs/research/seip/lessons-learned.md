@@ -42,7 +42,21 @@ Format:
 - **What we changed:** unsigned allowed only when no secret is configured; missing named Secret fails closed.
 - **Peer copy:** “open for local Kind” vs “fail closed in the site cluster” must be explicit in the paper’s deployment description.
 
-### Dual intercept backends
+### 2026-09 — Tekton v1.6 hook taskRef names
+
+- **Context:** Kind cluster-ci applied `pipeline/stack-*.yaml` after `install-tekton.sh` used `…/latest/`.
+- **What we believed:** `taskRef.name: $(params.pre-build-task)` plus a `when` skip was valid at apply time.
+- **What failed:** admission webhook rejected `$()` as a DNS label; bootstrap/PR/merge pipelines would not apply.
+- **What we changed:** cluster resolver for hooks; pin Pipelines **v1.6.0** and Triggers **v0.34.0** (S38).
+- **Peer copy:** pin Tekton; do not put param substitution in `taskRef.name`; `kubectl apply` the three pipelines on that pin.
+
+### 2026-09 — Kind registry default vs helper
+
+- **Context:** `run-cluster-ci.sh` Newman path, `kind-with-registry.sh` listening on host **:5000**.
+- **What we believed:** `IMAGE_REGISTRY` default `localhost:5001` was the Kind host publish address.
+- **What failed:** `docker push localhost:5001` connection refused; Phase 2 had already Succeeded.
+- **What we changed:** default and cluster-ci publish address **:5000** to match the helper; keep 5001→5000 remap (S39).
+- **Peer copy:** one host port, documented next to `kind-with-registry.sh`; do not leave a second default in `common.sh`.
 
 - **Context:** header match for PR traffic.
 - **What we learned:** Telepresence `--http-match` and mirrord `header_filter` can both isolate HTTP; cleanup and privilege models differ.

@@ -2,7 +2,7 @@
 # Build and push the tekton-dag-orchestrator Docker image to the Kind registry.
 #
 # Usage:
-#   ./scripts/publish-orchestrator-image.sh              # defaults: localhost:5001, tag latest
+#   ./scripts/publish-orchestrator-image.sh              # defaults: $IMAGE_REGISTRY (localhost:5000), tag latest
 #   ./scripts/publish-orchestrator-image.sh myreg:5000   # override registry
 #   ./scripts/publish-orchestrator-image.sh myreg:5000 v2 # registry and tag
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

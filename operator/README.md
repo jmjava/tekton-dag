@@ -1,6 +1,6 @@
 # tekton-dag-operator
 
-Go Kubebuilder operator for **Stack** and **StackRun** custom resources (`tektondag.io/v1alpha1`).
+Go Kubebuilder operator for **Stack** and **StackRun** custom resources (`tektondag.io/v1alpha1`). This is the intended Kubernetes control plane for stack graphs and pipeline executions, not an optional paper extra.
 
 See [milestones/milestone-14.md](../milestones/milestone-14.md) for architecture and exit criteria.
 
@@ -16,7 +16,10 @@ go test ./internal/pipeline/ ./internal/controller/
 # Build image for Kind
 ../scripts/publish-operator-image.sh
 
-# Install CRDs + samples
+# Kind cluster soak (CRDs + Deployment; Newman uses --with-operator)
+../scripts/install-operator-kind.sh
+
+# Install CRDs + samples (no image)
 kubectl apply -f config/crd/bases/
 kubectl apply -f config/samples/
 ```

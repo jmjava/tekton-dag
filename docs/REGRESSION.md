@@ -75,6 +75,9 @@ chmod +x scripts/run-regression.sh   # once, if needed
 # Nightly/manual cluster CI entrypoint (Kind + Phase 2 + Newman). Same as Actions.
 ./scripts/run-cluster-ci.sh
 
+# Same, plus M14 operator soak (StackRun CRs -> PipelineRuns)
+./scripts/run-cluster-ci.sh --with-operator
+
 # Default: local + Playwright + Tekton stack-dag-verify (if pipeline exists) + Newman + Results script (if API exists)
 ./scripts/run-regression.sh
 

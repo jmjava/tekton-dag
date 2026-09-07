@@ -2,7 +2,7 @@
 
 Standalone Tekton pipeline system for **local development and proof-of-concept**. Stack-aware CI/CD with header-based traffic interception, multi-framework support, and an in-cluster orchestration service.
 
-**Academic packaging (workshop / tool-demo):** [docs/research/](docs/research/) — contribution claims, venue map, artifact checklist, and a 4-page IEEE draft. Cite via [`CITATION.cff`](CITATION.cff). License: [Apache-2.0](LICENSE).
+**Academic packaging** ([docs/research/](docs/research/)) records claims and evidence for a possible workshop paper. It does **not** set architecture. Control plane direction is CRD-primary (`Stack` / `StackRun`); see [M14](milestones/milestone-14.md). Cite via [`CITATION.cff`](CITATION.cff). License: [Apache-2.0](LICENSE).
 
 [![local regression](https://github.com/jmjava/tekton-dag/actions/workflows/local-regression.yml/badge.svg)](https://github.com/jmjava/tekton-dag/actions/workflows/local-regression.yml) runs `scripts/run-regression.sh --local-only --require-lang-tests` on every pull request (Phase 1, pytest, vitest, isolation-eval protocol, Maven, PHPUnit, operator `go test`).
 
@@ -92,7 +92,7 @@ Each row links to the **in-browser player** on Pages (`#seg-…`) and to the **c
 | [M12.2](milestones/milestone-12.2.md) | **Partial** | **Part A done:** doc sync + archive. **Part B open:** regression + Management GUI [docs & demo plan](docs/TESTING-AND-REGRESSION-OVERVIEW.md) / [GUI extension](docs/MANAGEMENT-GUI-EXTENSION.md) / [video segments](docs/demos/segments-m12-2-regression-gui.md) |
 | [doc-generator](milestones/milestone-doc-generator.md) | **Completed** | Reusable Python library ([`docgen`](https://github.com/jmjava/documentation-generator)) extracting the demo pipeline (TTS, Manim, VHS, ffmpeg, validation, Pages). OCR validation, A/V sync, narration linting, auto-generated GitHub Pages. All 18 demo segments regenerated via `docgen`. |
 | [M13](milestones/milestone-13.md) | **Partial** | Production hardening foundations shipped: webhook HMAC, stack secrets/config + deploy wiring + injection-status APIs, PipelineRun timeouts / task retries / failure classifier / resource profiles, `stack-promote` + registries + approval gate. Open: intercept secret/config wiring, Helm `appConfig` / ESO, GUI panels, observability, cross-cluster deploy. Roadmap video: [segment 18](https://jmjava.github.io/tekton-dag/#seg-18). Local cluster checklist: [DO-THIS-LOCAL.md](DO-THIS-LOCAL.md). |
-| [M14](milestones/milestone-14.md) | **Partial** | **Kubernetes operator (CRD-primary):** Go Kubebuilder operator under [`operator/`](operator/) with `Stack` + `StackRun` (`tektondag.io/v1alpha1`). Flask creates StackRuns when `STACKRUN_VIA_CRD=true`; Helm `operator.enabled`. Shared PipelineRun golden fixtures Python↔Go. |
+| [M14](milestones/milestone-14.md) | **Partial** | **Kubernetes operator (CRD-primary):** Go Kubebuilder operator under [`operator/`](operator/) with `Stack` + `StackRun` (`tektondag.io/v1alpha1`). Flask creates StackRuns when `STACKRUN_VIA_CRD=true`; Helm `operator.enabled` (default still **off**). Kind soak: Newman 18/18 with CRD path, 6/6 StackRuns → PipelineRuns (`scripts/install-operator-kind.sh`, `run-cluster-ci.sh --with-operator`). Shared PipelineRun golden fixtures Python↔Go. |
 
 Older milestones (M2, M3) are in [milestones/completed/](milestones/completed/).
 
@@ -459,7 +459,7 @@ VS Code multi-root workspace configs in `.vscode/launch.json` support debugging 
 
 | Container | Host port | In-cluster address | Purpose |
 |-----------|-----------|-------------------|---------|
-| `kind-registry` | `localhost:5001` | `localhost:5000` | Kind cluster registry — push here, pods pull via `localhost:5000` |
+| `kind-registry` | `localhost:5000` | `localhost:5000` | Kind cluster registry (`kind-with-registry.sh`). Host push and pod pull use the same port. Old `IMAGE_REGISTRY=localhost:5001` is still remapped to `:5000` in-cluster. |
 
 Pod image refs must use `localhost:5000`. Kind's containerd config redirects to `kind-registry:5000` on the Docker network.
 

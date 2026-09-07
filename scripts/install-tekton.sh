@@ -8,15 +8,20 @@ source "$SCRIPT_DIR/common.sh"
 MILESTONE_DIR="$REPO_ROOT"
 cd "$MILESTONE_DIR"
 
-TEKTON_PIPELINE_URL="${TEKTON_PIPELINE_URL:-https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml}"
-TEKTON_TRIGGERS_URL="${TEKTON_TRIGGERS_URL:-https://storage.googleapis.com/tekton-releases/triggers/latest/release.yaml}"
-TEKTON_TRIGGERS_INTERCEPTORS_URL="${TEKTON_TRIGGERS_INTERCEPTORS_URL:-https://storage.googleapis.com/tekton-releases/triggers/latest/interceptors.yaml}"
+# Pinned 2026-09-07 from Kind cluster-ci (controller v1.6.0, triggers v0.34.0).
+# Do not use …/latest/ — admission rules change and break hook taskRefs.
+TEKTON_PIPELINE_VERSION="${TEKTON_PIPELINE_VERSION:-v1.6.0}"
+TEKTON_TRIGGERS_VERSION="${TEKTON_TRIGGERS_VERSION:-v0.34.0}"
+TEKTON_PIPELINE_URL="${TEKTON_PIPELINE_URL:-https://storage.googleapis.com/tekton-releases/pipeline/previous/${TEKTON_PIPELINE_VERSION}/release.yaml}"
+TEKTON_TRIGGERS_URL="${TEKTON_TRIGGERS_URL:-https://storage.googleapis.com/tekton-releases/triggers/previous/${TEKTON_TRIGGERS_VERSION}/release.yaml}"
+TEKTON_TRIGGERS_INTERCEPTORS_URL="${TEKTON_TRIGGERS_INTERCEPTORS_URL:-https://storage.googleapis.com/tekton-releases/triggers/previous/${TEKTON_TRIGGERS_VERSION}/interceptors.yaml}"
 TEKTON_GIT_CLONE_URL="${TEKTON_GIT_CLONE_URL:-https://raw.githubusercontent.com/tektoncd/catalog/main/task/git-clone/0.9/git-clone.yaml}"
 
 need kubectl
 
 echo "=============================================="
 echo "  Install Tekton (Pipelines + git-clone + stack tasks/pipelines)"
+echo "  Pipelines: ${TEKTON_PIPELINE_VERSION}  Triggers: ${TEKTON_TRIGGERS_VERSION}"
 echo "=============================================="
 
 # Ensure namespace exists (Tekton release may create it; create if not)
