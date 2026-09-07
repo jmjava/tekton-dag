@@ -25,8 +25,8 @@ docgen:
           Golden Python↔Go PipelineRun builders.
       - >-
           Status: CRD-primary is the default runtime; M15 hygiene and M16 Team overlay /
-          continueFrom / webhook installer / escape-hatch retirement are landed. Spoken
-          demo rebuild remains M16.
+          continueFrom / webhook installer / escape-hatch retirement / spoken demos
+          01/08/18/19 are landed. S34 intercept E2E is parked.
       context:
         paths:
         - operator/README.md
