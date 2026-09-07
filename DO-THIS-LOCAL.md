@@ -187,4 +187,4 @@ These are **not** blocked on this checklist; track in [milestones/milestone-13.m
 - [ ] At least one promote dry-run PipelineRun **Succeeded**
 - [ ] injection-status shows present/missing correctly for a test Secret
 - [ ] Webhook rejects bad HMAC when secret is configured
-- [ ] Operator: Stack/StackRun applied; PipelineRun created from StackRun (M14)
+- [x] Operator: Stack/StackRun applied; PipelineRun created from StackRun (M14 Kind soak 2026-09-07)

@@ -11,6 +11,7 @@ On 2026-09-07, `bash scripts/run-regression-stream.sh --local-only --require-lan
 - `run-isolation-eval.sh --cluster`: **6/6** `isolation_ok=true` (dummy echo stacks; after `kubectl wait` race fix).
 - `stack-dag-verify` Phase 2: **Succeeded**.
 - Newman vs in-cluster orchestrator: **18 requests / 36 assertions, 0 failed** (`run-cluster-ci.sh --skip-isolation --skip-phase2` after S39; `kind load` warned overlayfs on this nested VM, image came from `localhost:5000`).
+- Operator Kind soak (`STACKRUN_VIA_CRD=true`): **18/18 Newman**; **6/6** StackRuns received a `status.pipelineRunName` and a PipelineRun labeled `tektondag.io/stackrun` (bootstrap ×2, pr ×2, merge, promote). Some PipelineRuns then hit Tekton `CouldntGetTask` / `ResolvingTaskRef` (task catalog on this cluster, not operator create). `scripts/install-operator-kind.sh` + `WAIT_STACKRUN_RECONCILE=1`.
 - Intercept E2E (S34) was **not** run. GitHub `cluster-regression` was **not** dispatched (no Actions artifact).
 
 | Suite | Collected / result |
@@ -26,7 +27,7 @@ On 2026-09-07, `bash scripts/run-regression-stream.sh --local-only --require-lan
 | Maven Java baggage | both modules OK (`--require-lang-tests`) |
 | operator `go test` | `internal/pipeline` + `internal/controller` OK |
 
-`--local-only` **skips** Playwright on purpose. This environment ran `npx playwright test` in `management-gui/frontend`: **69 passed** (Vite only, no cluster). Kind isolation-eval **6/6**, Phase 2 **Succeeded**, Newman **18/18 requests**. S34 intercept E2E was not run.
+`--local-only` **skips** Playwright on purpose. This environment ran `npx playwright test` in `management-gui/frontend`: **69 passed** (Vite only, no cluster). Kind isolation-eval **6/6**, Phase 2 **Succeeded**, Newman **18/18 requests**, operator soak **6/6** StackRun→PipelineRun. S34 intercept E2E was not run.
 
 ## What exists but is *not* CI-gated on every PR
 
@@ -34,7 +35,7 @@ On 2026-09-07, `bash scripts/run-regression-stream.sh --local-only --require-lan
 
 | Suite | Approx. cases | How you run it today |
 |-------|---------------|----------------------|
-| Go `operator/` e2e | present | needs a cluster; not in cluster-regression |
+| Go `operator/` e2e | present | Kind soak via `run-cluster-ci.sh --with-operator` (opt-in; not default cluster-regression) |
 | Playwright GUI | 69 `test(` | cluster-regression Playwright job; `npx playwright test` locally |
 | Newman orchestrator | collection grew past the README “15 requests / 30 assertions” | `run-cluster-ci.sh` (live orchestrator Service) |
 | Newman graph (M9) | ~10 requests in `tests/postman/graph-tests.json` | `run-cluster-ci.sh --with-graph` |
