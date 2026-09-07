@@ -57,7 +57,11 @@ fi
 # picks up the image we just built/loaded.
 kubectl rollout restart deployment/tekton-dag-operator -n "$NAMESPACE"
 kubectl rollout status deployment/tekton-dag-operator -n "$NAMESPACE" --timeout=180s
-kubectl wait --for=condition=Ready pod -l app=tekton-dag-operator -n "$NAMESPACE" --timeout=120s
+# Do not `kubectl wait` on -l app=tekton-dag-operator: that selector also
+# matches terminating pods from the previous ReplicaSet, which are not Ready
+# and timed out nightly cluster-regression after rollout status had already
+# succeeded.
+kubectl wait --for=condition=Available deployment/tekton-dag-operator -n "$NAMESPACE" --timeout=60s
 
 echo ">>> Sample Stack + Team CRs from Git YAML"
 bash "$SCRIPT_DIR/apply-stack-crs.sh"
