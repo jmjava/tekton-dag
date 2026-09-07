@@ -1,6 +1,6 @@
 # Milestone 16 — Control-plane follow-ons
 
-**Status:** In progress (M15 landed as #19; Team overlay / continueFrom / webhook installer as #20; escape hatches retired on this follow-on).
+**Status:** In progress (M15 #19; overlay / continueFrom / webhook #20; escape hatches #21; hint polish #22).
 
 **Goal:** Finish the remaining dual sources of truth after M15 hygiene. Still **no new CRD kinds**.
 

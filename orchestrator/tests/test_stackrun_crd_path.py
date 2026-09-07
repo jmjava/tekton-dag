@@ -5,8 +5,7 @@ from unittest.mock import patch
 
 
 @patch("routes.k8s_client.create_stackrun")
-@patch("routes.k8s_client.create_pipelinerun")
-def test_api_run_bootstrap_creates_stackrun(mock_pr, mock_sr, client):
+def test_api_run_bootstrap_creates_stackrun(mock_sr, client):
     mock_sr.return_value = "stackrun-bootstrap-abc12"
     rv = client.post(
         "/api/run",
@@ -19,7 +18,6 @@ def test_api_run_bootstrap_creates_stackrun(mock_pr, mock_sr, client):
     assert body["pipelinerun"] == "stackrun-bootstrap-abc12"
     assert body["mode"] == "bootstrap"
     mock_sr.assert_called_once()
-    mock_pr.assert_not_called()
     manifest = mock_sr.call_args.args[0]
     assert manifest["kind"] == "StackRun"
     assert manifest["spec"]["mode"] == "bootstrap"
@@ -50,8 +48,7 @@ def test_webhook_creates_stackrun(mock_sr, client):
 
 
 @patch("routes.k8s_client.create_stackrun")
-@patch("routes.k8s_client.create_pipelinerun")
-def test_api_run_promote_without_approved_by_creates_stackrun(mock_pr, mock_sr, client):
+def test_api_run_promote_without_approved_by_creates_stackrun(mock_sr, client):
     """CRD path matches GUI: require_approval without approved_by is PendingApproval."""
     mock_sr.return_value = "stackrun-promote-wait"
     rv = client.post(
@@ -69,7 +66,6 @@ def test_api_run_promote_without_approved_by_creates_stackrun(mock_pr, mock_sr, 
         content_type="application/json",
     )
     assert rv.status_code == 200, rv.get_json()
-    mock_pr.assert_not_called()
     mock_sr.assert_called_once()
     spec = mock_sr.call_args.args[0]["spec"]
     assert spec["requireApproval"] is True

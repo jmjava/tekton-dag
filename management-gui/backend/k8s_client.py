@@ -180,25 +180,6 @@ def patch_stackrun(context, namespace, name, body):
     )
 
 
-def create_pipelinerun(context, namespace, manifest):
-    """Create a PipelineRun and return the created resource name."""
-    api = get_api(context)
-    try:
-        result = api.create_namespaced_custom_object(
-            group="tekton.dev",
-            version="v1",
-            namespace=namespace,
-            plural="pipelineruns",
-            body=manifest,
-        )
-        name = result["metadata"]["name"]
-        logger.info("Created PipelineRun: %s in %s", name, namespace)
-        return name
-    except ApiException as e:
-        logger.error("Failed to create PipelineRun: %s", e.reason)
-        raise
-
-
 def list_teams(context, namespace, limit=50):
     """List Team CRs; empty list on API errors."""
     api = get_api(context)
