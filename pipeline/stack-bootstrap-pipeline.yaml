@@ -124,8 +124,18 @@ spec:
         - input: $(params.pre-build-task)
           operator: notin
           values: [""]
+      # Tekton v1.6+ validates taskRef.name as a DNS label before param
+      # substitution, so $(params.*) cannot be the name field. Cluster
+      # resolver takes the Task name as a param (skipped when empty).
       taskRef:
-        name: $(params.pre-build-task)
+        resolver: cluster
+        params:
+          - name: kind
+            value: task
+          - name: namespace
+            value: $(context.pipelineRun.namespace)
+          - name: name
+            value: $(params.pre-build-task)
       params:
         - name: stack-json
           value: $(tasks.resolve-stack.results.stack-json)
@@ -274,7 +284,14 @@ spec:
           operator: notin
           values: [""]
       taskRef:
-        name: $(params.post-build-task)
+        resolver: cluster
+        params:
+          - name: kind
+            value: task
+          - name: namespace
+            value: $(context.pipelineRun.namespace)
+          - name: name
+            value: $(params.post-build-task)
       params:
         - name: stack-json
           value: $(tasks.resolve-stack.results.stack-json)

@@ -190,7 +190,7 @@ spec:
 
 2. **Apply** the Task to the pipeline namespace (`kubectl apply -f tasks/my-pre-build.yaml -n tekton-pipelines` or include it in chart packaging).
 
-3. **Pass the Task name** as a pipeline parameter (`pre-build-task`, `post-build-task`, `pre-test-task`, or `post-test-task`). Empty string skips the hook. Pipelines use a `WhenExpression` on the param so missing Tasks are not required until you set the name.
+3. **Pass the Task name** as a pipeline parameter (`pre-build-task`, `post-build-task`, `pre-test-task`, or `post-test-task`). Empty string skips the hook. Pipelines use a `WhenExpression` on the param so missing Tasks are not required until you set the name. Hook `taskRef` uses the **cluster resolver** (Tekton v1.6+ rejects `$(params.*)` in `taskRef.name` at apply time). The Task must live in the PipelineRun namespace.
 
 ---
 
