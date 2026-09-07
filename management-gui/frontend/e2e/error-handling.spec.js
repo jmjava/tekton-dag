@@ -14,7 +14,7 @@ test.describe('Error handling — backend down', () => {
       if (path === '/api/teams') {
         return route.fulfill({ json: [{ name: 'alpha', namespace: 'ns', cluster: 'default', stacks: [] }] })
       }
-      if (path.includes('/pipelineruns')) {
+      if (path.includes('/stackruns')) {
         return route.fulfill({ status: 500, json: { error: 'k8s cluster unreachable' } })
       }
       return route.fulfill({ json: {} })
@@ -68,7 +68,7 @@ test.describe('Error handling — empty data', () => {
 
   test('monitor shows empty state with no runs', async ({ page }) => {
     await page.goto('/monitor')
-    await expect(page.locator('.empty')).toContainText('No pipeline runs')
+    await expect(page.locator('.empty')).toContainText('No stack runs')
   })
 
   test('test results shows empty state with no matching runs', async ({ page }) => {

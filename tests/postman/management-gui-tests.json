@@ -232,6 +232,50 @@
       ]
     },
     {
+      "name": "5b. StackRuns (team-scoped)",
+      "item": [
+        {
+          "name": "GET /api/teams/:team/stackruns — list runs",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/teams/{{team}}/stackruns" },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('status 200', () => pm.response.to.have.status(200));",
+                "pm.test('has items array', () => {",
+                "  const body = pm.response.json();",
+                "  pm.expect(body).to.have.property('items').that.is.an('array');",
+                "});",
+                "pm.test('items are StackRuns when present', () => {",
+                "  const items = pm.response.json().items;",
+                "  if (items.length > 0) {",
+                "    items.forEach(r => {",
+                "      pm.expect(r).to.have.property('name');",
+                "      pm.expect(r).to.have.property('mode');",
+                "      pm.expect(r).to.have.property('status');",
+                "      pm.expect(r.kind).to.eql('StackRun');",
+                "    });",
+                "  }",
+                "});"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "GET /api/teams/:team/stackruns — unknown team returns 404",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/teams/nonexistent/stackruns" },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('status 404', () => pm.response.to.have.status(404));"
+              ]
+            }
+          }]
+        }
+      ]
+    },
+    {
       "name": "6. Trigger (team-scoped)",
       "item": [
         {

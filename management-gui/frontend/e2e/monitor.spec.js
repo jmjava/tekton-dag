@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { mockApi } from './mock-api.js'
-import { PIPELINE_RUNS } from './fixtures.js'
+import { STACK_RUNS } from './fixtures.js'
 
 test.describe('Monitor view', () => {
   test.beforeEach(async ({ page }) => {
@@ -14,11 +14,11 @@ test.describe('Monitor view', () => {
 
     const headers = table.locator('th')
     await expect(headers.nth(0)).toContainText('Name')
-    await expect(headers.nth(1)).toContainText('Pipeline')
+    await expect(headers.nth(1)).toContainText('Mode')
     await expect(headers.nth(2)).toContainText('Status')
 
     const rows = table.locator('tbody tr')
-    await expect(rows).toHaveCount(PIPELINE_RUNS.items.length)
+    await expect(rows).toHaveCount(STACK_RUNS.items.length)
   })
 
   test('each run name is a link to its detail page', async ({ page }) => {
@@ -39,9 +39,9 @@ test.describe('Monitor view', () => {
   })
 
   test('empty state shows message when no runs', async ({ page }) => {
-    await mockApi(page, { pipelineRuns: { items: [] } })
+    await mockApi(page, { stackRuns: { items: [] } })
     await page.goto('/monitor')
-    await expect(page.locator('.empty')).toContainText('No pipeline runs found')
+    await expect(page.locator('.empty')).toContainText('No stack runs found')
   })
 })
 
@@ -53,7 +53,7 @@ test.describe('Run Detail view', () => {
   test('shows run details and taskruns table', async ({ page }) => {
     await page.goto('/monitor/pr-run-001')
     await expect(page.locator('h1')).toContainText('pr-run-001')
-    await expect(page.locator('text=stack-pr-pipeline')).toBeVisible()
+    await expect(page.locator('p').filter({ hasText: 'Mode:' })).toContainText('pr')
     await expect(page.locator('.status-badge').first()).toContainText('Succeeded')
 
     const taskTable = page.locator('.data-table')
@@ -68,6 +68,14 @@ test.describe('Run Detail view', () => {
     await expect(page.locator('h2', { hasText: 'Test results' })).toBeVisible()
     await expect(page.locator('.test-summary')).toContainText('passed')
     await expect(page.locator('.test-summary')).toContainText('12')
+  })
+
+  test('pending promote run shows approve form and PATCH approvedBy', async ({ page }) => {
+    await page.goto('/monitor/promote-run-005')
+    await expect(page.locator('h2', { hasText: 'Promote approval' })).toBeVisible()
+    await page.fill('.approve-form input', 'alice')
+    await page.click('.approve-form button')
+    await expect(page.locator('text=Approved by alice')).toBeVisible()
   })
 
   test('back link navigates to monitor', async ({ page }) => {

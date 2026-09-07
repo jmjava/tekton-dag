@@ -137,6 +137,118 @@ def test_injection_status_respects_team_stack_allow_list(
     os.environ.pop("TEAM_NAME", None)
 
 
+@patch("k8s_client.list_stackruns")
+def test_list_stackruns(mock_list, client):
+    mock_list.return_value = [
+        {
+            "metadata": {"name": "sr-1", "namespace": "tekton-pipelines", "creationTimestamp": "2026-01-01T00:00:00Z"},
+            "spec": {"mode": "pr", "stackRef": "stack-one", "changedApp": "demo-fe"},
+            "status": {"phase": "Succeeded", "pipelineRunName": "pr-1", "conditions": [{"reason": "Succeeded", "message": "ok"}]},
+        }
+    ]
+    resp = client.get("/api/teams/default/stackruns")
+    assert resp.status_code == 200
+    item = resp.get_json()["items"][0]
+    assert item["name"] == "sr-1"
+    assert item["kind"] == "StackRun"
+    assert item["mode"] == "pr"
+    assert item["pipelineRunName"] == "pr-1"
+
+
+@patch("k8s_client.get_pipelinerun")
+@patch("k8s_client.get_stackrun")
+def test_get_stackrun(mock_get_sr, mock_get_pr, client):
+    mock_get_sr.return_value = {
+        "metadata": {"name": "sr-abc", "namespace": "tekton-pipelines"},
+        "spec": {"mode": "bootstrap", "stackRef": "stack-one"},
+        "status": {"phase": "Running", "pipelineRunName": "pr-abc", "conditions": [{"reason": "Running"}]},
+    }
+    mock_get_pr.return_value = {
+        "metadata": {"name": "pr-abc"},
+        "spec": {"pipelineRef": {"name": "stack-bootstrap"}, "params": []},
+        "status": {"conditions": [{"reason": "Running"}], "startTime": "2026-01-01T00:00:00Z"},
+    }
+    resp = client.get("/api/teams/default/stackruns/sr-abc")
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body["name"] == "sr-abc"
+    assert body["pipeline"] == "stack-bootstrap"
+
+
+@patch("k8s_client.get_stackrun")
+def test_get_stackrun_not_found(mock_get, client):
+    mock_get.return_value = None
+    resp = client.get("/api/teams/default/stackruns/nope")
+    assert resp.status_code == 404
+
+
+@patch("k8s_client.patch_stackrun")
+@patch("k8s_client.get_stackrun")
+def test_patch_stackrun_approved_by(mock_get, mock_patch, client):
+    mock_get.return_value = {
+        "metadata": {"name": "sr-p"},
+        "spec": {"mode": "promote", "requireApproval": True},
+        "status": {"phase": "PendingApproval", "conditions": []},
+    }
+    mock_patch.return_value = {
+        "metadata": {"name": "sr-p", "namespace": "tekton-pipelines"},
+        "spec": {"mode": "promote", "requireApproval": True, "approvedBy": "alice"},
+        "status": {"phase": "PendingApproval", "conditions": []},
+    }
+    resp = client.patch(
+        "/api/teams/default/stackruns/sr-p",
+        data=json.dumps({"approvedBy": "alice"}),
+        content_type="application/json",
+    )
+    assert resp.status_code == 200
+    assert resp.get_json()["approvedBy"] == "alice"
+    mock_patch.assert_called_once()
+
+
+def test_patch_stackrun_requires_approved_by(client):
+    resp = client.patch(
+        "/api/teams/default/stackruns/sr-p",
+        data=json.dumps({}),
+        content_type="application/json",
+    )
+    assert resp.status_code == 400
+
+
+@patch("k8s_client.create_stackrun")
+def test_trigger_promote(mock_create, client):
+    mock_create.return_value = "stackrun-promote-xyz"
+    resp = client.post(
+        "/api/teams/default/trigger",
+        data=json.dumps({
+            "pipelineType": "promote",
+            "stack": "stacks/stack-one.yaml",
+            "app": "demo-fe",
+            "releaseVersion": "1.2.0",
+            "targetEnvironment": "staging",
+            "requireApproval": True,
+        }),
+        content_type="application/json",
+    )
+    assert resp.status_code == 200
+    manifest = mock_create.call_args.args[2]
+    assert manifest["spec"]["mode"] == "promote"
+    assert manifest["spec"]["requireApproval"] is True
+    assert manifest["spec"]["releaseVersion"] == "1.2.0"
+
+
+def test_trigger_promote_missing_fields(client):
+    resp = client.post(
+        "/api/teams/default/trigger",
+        data=json.dumps({
+            "pipelineType": "promote",
+            "stack": "stacks/stack-one.yaml",
+            "app": "demo-fe",
+        }),
+        content_type="application/json",
+    )
+    assert resp.status_code == 400
+
+
 @patch("k8s_client.list_pipelineruns")
 def test_list_pipelineruns(mock_list, client):
     mock_list.return_value = [

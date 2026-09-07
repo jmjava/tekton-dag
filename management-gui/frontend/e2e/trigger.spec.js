@@ -37,6 +37,10 @@ test.describe('Trigger view', () => {
     await pipelineSelect.selectOption('merge')
     await expect(prField).not.toBeVisible()
 
+    await pipelineSelect.selectOption('promote')
+    await expect(prField).not.toBeVisible()
+    await expect(page.locator('.trigger-form input[placeholder="e.g. 1.2.0"]')).toBeVisible()
+
     await pipelineSelect.selectOption('pr')
     await expect(prField).toBeVisible()
   })
@@ -53,7 +57,7 @@ test.describe('Trigger view', () => {
 
     await page.click('button[type="submit"]')
 
-    await expect(page.locator('.msg-success')).toContainText('PipelineRun created')
+    await expect(page.locator('.msg-success')).toContainText('StackRun created')
     const runLink = page.locator('a', { hasText: 'pr-run-099' })
     await expect(runLink).toBeVisible()
     await expect(runLink).toHaveAttribute('href', /\/monitor\/pr-run-099/)
@@ -79,7 +83,7 @@ test.describe('Trigger view', () => {
     await appSelect.selectOption('demo-fe')
 
     await page.click('button[type="submit"]')
-    await expect(page.locator('.msg-success')).toContainText('PipelineRun created')
+    await expect(page.locator('.msg-success')).toContainText('StackRun created')
   })
 
   test('button is disabled while submitting', async ({ page }) => {

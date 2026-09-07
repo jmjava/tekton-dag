@@ -71,6 +71,10 @@ func (r *StackRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return r.syncPipelineStatus(ctx, &run)
 	}
 
+	if waitingForApproval(&run) {
+		return r.pendingApproval(ctx, &run)
+	}
+
 	opt, err := r.optionsFromStackRun(ctx, &run)
 	if err != nil {
 		return r.fail(ctx, &run, "InvalidSpec", err.Error())
@@ -119,6 +123,28 @@ func (r *StackRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{Requeue: true}, nil
+}
+
+func waitingForApproval(run *tektondagv1alpha1.StackRun) bool {
+	return run.Spec.Mode == tektondagv1alpha1.StackRunModePromote &&
+		run.Spec.RequireApproval &&
+		run.Spec.ApprovedBy == ""
+}
+
+func (r *StackRunReconciler) pendingApproval(ctx context.Context, run *tektondagv1alpha1.StackRun) (ctrl.Result, error) {
+	run.Status.ObservedGeneration = run.Generation
+	run.Status.Phase = "PendingApproval"
+	meta.SetStatusCondition(&run.Status.Conditions, metav1.Condition{
+		Type:               "Ready",
+		Status:             metav1.ConditionFalse,
+		Reason:             "PendingApproval",
+		Message:            "requireApproval is set; patch spec.approvedBy to create the PipelineRun",
+		ObservedGeneration: run.Generation,
+	})
+	if err := r.Status().Update(ctx, run); err != nil {
+		return ctrl.Result{}, err
+	}
+	return ctrl.Result{}, nil
 }
 
 func (r *StackRunReconciler) syncPipelineStatus(ctx context.Context, run *tektondagv1alpha1.StackRun) (ctrl.Result, error) {
@@ -281,9 +307,6 @@ func (r *StackRunReconciler) optionsFromStackRun(ctx context.Context, run *tekto
 	case tektondagv1alpha1.StackRunModePromote:
 		if opt.ReleaseVersion == "" || opt.TargetEnvironment == "" || opt.ChangedApp == "" {
 			return opt, fmt.Errorf("releaseVersion, targetEnvironment, and changedApp required for mode=promote")
-		}
-		if opt.RequireApproval && opt.ApprovedBy == "" {
-			return opt, fmt.Errorf("approvedBy required when requireApproval is true")
 		}
 	case tektondagv1alpha1.StackRunModeBootstrap:
 		// ok

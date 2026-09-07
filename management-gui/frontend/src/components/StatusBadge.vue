@@ -17,5 +17,8 @@ defineProps({ status: { type: String, default: 'Unknown' } })
 .status-Succeeded { background: #d4edda; color: #155724; }
 .status-Failed { background: #f8d7da; color: #721c24; }
 .status-Running { background: #cce5ff; color: #004085; }
+.status-Pending { background: #fff3cd; color: #856404; }
+.status-PendingApproval { background: #fff3cd; color: #856404; }
+.status-Error { background: #f8d7da; color: #721c24; }
 .status-Unknown { background: #e2e3e5; color: #383d41; }
 </style>

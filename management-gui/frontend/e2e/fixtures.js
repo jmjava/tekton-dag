@@ -49,8 +49,19 @@ export const PIPELINE_RUNS = {
   ],
 }
 
+export const STACK_RUNS = {
+  items: [
+    { name: 'pr-run-001', kind: 'StackRun', mode: 'pr', pipeline: 'stack-pr-pipeline', status: 'Succeeded', startTime: ts(30), completionTime: ts(25), durationSeconds: 300, testSummary: '{"passed":12,"failed":0}', prNumber: 42, changedApp: 'demo-fe', namespace: 'alpha-ns', pipelineRunName: 'stack-pr-42-aaa', stackRef: 'stack-one', requireApproval: false, approvedBy: '' },
+    { name: 'pr-run-002', kind: 'StackRun', mode: 'pr', pipeline: 'stack-pr-pipeline', status: 'Failed', startTime: ts(60), completionTime: ts(55), durationSeconds: 290, testSummary: '{"passed":10,"failed":2}', prNumber: 41, changedApp: 'demo-api', namespace: 'alpha-ns', pipelineRunName: 'stack-pr-41-bbb', stackRef: 'stack-one', requireApproval: false, approvedBy: '' },
+    { name: 'bootstrap-run-003', kind: 'StackRun', mode: 'bootstrap', pipeline: 'stack-bootstrap-pipeline', status: 'Running', startTime: ts(5), completionTime: null, durationSeconds: null, testSummary: null, prNumber: null, changedApp: null, namespace: 'alpha-ns', pipelineRunName: 'stack-bootstrap-ccc', stackRef: 'stack-one', requireApproval: false, approvedBy: '' },
+    { name: 'merge-run-004', kind: 'StackRun', mode: 'merge', pipeline: 'stack-merge-pipeline', status: 'Succeeded', startTime: ts(120), completionTime: ts(115), durationSeconds: 300, testSummary: null, prNumber: null, changedApp: 'demo-fe', namespace: 'alpha-ns', pipelineRunName: 'stack-merge-ddd', stackRef: 'stack-one', requireApproval: false, approvedBy: '' },
+  ],
+}
+
 export const RUN_DETAIL = {
   name: 'pr-run-001',
+  kind: 'StackRun',
+  mode: 'pr',
   pipeline: 'stack-pr-pipeline',
   status: 'Succeeded',
   message: 'Tasks completed: 4 (Succeeded: 4, Cancelled: 0)',
@@ -58,11 +69,41 @@ export const RUN_DETAIL = {
   completionTime: ts(25),
   durationSeconds: 300,
   testSummary: '{"passed":12,"failed":0,"skipped":1}',
-  prNumber: '42',
+  prNumber: 42,
   changedApp: 'demo-fe',
   namespace: 'alpha-ns',
+  pipelineRunName: 'stack-pr-42-aaa',
+  stackRef: 'stack-one',
+  stackFile: 'stacks/stack-one.yaml',
+  requireApproval: false,
+  approvedBy: '',
   spec: {},
   statusFull: {},
+}
+
+export const PROMOTE_PENDING = {
+  name: 'promote-run-005',
+  kind: 'StackRun',
+  mode: 'promote',
+  pipeline: 'promote',
+  status: 'PendingApproval',
+  message: 'requireApproval is set; patch spec.approvedBy to create the PipelineRun',
+  startTime: ts(2),
+  completionTime: null,
+  durationSeconds: null,
+  testSummary: null,
+  prNumber: null,
+  changedApp: 'demo-fe',
+  namespace: 'alpha-ns',
+  pipelineRunName: '',
+  stackRef: 'stack-one',
+  stackFile: 'stacks/stack-one.yaml',
+  requireApproval: true,
+  approvedBy: '',
+  releaseVersion: '1.2.0',
+  targetEnvironment: 'staging',
+  spec: { mode: 'promote', requireApproval: true },
+  statusFull: { phase: 'PendingApproval' },
 }
 
 export const TASKRUNS = {
@@ -121,4 +162,4 @@ export const PRS_ALL = {
   reposSkipped: [],
 }
 
-export const TRIGGER_SUCCESS = { ok: true, pipelineRun: 'pr-run-099', namespace: 'alpha-ns' }
+export const TRIGGER_SUCCESS = { ok: true, pipelineRun: 'pr-run-099', stackrun: 'pr-run-099', namespace: 'alpha-ns' }

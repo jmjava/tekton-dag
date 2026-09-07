@@ -29,5 +29,16 @@ export function useApi() {
     return data
   }
 
-  return { teamUrl, globalUrl, get, post }
+  async function patch(url, body) {
+    const r = await fetch(url, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const data = await r.json().catch(() => ({}))
+    if (!r.ok) throw new Error(data.error || r.statusText)
+    return data
+  }
+
+  return { teamUrl, globalUrl, get, post, patch }
 }

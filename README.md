@@ -379,7 +379,7 @@ Vue 3 + Python/Flask management GUI that replaces the legacy `reporting-gui/`. L
 | Frontend | Vue 3, Vite, Pinia, Vue Router, Vue Flow | `management-gui/frontend/` |
 | Backend | Python 3, Flask, Kubernetes Python client | `management-gui/backend/` |
 
-**Features:** Trigger pipeline runs (PR/bootstrap/merge), monitor runs with status polling, drill into run detail with TaskRuns, filter test results, interactive DAG visualization of stack dependencies, browse Git repos (branches/tags/commits/PRs across all stack repos), embedded Tekton Dashboard, multi-team switcher with per-cluster context resolution.
+**Features:** Trigger StackRuns (PR/bootstrap/merge/promote), monitor StackRuns with status polling, drill into run detail with TaskRuns, approve promote runs (`spec.approvedBy`), filter test results, interactive DAG visualization of stack dependencies, browse Git repos (branches/tags/commits/PRs across all stack repos), embedded Tekton Dashboard, multi-team switcher with per-cluster context resolution.
 
 **Deploy modes:** Centralized (all teams visible, team switcher) or per-team (`TEAM_NAME=alpha`, switcher hidden). Same codebase and image for both.
 

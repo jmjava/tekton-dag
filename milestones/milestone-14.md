@@ -1,6 +1,6 @@
 # Milestone 14 — Kubernetes Operator (CRD-primary)
 
-**Status:** In progress — CRD-primary is the **intended** control plane and the Kind default. Foundations plus default-on soak are in this branch (Stack/StackRun/Team CRs, Go reconciler, Flask/GUI/Triggers → StackRun). Remaining follow-ons: GUI StackRun views, webhook certs, retire PipelineRun escape hatches.
+**Status:** In progress — CRD-primary is the **intended** control plane and the Kind default. Flask/GUI/Triggers create StackRuns; GUI Monitor lists them and can patch promote `approvedBy`. Remaining: webhook certs, retire PipelineRun escape hatches.
 
 **Goal:** Make **Stack** and **StackRun** custom resources the source of truth for desired stack graphs and pipeline executions. The Flask orchestrator thins to webhook/API that creates CRs; a Go Kubebuilder operator reconciles StackRuns into Tekton PipelineRuns. Academic packaging in `docs/research/` may mention this as status; it must not keep `operator.enabled=false` as a permanent product choice.
 
@@ -50,6 +50,7 @@ Regenerate goldens: `python scripts/generate-pipelinerun-goldens.py`
 - [x] Newman with `STACKRUN_VIA_CRD=true` against cluster (`run-cluster-ci.sh --with-operator`)
 - [x] Default `operator.enabled=true` after soak
 - [x] Kind soak of default-on (Team Ready, Stacks `valid` + `injectionNamespace`, Newman 18/18 and 6/6 StackRun → PipelineRun)
+- [x] GUI Monitor/detail lists StackRuns; promote `approvedBy` patch; operator waits at `PendingApproval`
 
 ## Exit criteria
 
@@ -61,7 +62,6 @@ Regenerate goldens: `python scripts/generate-pipelinerun-goldens.py`
 
 ## Follow-ons (not in this ship slice)
 
-- GUI native StackRun **views** (list/detail); trigger already creates StackRuns
 - Enable the Stack validating webhook in-cluster (certs / `ValidatingWebhookConfiguration`; validation + webhook code already exist)
 - Retire `--pipeline-run` / Flask `STACKRUN_VIA_CRD=false` escape hatches once every cluster runs the operator
 
@@ -78,7 +78,7 @@ The gaps that actually hurt are **split sources of truth** and **bypasses**, not
 | Stack YAML vs Stack CR | Git YAML remains the GitOps source; ConfigMap `tekton-dag-stacks` still feeds the PipelineRun stack-file | **Done:** `apply-stack-crs.sh` / Helm `package.sh` apply Stack CRs; Flask sets `stackRef` |
 | GUI / scripts skip the operator | — | **Done:** GUI trigger, EventListener templates, and `generate-run.sh` create StackRuns. CEL overlay is only `repo-name`; the operator matches `changedApp` to a Stack CR |
 | `stack-pr-continue` | Separate Pipeline + `rerun-pr-from.sh` | New StackRun (`mode=pr` + continue-from) or a field on the failed StackRun — **not** a new CRD |
-| Injection / approval UX | Flask `injection-status` still lists Secrets; GUI does not yet patch `approvedBy` | **Done:** Stack.status `missingSecrets` / `missingConfigMaps`. GUI patch `approvedBy` remains a follow-on |
+| Injection / approval UX | Flask `injection-status` still lists Secrets | **Done:** Stack.status missing Secrets/ConfigMaps. GUI Monitor lists StackRuns; detail patches `spec.approvedBy` for promote |
 | Team identity | Flask still reads `teams/*/team.yaml` ConfigMaps | **Done:** Team CR applied from the same YAML (`targetNamespace`, registry, stack allowlist) |
 
 ### Do not invent CRs for

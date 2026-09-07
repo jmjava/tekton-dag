@@ -40,8 +40,8 @@ export async function mockApi(page, overrides = {}) {
         return route.fulfill({ status: 404, json: { error: 'Unknown team: nonexistent' } })
       }
       const body = JSON.parse(route.request().postData() || '{}')
-      if (!body.pipelineType || !['pr', 'bootstrap', 'merge'].includes(body.pipelineType)) {
-        return route.fulfill({ status: 400, json: { error: 'pipelineType must be pr, bootstrap, or merge' } })
+      if (!body.pipelineType || !['pr', 'bootstrap', 'merge', 'promote'].includes(body.pipelineType)) {
+        return route.fulfill({ status: 400, json: { error: 'pipelineType must be pr, bootstrap, merge, or promote' } })
       }
       if (!body.stack) {
         return route.fulfill({ status: 400, json: { error: 'stack is required' } })
@@ -77,6 +77,40 @@ export async function mockApi(page, overrides = {}) {
         return route.fulfill({ status: 404, json: { error: `Unknown team: ${taskrunsMatch[1]}` } })
       }
       return route.fulfill({ json: overrides.taskruns ?? F.TASKRUNS })
+    }
+
+    // GET/PATCH /api/teams/:team/stackruns/:name (detail - must be before list)
+    const stackrunDetailMatch = path.match(/^\/api\/teams\/([^/]+)\/stackruns\/([^/]+)$/)
+    if (stackrunDetailMatch) {
+      if (stackrunDetailMatch[1] === 'nonexistent') {
+        return route.fulfill({ status: 404, json: { error: `Unknown team: ${stackrunDetailMatch[1]}` } })
+      }
+      if (method === 'PATCH') {
+        const body = JSON.parse(route.request().postData() || '{}')
+        if (!body.approvedBy) {
+          return route.fulfill({ status: 400, json: { error: 'approvedBy is required' } })
+        }
+        const base = stackrunDetailMatch[2] === 'promote-run-005'
+          ? (overrides.promoteDetail ?? F.PROMOTE_PENDING)
+          : (overrides.runDetail ?? F.RUN_DETAIL)
+        return route.fulfill({ json: { ...base, approvedBy: body.approvedBy, status: 'Pending' } })
+      }
+      if (stackrunDetailMatch[2] === 'pr-run-001') {
+        return route.fulfill({ json: overrides.runDetail ?? F.RUN_DETAIL })
+      }
+      if (stackrunDetailMatch[2] === 'promote-run-005') {
+        return route.fulfill({ json: overrides.promoteDetail ?? F.PROMOTE_PENDING })
+      }
+      return route.fulfill({ status: 404, json: { error: 'StackRun not found' } })
+    }
+
+    // GET /api/teams/:team/stackruns (list)
+    const stackrunsMatch = path.match(/^\/api\/teams\/([^/]+)\/stackruns$/)
+    if (stackrunsMatch) {
+      if (stackrunsMatch[1] === 'nonexistent') {
+        return route.fulfill({ status: 404, json: { error: `Unknown team: ${stackrunsMatch[1]}` } })
+      }
+      return route.fulfill({ json: overrides.stackRuns ?? F.STACK_RUNS })
     }
 
     // GET /api/teams/:team/pipelineruns/:name (detail - must be before list)
@@ -140,6 +174,7 @@ export async function mockApiDown(page) {
 export async function mockApiEmpty(page) {
   await mockApi(page, {
     stacks: [],
+    stackRuns: { items: [] },
     pipelineRuns: { items: [] },
     taskruns: { items: [] },
     repos: { items: [] },

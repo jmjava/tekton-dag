@@ -44,7 +44,7 @@ const filter = ref('last')
 
 const columns = [
   { key: 'name', label: 'Run' },
-  { key: 'pipeline', label: 'Pipeline' },
+  { key: 'mode', label: 'Mode' },
   { key: 'status', label: 'Status' },
   { key: 'startTime', label: 'Start' },
   { key: 'testSummary', label: 'Test summary' },

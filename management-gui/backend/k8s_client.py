@@ -2,7 +2,7 @@
 Multi-cluster Kubernetes client for the management GUI.
 
 Caches one ApiClient per kubeconfig context so a single backend process
-can query Tekton PipelineRuns/TaskRuns across multiple clusters.
+can query StackRuns and Tekton PipelineRuns/TaskRuns across multiple clusters.
 
 Adapted from orchestrator/k8s_client.py (single-cluster version).
 """
@@ -130,6 +130,54 @@ def create_stackrun(context, namespace, manifest):
     except ApiException as e:
         logger.error("Failed to create StackRun: %s", e.reason)
         raise
+
+
+def list_stackruns(context, namespace, limit=50, label_selector=""):
+    """List recent StackRuns in a namespace."""
+    api = get_api(context)
+    try:
+        result = api.list_namespaced_custom_object(
+            group="tektondag.io",
+            version="v1alpha1",
+            namespace=namespace,
+            plural="stackruns",
+            limit=limit,
+            label_selector=label_selector,
+        )
+        return result.get("items", [])
+    except ApiException as e:
+        logger.error("Failed to list StackRuns: %s", e.reason)
+        return []
+
+
+def get_stackrun(context, namespace, name):
+    """Get a single StackRun by name."""
+    api = get_api(context)
+    try:
+        return api.get_namespaced_custom_object(
+            group="tektondag.io",
+            version="v1alpha1",
+            namespace=namespace,
+            plural="stackruns",
+            name=name,
+        )
+    except ApiException as e:
+        if e.status == 404:
+            return None
+        raise
+
+
+def patch_stackrun(context, namespace, name, body):
+    """Merge-patch a StackRun (e.g. spec.approvedBy). Returns the updated object."""
+    api = get_api(context)
+    return api.patch_namespaced_custom_object(
+        group="tektondag.io",
+        version="v1alpha1",
+        namespace=namespace,
+        plural="stackruns",
+        name=name,
+        body=body,
+    )
 
 
 def create_pipelinerun(context, namespace, manifest):
