@@ -207,18 +207,50 @@ def delete_ns(ns: str) -> None:
 
 
 def wait_ready(ns: str, timeout_s: int = 180) -> None:
-    kubectl(
-        [
-            "wait",
-            "--for=condition=Ready",
-            "pod",
-            "-l",
-            "eval.tektondag.io/role",
-            "-n",
-            ns,
-            f"--timeout={timeout_s}s",
-        ]
-    )
+    """Wait until labeled pods exist and become Ready.
+
+    `kubectl wait` on a label selector exits immediately with
+    "no matching resources found" if the ReplicaSet has not created
+    pods yet. Poll get first so the first cell after a cold Kind
+    create is not a false isolation failure.
+    """
+    deadline = time.time() + timeout_s
+    while True:
+        remaining = max(1, int(deadline - time.time()))
+        listed = subprocess.run(
+            [
+                "kubectl",
+                "get",
+                "pods",
+                "-n",
+                ns,
+                "-l",
+                "eval.tektondag.io/role",
+                "--no-headers",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        if listed.returncode == 0 and listed.stdout.strip():
+            kubectl(
+                [
+                    "wait",
+                    "--for=condition=Ready",
+                    "pod",
+                    "-l",
+                    "eval.tektondag.io/role",
+                    "-n",
+                    ns,
+                    f"--timeout={remaining}s",
+                ]
+            )
+            return
+        if time.time() >= deadline:
+            err = (listed.stderr or listed.stdout or "no pods").strip()
+            raise RuntimeError(
+                f"no eval.tektondag.io/role pods in {ns} within {timeout_s}s: {err}"
+            )
+        time.sleep(0.4)
 
 
 def pod_count(ns: str) -> int:
