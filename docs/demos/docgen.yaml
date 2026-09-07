@@ -560,7 +560,7 @@ manim_scene_generation:
     08:
       class_name: OrchestratorAPIScene
       hints:
-      - 'API boxes: healthz, stacks, run(pr|bootstrap|merge|promote); branch Direct PipelineRun vs StackRun CRD path.'
+      - 'API boxes: healthz, stacks, run(pr|bootstrap|merge|promote); StackRun create path.'
       context:
         paths:
         - docs/demos/hints/manim-scene-specs.md

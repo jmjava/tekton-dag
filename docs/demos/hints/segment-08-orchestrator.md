@@ -28,8 +28,7 @@ docgen:
     manim_scene:
       hints:
       - >-
-          API boxes: healthz, stacks, run(pr|bootstrap|merge|promote); branch Direct
-          PipelineRun vs StackRun CRD path.
+          API boxes: healthz, stacks, run(pr|bootstrap|merge|promote); StackRun create path.
       context:
         paths:
           - docs/demos/hints/manim-scene-specs.md
@@ -38,6 +37,6 @@ docgen:
 
 # Narration focus (segment 08 — 08-orchestrator)
 
-Orchestrator API; HMAC + optional CRD path.
+Orchestrator API; HMAC plus StackRun create path.
 
 Keep spoken output plain prose (see narration-tts.md). Bullets here steer narration-generate / scene-spec-generate only.
