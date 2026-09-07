@@ -21,7 +21,7 @@ On 2026-09-07, `bash scripts/run-regression-stream.sh --local-only --require-lan
 | Maven Java baggage | both modules OK (`--require-lang-tests`) |
 | operator `go test` | `internal/pipeline` + `internal/controller` OK |
 
-`--local-only` **skips** Playwright on purpose. The 69 Playwright files are still in `management-gui/frontend/e2e/`; they were not executed here.
+`--local-only` **skips** Playwright on purpose. This environment later ran `npx playwright test` in `management-gui/frontend`: **69 passed** (Vite only, no cluster). Kind/`run-cluster-ci.sh` was **not** run here (no Docker).
 
 ## What exists but is *not* CI-gated on every PR
 
