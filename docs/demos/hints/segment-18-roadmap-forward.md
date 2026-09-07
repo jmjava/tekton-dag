@@ -20,9 +20,9 @@ docgen:
           templates, GUI panels, Prometheus/cost labels, cross-cluster deploy,
           Results/Neo4j backup polish.
       - >-
-          Post-M14 follow-ons: default-on operator.enabled after soak, Team CR, GUI native
-          StackRun views / promote approve via StackRun.spec.approvedBy, Stack admission
-          webhook, retire direct PipelineRun path once CRD is default.
+          Post-M14 follow-ons: GUI native StackRun views / promote approve via
+          StackRun.spec.approvedBy, enable Stack admission webhook with certs, retire
+          --pipeline-run / STACKRUN_VIA_CRD=false escape hatches.
       context:
         paths:
         - milestones/milestone-13.md

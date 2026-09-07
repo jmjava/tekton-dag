@@ -13,7 +13,7 @@ docgen:
       hints:
       - >-
           Helm multi-team: per-team releases, scoped ConfigMaps, shared Tasks/Pipelines.
-          operator.enabled is off by default.
+          operator.enabled defaults on.
       context:
         paths:
         - README.md
