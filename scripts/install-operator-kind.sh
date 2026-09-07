@@ -39,6 +39,7 @@ echo ">>> CRDs (tektondag.io Stack / StackRun)"
 kubectl apply -f "$REPO_ROOT/operator/config/crd/bases/"
 kubectl wait --for=condition=Established crd/stacks.tektondag.io --timeout=60s
 kubectl wait --for=condition=Established crd/stackruns.tektondag.io --timeout=60s
+kubectl wait --for=condition=Established crd/teams.tektondag.io --timeout=60s
 
 echo ">>> Build/push operator image ($IMAGE)"
 bash "$SCRIPT_DIR/publish-operator-image.sh" "$IMAGE_REGISTRY" latest
@@ -55,8 +56,8 @@ fi
 kubectl rollout status deployment/tekton-dag-operator -n "$NAMESPACE" --timeout=180s
 kubectl wait --for=condition=Ready pod -l app=tekton-dag-operator -n "$NAMESPACE" --timeout=120s
 
-echo ">>> Sample Stack CR (stack-one)"
-kubectl apply -f "$REPO_ROOT/operator/config/samples/tektondag_v1alpha1_stack.yaml"
+echo ">>> Sample Stack + Team CRs from Git YAML"
+bash "$SCRIPT_DIR/apply-stack-crs.sh"
 
 if [[ "$WITH_SAMPLE_RUN" == "true" ]]; then
   echo ">>> Sample StackRun (bootstrap)"

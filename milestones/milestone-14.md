@@ -48,7 +48,7 @@ Regenerate goldens: `python scripts/generate-pipelinerun-goldens.py`
 - [x] Milestone / README / DO-THIS-LOCAL smoke notes
 - [x] Kind: build/push operator image + live StackRun → PipelineRun create (`scripts/install-operator-kind.sh`)
 - [x] Newman with `STACKRUN_VIA_CRD=true` against cluster (`run-cluster-ci.sh --with-operator`)
-- [ ] Default `operator.enabled=true` after soak
+- [x] Default `operator.enabled=true` after soak
 
 ## Exit criteria
 
@@ -60,10 +60,9 @@ Regenerate goldens: `python scripts/generate-pipelinerun-goldens.py`
 
 ## Follow-ons (not in this ship slice)
 
-- **Team** CR replacing `teams/*/team.yaml` ConfigMaps
-- GUI native StackRun views / promote approve via patching `StackRun.spec.approvedBy`
-- Validating admission webhook for Stack
-- Retire direct PipelineRun creation path once CRD path is default-on
+- GUI native StackRun **views** (list/detail); trigger already creates StackRuns
+- Enable the Stack validating webhook in-cluster (certs / `ValidatingWebhookConfiguration`; validation + webhook code already exist)
+- Retire `--pipeline-run` / Flask `STACKRUN_VIA_CRD=false` escape hatches once every cluster runs the operator
 
 ## Control plane: what is a CR (and what is not)
 

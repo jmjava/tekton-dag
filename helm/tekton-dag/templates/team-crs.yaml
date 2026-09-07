@@ -1,0 +1,6 @@
+{{- if .Values.operator.enabled }}
+{{- range $path, $_ := .Files.Glob "raw/team-crs/*.yaml" }}
+---
+{{ $.Files.Get $path }}
+{{- end }}
+{{- end }}

@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,6 +41,7 @@ type StackReconciler struct {
 // +kubebuilder:rbac:groups=tektondag.io,resources=stacks,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=tektondag.io,resources=stacks/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=tektondag.io,resources=stacks/finalizers,verbs=update
+// +kubebuilder:rbac:groups="",resources=secrets;configmaps,verbs=get;list
 
 func (r *StackReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
@@ -56,6 +58,14 @@ func (r *StackReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	stack.Status.ObservedGeneration = stack.Generation
 	stack.Status.Valid = valid
 	stack.Status.TopoOrder = topo
+	injectNS := stack.Namespace
+	if stack.Spec.Defaults != nil && stack.Spec.Defaults.Namespace != "" {
+		injectNS = stack.Spec.Defaults.Namespace
+	}
+	stack.Status.InjectionNamespace = injectNS
+	missingS, missingC := r.injectionGaps(ctx, injectNS, &stack)
+	stack.Status.MissingSecrets = missingS
+	stack.Status.MissingConfigMaps = missingC
 
 	cond := metav1.Condition{
 		Type:               "Ready",
@@ -111,6 +121,87 @@ func validateStack(stack *tektondagv1alpha1.Stack) (bool, []string, string) {
 		return false, nil, err.Error()
 	}
 	return true, topo, ""
+}
+
+func (r *StackReconciler) injectionGaps(ctx context.Context, ns string, stack *tektondagv1alpha1.Stack) ([]string, []string) {
+	wantS, wantC := referencedInjection(stack)
+	if len(wantS) == 0 && len(wantC) == 0 {
+		return nil, nil
+	}
+	haveS := map[string]struct{}{}
+	haveC := map[string]struct{}{}
+	var sl corev1.SecretList
+	if err := r.List(ctx, &sl, client.InNamespace(ns)); err == nil {
+		for i := range sl.Items {
+			haveS[sl.Items[i].Name] = struct{}{}
+		}
+	}
+	var cl corev1.ConfigMapList
+	if err := r.List(ctx, &cl, client.InNamespace(ns)); err == nil {
+		for i := range cl.Items {
+			haveC[cl.Items[i].Name] = struct{}{}
+		}
+	}
+	var missS, missC []string
+	for _, n := range wantS {
+		if _, ok := haveS[n]; !ok {
+			missS = append(missS, n)
+		}
+	}
+	for _, n := range wantC {
+		if _, ok := haveC[n]; !ok {
+			missC = append(missC, n)
+		}
+	}
+	return missS, missC
+}
+
+func referencedInjection(stack *tektondagv1alpha1.Stack) ([]string, []string) {
+	var secrets, cms []string
+	seenS, seenC := map[string]struct{}{}, map[string]struct{}{}
+	for _, app := range stack.Spec.Apps {
+		if app.Secrets != nil {
+			for _, n := range app.Secrets.EnvFrom {
+				if n == "" {
+					continue
+				}
+				if _, ok := seenS[n]; !ok {
+					seenS[n] = struct{}{}
+					secrets = append(secrets, n)
+				}
+			}
+			for _, m := range app.Secrets.VolumeMounts {
+				if m.Secret == "" {
+					continue
+				}
+				if _, ok := seenS[m.Secret]; !ok {
+					seenS[m.Secret] = struct{}{}
+					secrets = append(secrets, m.Secret)
+				}
+			}
+		}
+		if app.Config != nil {
+			for _, n := range app.Config.EnvFrom {
+				if n == "" {
+					continue
+				}
+				if _, ok := seenC[n]; !ok {
+					seenC[n] = struct{}{}
+					cms = append(cms, n)
+				}
+			}
+			for _, m := range app.Config.VolumeMounts {
+				if m.ConfigMap == "" {
+					continue
+				}
+				if _, ok := seenC[m.ConfigMap]; !ok {
+					seenC[m.ConfigMap] = struct{}{}
+					cms = append(cms, m.ConfigMap)
+				}
+			}
+		}
+	}
+	return secrets, cms
 }
 
 func topoSort(apps []string, downstream map[string][]string) ([]string, error) {

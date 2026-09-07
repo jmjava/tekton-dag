@@ -202,11 +202,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controller.StackReconciler{
+	stackRec := &controller.StackReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+	}
+	if err = stackRec.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Stack")
+		os.Exit(1)
+	}
+	if err = stackRec.SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "Stack")
 		os.Exit(1)
 	}
 	if err = (&controller.StackRunReconciler{
@@ -214,6 +219,13 @@ func main() {
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "StackRun")
+		os.Exit(1)
+	}
+	if err = (&controller.TeamReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Team")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

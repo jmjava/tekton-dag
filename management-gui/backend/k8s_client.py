@@ -113,6 +113,25 @@ def list_taskruns(context, namespace, pipelinerun_name=None):
         return []
 
 
+def create_stackrun(context, namespace, manifest):
+    """Create a StackRun CR and return the created resource name."""
+    api = get_api(context)
+    try:
+        result = api.create_namespaced_custom_object(
+            group="tektondag.io",
+            version="v1alpha1",
+            namespace=namespace,
+            plural="stackruns",
+            body=manifest,
+        )
+        name = result["metadata"]["name"]
+        logger.info("Created StackRun: %s in %s", name, namespace)
+        return name
+    except ApiException as e:
+        logger.error("Failed to create StackRun: %s", e.reason)
+        raise
+
+
 def create_pipelinerun(context, namespace, manifest):
     """Create a PipelineRun and return the created resource name."""
     api = get_api(context)

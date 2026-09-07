@@ -30,22 +30,8 @@ spec:
               value: "body.action in ['opened', 'synchronize', 'reopened']"
             - name: overlays
               value:
-                - key: app-name
-                  expression: >
-                    body.pull_request.head.repo.name
-                - key: stack-file
-                  expression: >
-                    body.pull_request.base.repo.name == 'demo-fe' ? 'stacks/stack-one.yaml' :
-                    body.pull_request.base.repo.name == 'release-lifecycle-demo' ? 'stacks/stack-one.yaml' :
-                    body.pull_request.base.repo.name == 'demo-api' ? 'stacks/stack-one.yaml' :
-                    body.pull_request.base.repo.name == 'vendor-fe' ? 'stacks/stack-two-vendor.yaml' :
-                    body.pull_request.base.repo.name == 'vendor-middleware' ? 'stacks/stack-two-vendor.yaml' :
-                    body.pull_request.base.repo.name == 'vendor-adapter' ? 'stacks/stack-two-vendor.yaml' :
-                    body.pull_request.base.repo.name == 'internal-api' ? 'stacks/stack-two-vendor.yaml' :
-                    body.pull_request.base.repo.name == 'notifications-svc' ? 'stacks/stack-two-vendor.yaml' :
-                    body.pull_request.base.repo.name == 'inventory-api' ? 'stacks/single-app.yaml' :
-                    body.pull_request.base.repo.name == 'analytics-api' ? 'stacks/single-flask-app.yaml' :
-                    'stacks/stack-one.yaml'
+                - key: repo-name
+                  expression: "body.pull_request.head.repo.name"
       bindings:
         - ref: stack-pr-binding
       template:
@@ -70,33 +56,8 @@ spec:
               value: "body.action == 'closed' && body.pull_request.merged == true"
             - name: overlays
               value:
-                # Map app repo name to stack app name (changed-app)
-                - key: app-name
-                  expression: >
-                    body.pull_request.base.repo.name == 'tekton-dag-vue-fe' ? 'demo-fe' :
-                    body.pull_request.base.repo.name == 'tekton-dag-spring-boot' ? 'release-lifecycle-demo' :
-                    body.pull_request.base.repo.name == 'tekton-dag-spring-boot-gradle' ? 'demo-api' :
-                    body.pull_request.base.repo.name == 'vendor-fe' ? 'vendor-fe' :
-                    body.pull_request.base.repo.name == 'vendor-middleware' ? 'vendor-middleware' :
-                    body.pull_request.base.repo.name == 'vendor-adapter' ? 'vendor-adapter' :
-                    body.pull_request.base.repo.name == 'internal-api' ? 'internal-api' :
-                    body.pull_request.base.repo.name == 'notifications-svc' ? 'notifications-svc' :
-                    body.pull_request.base.repo.name == 'inventory-api' ? 'inventory-api' :
-                    body.pull_request.base.repo.name == 'analytics-api' ? 'analytics-api' :
-                    body.pull_request.base.repo.name
-                - key: stack-file
-                  expression: >
-                    body.pull_request.base.repo.name == 'tekton-dag-vue-fe' ? 'stacks/stack-one.yaml' :
-                    body.pull_request.base.repo.name == 'tekton-dag-spring-boot' ? 'stacks/stack-one.yaml' :
-                    body.pull_request.base.repo.name == 'tekton-dag-spring-boot-gradle' ? 'stacks/stack-one.yaml' :
-                    body.pull_request.base.repo.name == 'vendor-fe' ? 'stacks/stack-two-vendor.yaml' :
-                    body.pull_request.base.repo.name == 'vendor-middleware' ? 'stacks/stack-two-vendor.yaml' :
-                    body.pull_request.base.repo.name == 'vendor-adapter' ? 'stacks/stack-two-vendor.yaml' :
-                    body.pull_request.base.repo.name == 'internal-api' ? 'stacks/stack-two-vendor.yaml' :
-                    body.pull_request.base.repo.name == 'notifications-svc' ? 'stacks/stack-two-vendor.yaml' :
-                    body.pull_request.base.repo.name == 'inventory-api' ? 'stacks/single-app.yaml' :
-                    body.pull_request.base.repo.name == 'analytics-api' ? 'stacks/single-flask-app.yaml' :
-                    'stacks/stack-one.yaml'
+                - key: repo-name
+                  expression: "body.pull_request.base.repo.name"
       bindings:
         - ref: stack-merge-platform-binding
         - ref: stack-merge-binding
@@ -135,9 +96,7 @@ spec:
     - name: pr-number
       value: $(body.pull_request.number)
     - name: changed-app
-      value: $(extensions.app-name)
-    - name: stack-file
-      value: $(extensions.stack-file)
+      value: $(extensions.repo-name)
 
 ---
 # Platform repo (tekton-dag) at main — merge pipeline clones this, then app repos from stack at main
@@ -160,12 +119,10 @@ metadata:
 spec:
   params:
     - name: changed-app
-      value: $(extensions.app-name)
-    - name: stack-file
-      value: $(extensions.stack-file)
+      value: $(extensions.repo-name)
 
 ---
-# TriggerTemplates create PipelineRuns from the extracted parameters.
+# TriggerTemplates create StackRuns; the operator resolves repo → Stack CR.
 
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerTemplate
@@ -177,59 +134,23 @@ spec:
     - name: git-revision
     - name: pr-number
     - name: changed-app
-    - name: stack-file
   resourcetemplates:
-    - apiVersion: tekton.dev/v1
-      kind: PipelineRun
+    - apiVersion: tektondag.io/v1alpha1
+      kind: StackRun
       metadata:
-        generateName: stack-pr-$(tt.params.pr-number)-
+        generateName: stackrun-pr-
+        labels:
+          app.kubernetes.io/part-of: tekton-job-standardization
+          tektondag.io/mode: pr
+        annotations:
+          tektondag.io/pr-number: $(tt.params.pr-number)
       spec:
-        pipelineRef:
-          name: stack-pr-test
-        taskRunTemplate:
-          serviceAccountName: tekton-pr-sa
-          podTemplate:
-            securityContext:
-              fsGroup: 65532
-        params:
-          - name: git-url
-            value: $(tt.params.git-url)
-          - name: git-revision
-            value: $(tt.params.git-revision)
-          - name: pr-number
-            value: $(tt.params.pr-number)
-          - name: changed-app
-            value: $(tt.params.changed-app)
-          - name: stack-file
-            value: $(tt.params.stack-file)
-          - name: image-registry
-            value: localhost:5000
-          - name: compile-image-npm
-            value: localhost:5000/tekton-dag-build-node:latest
-          - name: compile-image-maven
-            value: localhost:5000/tekton-dag-build-maven:latest
-          - name: compile-image-gradle
-            value: localhost:5000/tekton-dag-build-gradle:latest
-          - name: compile-image-pip
-            value: localhost:5000/tekton-dag-build-python:latest
-          - name: compile-image-php
-            value: localhost:5000/tekton-dag-build-php:latest
-          - name: version-overrides
-            value: "{}"
-        workspaces:
-          - name: shared-workspace
-            volumeClaimTemplate:
-              spec:
-                accessModes: [ReadWriteOnce]
-                resources:
-                  requests:
-                    storage: 5Gi
-          - name: ssh-key
-            secret:
-              secretName: git-ssh-key
-          - name: build-cache
-            persistentVolumeClaim:
-              claimName: build-cache
+        mode: pr
+        gitUrl: https://github.com/jmjava/tekton-dag.git
+        gitRevision: $(tt.params.git-revision)
+        prRepoUrl: $(tt.params.git-url)
+        changedApp: $(tt.params.changed-app)
+        imageRegistry: localhost:5000
 
 ---
 apiVersion: triggers.tekton.dev/v1beta1
@@ -241,54 +162,17 @@ spec:
     - name: git-url
     - name: git-revision
     - name: changed-app
-    - name: stack-file
   resourcetemplates:
-    - apiVersion: tekton.dev/v1
-      kind: PipelineRun
+    - apiVersion: tektondag.io/v1alpha1
+      kind: StackRun
       metadata:
-        generateName: stack-merge-
+        generateName: stackrun-merge-
+        labels:
+          app.kubernetes.io/part-of: tekton-job-standardization
+          tektondag.io/mode: merge
       spec:
-        pipelineRef:
-          name: stack-merge-release
-        taskRunTemplate:
-          serviceAccountName: tekton-pr-sa
-          podTemplate:
-            securityContext:
-              fsGroup: 65532
-        params:
-          - name: git-url
-            value: $(tt.params.git-url)
-          - name: git-revision
-            value: $(tt.params.git-revision)
-          - name: changed-app
-            value: $(tt.params.changed-app)
-          - name: stack-file
-            value: $(tt.params.stack-file)
-          - name: image-registry
-            value: localhost:5000
-          - name: compile-image-npm
-            value: localhost:5000/tekton-dag-build-node:latest
-          - name: compile-image-maven
-            value: localhost:5000/tekton-dag-build-maven:latest
-          - name: compile-image-gradle
-            value: localhost:5000/tekton-dag-build-gradle:latest
-          - name: compile-image-pip
-            value: localhost:5000/tekton-dag-build-python:latest
-          - name: compile-image-php
-            value: localhost:5000/tekton-dag-build-php:latest
-          - name: version-overrides
-            value: "{}"
-        workspaces:
-          - name: shared-workspace
-            volumeClaimTemplate:
-              spec:
-                accessModes: [ReadWriteOnce]
-                resources:
-                  requests:
-                    storage: 5Gi
-          - name: ssh-key
-            secret:
-              secretName: git-ssh-key
-          - name: build-cache
-            persistentVolumeClaim:
-              claimName: build-cache
+        mode: merge
+        gitUrl: $(tt.params.git-url)
+        gitRevision: $(tt.params.git-revision)
+        changedApp: $(tt.params.changed-app)
+        imageRegistry: localhost:5000

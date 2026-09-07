@@ -26,4 +26,13 @@ resources:
   kind: StackRun
   path: github.com/jmjava/tekton-dag/operator/api/v1alpha1
   version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: tektondag.io
+  group: tektondag
+  kind: Team
+  path: github.com/jmjava/tekton-dag/operator/api/v1alpha1
+  version: v1alpha1
 version: "3"

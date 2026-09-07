@@ -42,5 +42,5 @@ docgen --config docgen.yaml generate-all
 
 - Four pipelines: bootstrap, PR, merge, **promote**
 - M13 foundations shipped; remaining M13 items are open (not “the whole milestone is future”)
-- M14 operator foundations in `operator/` (CRD-primary); Helm `operator.enabled` default **off**
+- M14 operator (CRD-primary); Helm `operator.enabled` default **on**
 - Segment **19** deep-dives the operator; segment **18** is post-M14 / remaining open items only

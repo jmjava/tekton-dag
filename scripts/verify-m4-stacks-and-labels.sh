@@ -13,6 +13,7 @@ echo "=== 1. Stack YAML parse and required fields (stacks/*.yaml, excluding regi
 for f in stacks/*.yaml; do
   [[ -f "$f" ]] || continue
   [[ "$f" != *registry.yaml ]] || continue
+  [[ "$f" != *registries.yaml ]] || continue
   [[ "$f" != *versions.yaml ]] || continue
   if ! python3 -c "
 import yaml, sys
@@ -58,10 +59,10 @@ else
   echo "  FAIL: generate-run output missing namespace"
   ((ERRORS++)) || true
 fi
-if echo "$OUT" | grep -q 'stack-pr-test'; then
-  echo "  OK: generate-run emits pipelineRef stack-pr-test"
+if echo "$OUT" | grep -q 'kind: StackRun'; then
+  echo "  OK: generate-run emits StackRun"
 else
-  echo "  FAIL: generate-run output missing pipelineRef"
+  echo "  FAIL: generate-run output missing kind: StackRun"
   ((ERRORS++)) || true
 fi
 if echo "$OUT" | grep -q 'stacks/test-stack-flask-forwarder.yaml'; then

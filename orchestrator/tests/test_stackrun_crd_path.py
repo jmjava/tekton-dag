@@ -24,6 +24,7 @@ def test_api_run_bootstrap_via_crd(mock_pr, mock_sr, client, flask_app):
     manifest = mock_sr.call_args.args[0]
     assert manifest["kind"] == "StackRun"
     assert manifest["spec"]["mode"] == "bootstrap"
+    assert manifest["spec"]["stackRef"] == "stack-one"
 
 
 @patch("routes.k8s_client.create_stackrun")

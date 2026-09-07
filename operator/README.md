@@ -26,10 +26,15 @@ kubectl apply -f config/samples/
 
 ## Controllers
 
-- **Stack** — structural validation + topo order in status (no PipelineRuns).
-- **StackRun** — builds a Tekton PipelineRun (PR/bootstrap/merge/promote), syncs phase; PipelineRuns are **orphaned** on delete.
+- **Stack** — structural validation, topo order, and injection gaps (missing Secrets/ConfigMaps) in status.
+- **StackRun** — builds a Tekton PipelineRun (PR/bootstrap/merge/promote); resolves `stackRef` or repo name to a Stack CR; PipelineRuns are **orphaned** on delete.
+- **Team** — tenant identity (namespace, registry, stack allowlist).
 
-Do not add more CRD kinds for promote, intercepts, hooks, or registries. Those are StackRun fields or Tekton/Helm. The real follow-ons are: Stack as the in-cluster source of truth (`stackRef`), GUI/Triggers creating StackRuns instead of PipelineRuns, a **Team** CR, and a Stack admission webhook. See [milestones/milestone-14.md](../milestones/milestone-14.md) “Control plane: what is a CR”.
+Helm `operator.enabled` defaults **on**. Kind: `../scripts/install-operator-kind.sh` (applies Stack/Team CRs from Git YAML).
+
+The Stack **validating webhook** is implemented in-process (`SetupWebhookWithManager`) but Kind/Helm do **not** install `ValidatingWebhookConfiguration` until certs exist; the controller still validates in status.
+
+Do not add more CRD kinds for promote, intercepts, hooks, or registries. See [milestones/milestone-14.md](../milestones/milestone-14.md).
 
 ## Contract with Python
 

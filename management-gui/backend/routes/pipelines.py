@@ -1,7 +1,7 @@
 from flask import Blueprint, current_app, jsonify, request
 
 import k8s_client
-import pipelinerun_builder as builder
+from tekton_dag_common.stackrun_builder import build_stackrun
 
 bp = Blueprint("pipelines", __name__)
 
@@ -122,34 +122,27 @@ def trigger(team):
     image_registry = data.get("imageRegistry", team_cfg.get("imageRegistry", "localhost:5000"))
 
     try:
-        if pipeline_type == "bootstrap":
-            manifest = builder.build_bootstrap(
-                git_url=git_url, git_revision=git_revision,
-                stack_file=stack, image_registry=image_registry,
-                namespace=namespace,
-            )
-        elif pipeline_type == "merge":
-            manifest = builder.build_merge(
-                stack_file=stack, changed_app=app_name,
-                git_url=git_url, git_revision=git_revision,
-                image_registry=image_registry, namespace=namespace,
-            )
-        else:
+        mode = pipeline_type
+        sr_kw = dict(
+            mode=mode,
+            namespace=namespace,
+            stack_file=stack,
+            git_url=git_url,
+            git_revision=git_revision,
+            image_registry=image_registry,
+        )
+        if pipeline_type == "merge":
+            sr_kw["changed_app"] = app_name
+        elif pipeline_type == "pr":
             pr_number = data.get("prNumber")
             if not pr_number:
                 return jsonify({"error": "prNumber required for PR runs"}), 400
-            manifest = builder.build_pr(
-                stack_file=stack, changed_app=app_name,
-                pr_number=pr_number,
-                git_url=git_url, git_revision=git_revision,
-                image_registry=image_registry, namespace=namespace,
-                version_overrides=data.get("versionOverrides"),
-                intercept_backend=data.get("interceptBackend",
-                                           team_cfg.get("interceptBackend", "telepresence")),
-                storage_class=data.get("storageClass", ""),
-                build_images=data.get("buildImages", False),
+            sr_kw["changed_app"] = app_name
+            sr_kw["pr_number"] = pr_number
+            sr_kw["intercept_backend"] = data.get(
+                "interceptBackend", team_cfg.get("interceptBackend", "telepresence")
             )
-        name = k8s_client.create_pipelinerun(context, namespace, manifest)
-        return jsonify({"ok": True, "pipelineRun": name, "namespace": namespace})
+        name = k8s_client.create_stackrun(context, namespace, build_stackrun(**sr_kw))
+        return jsonify({"ok": True, "pipelineRun": name, "stackrun": name, "namespace": namespace})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
