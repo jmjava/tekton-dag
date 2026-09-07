@@ -37,7 +37,8 @@ def client(tmp_path):
     os.environ["STACKS_DIR"] = str(stacks_dir)
     os.environ["TEAM_NAME"] = "*"
 
-    app = create_app()
+    with patch("k8s_client.list_teams", return_value=[]):
+        app = create_app()
     app.config["TESTING"] = True
     with app.test_client() as c:
         yield c
@@ -127,7 +128,8 @@ def test_injection_status_respects_team_stack_allow_list(
     os.environ["TEAMS_DIR"] = str(tmp_path / "teams")
     os.environ["STACKS_DIR"] = str(stacks_dir)
     os.environ["TEAM_NAME"] = "*"
-    app = create_app()
+    with patch("k8s_client.list_teams", return_value=[]):
+        app = create_app()
     app.config["TESTING"] = True
     with app.test_client() as c:
         resp = c.get("/api/teams/default/apps/demo-fe/injection-status")

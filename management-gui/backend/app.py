@@ -18,6 +18,7 @@ from flask_cors import CORS
 
 from team_registry import TeamRegistry
 from stack_resolver import StackResolver
+import k8s_client
 
 logging.basicConfig(
     level=logging.INFO,
@@ -42,8 +43,18 @@ def create_app():
     team_name = os.environ.get("TEAM_NAME", "*")
     teams_dir = _resolve_dir("TEAMS_DIR", "teams")
     stacks_dir = _resolve_dir("STACKS_DIR", "stacks")
+    ns = os.environ.get("NAMESPACE", "tekton-pipelines")
 
-    registry = TeamRegistry(teams_dir=teams_dir, team_filter=team_name)
+    def _team_crs():
+        try:
+            return k8s_client.list_teams(None, ns)
+        except Exception as e:
+            logger.debug("Team CR load skipped: %s", e)
+            return []
+
+    registry = TeamRegistry(
+        teams_dir=teams_dir, team_filter=team_name, team_cr_loader=_team_crs
+    )
     resolver = StackResolver(stacks_dir=stacks_dir)
 
     app.config["TEAM_REGISTRY"] = registry

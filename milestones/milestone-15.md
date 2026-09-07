@@ -1,6 +1,6 @@
 # Milestone 15 — Control-plane hygiene
 
-**Status:** Implemented on this branch — waiting on regression + review.
+**Status:** Completed (squash-merged [#19](https://github.com/jmjava/tekton-dag/pull/19)).
 
 **Goal:** Make the Stack/StackRun path **idempotent and consistent** across Flask, GUI, Triggers, Helm, Kind, and GHA. No new CRDs. This is the punch list from the post-M14 code review.
 

@@ -27,6 +27,12 @@ var PipelineRunGVK = schema.GroupVersionKind{
 	Kind:    "PipelineRun",
 }
 
+var TaskRunListGVK = schema.GroupVersionKind{
+	Group:   "tekton.dev",
+	Version: "v1",
+	Kind:    "TaskRunList",
+}
+
 // Options for building PipelineRuns.
 type Options struct {
 	NameSuffix         string // when set, used instead of random suffix (tests)
@@ -52,6 +58,16 @@ type Options struct {
 	Timeout            string
 	MaxRetries         *int
 	ServiceAccountName string
+	ContinueFrom       string
+	WorkspacePVC       string
+	ContinueStackJSON  string
+	ContinueBuildApps  string
+	ContinueChain      string
+	ContinueHeader     string
+	ContinueAppList    string
+	ContinueEntryApp   string
+	ContinueImages     string
+	ContinueVersions   string
 }
 
 func randomSuffix(length int) string {
@@ -359,6 +375,68 @@ func BuildPromote(opt Options) (*unstructured.Unstructured, error) {
 		},
 		"spec": map[string]any{
 			"pipelineRef": map[string]any{"name": "stack-promote"},
+			"params":      params,
+			"workspaces":  workspaces,
+			"taskRunTemplate": map[string]any{
+				"serviceAccountName": sa(opt),
+			},
+		},
+	}
+	applyReliability(obj, opt)
+	return toUnstructured(obj)
+}
+
+// BuildPRContinue builds stack-pr-continue, reusing the failed run's workspace PVC.
+func BuildPRContinue(opt Options) (*unstructured.Unstructured, error) {
+	if opt.WorkspacePVC == "" {
+		return nil, fmt.Errorf("workspace PVC required for continueFrom")
+	}
+	intercept := opt.InterceptBackend
+	if intercept == "" {
+		intercept = "telepresence"
+	}
+	params := []any{
+		param("stack-json", opt.ContinueStackJSON),
+		param("build-apps", opt.ContinueBuildApps),
+		param("propagation-chain", opt.ContinueChain),
+		param("intercept-header-value", opt.ContinueHeader),
+		param("app-list", opt.ContinueAppList),
+		param("entry-app", opt.ContinueEntryApp),
+		param("built-images", opt.ContinueImages),
+		param("intercept-backend", intercept),
+		param("bumped-versions", opt.ContinueVersions),
+		param("git-url", opt.GitURL),
+		param("git-revision", opt.GitRevision),
+		param("changed-app", opt.ChangedApp),
+	}
+	workspaces := []any{
+		map[string]any{
+			"name": "shared-workspace",
+			"persistentVolumeClaim": map[string]any{
+				"claimName": opt.WorkspacePVC,
+			},
+		},
+		map[string]any{
+			"name": "ssh-key",
+			"secret": map[string]any{
+				"secretName": "ssh-key-secret",
+			},
+		},
+	}
+	name := fmt.Sprintf("stack-pr-continue-%s", suffix(opt))
+	obj := map[string]any{
+		"apiVersion": TektonAPIVersion,
+		"kind":       "PipelineRun",
+		"metadata": map[string]any{
+			"name":      name,
+			"namespace": ns(opt),
+			"labels": map[string]any{
+				"tekton.dev/pipeline":       "stack-pr-continue",
+				"app.kubernetes.io/part-of": StandardPartOf,
+			},
+		},
+		"spec": map[string]any{
+			"pipelineRef": map[string]any{"name": "stack-pr-continue"},
 			"params":      params,
 			"workspaces":  workspaces,
 			"taskRunTemplate": map[string]any{

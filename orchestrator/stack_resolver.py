@@ -16,9 +16,10 @@ logger = logging.getLogger("orchestrator.resolver")
 class StackResolver:
     """Loads stack definitions and resolves repo names to stacks and apps."""
 
-    def __init__(self, stacks_dir="/stacks", teams_dir="/teams"):
+    def __init__(self, stacks_dir="/stacks", teams_dir="/teams", team_cr_loader=None):
         self._stacks_dir = stacks_dir
         self._teams_dir = teams_dir
+        self._team_cr_loader = team_cr_loader
         self._stacks = {}
         self._repo_map = {}
         self._teams = {}
@@ -89,6 +90,15 @@ class StackResolver:
                 logger.info("  Loaded team: %s", team_name)
             except Exception as e:
                 logger.error("Failed to load team %s: %s", config_path, e)
+
+        if self._team_cr_loader is not None:
+            try:
+                from tekton_dag_common.team_cr import overlay_team_configs
+
+                crs = self._team_cr_loader() or []
+                self._teams = overlay_team_configs(self._teams, crs)
+            except Exception as e:
+                logger.warning("Team CR overlay skipped: %s", e)
 
     def resolve_repo(self, repo_name):
         """

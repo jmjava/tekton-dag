@@ -97,3 +97,21 @@ def test_get_team_not_found(teams_dir):
 def test_missing_teams_dir():
     registry = TeamRegistry("/nonexistent/path", team_filter="*")
     assert registry.list_teams() == []
+
+
+def test_overlay_team_crs(teams_dir):
+    def loader():
+        return [
+            {
+                "spec": {
+                    "name": "default",
+                    "imageRegistry": "cr-registry:5000",
+                    "targetNamespace": "tekton-pipelines",
+                }
+            }
+        ]
+
+    registry = TeamRegistry(teams_dir, team_filter="*", team_cr_loader=loader)
+    team = registry.get_team("default")
+    assert team["imageRegistry"] == "cr-registry:5000"
+    assert team["cluster"] == "kind-tekton-stack"
