@@ -14,11 +14,13 @@ It does **not** invent a new platform. It maps what is already in this repo (and
 | **Contribution claims** | Draft | [`contributions.md`](contributions.md) — honest about engineering vs. research novelty |
 | **Related work** | Draft | [`related-work.md`](related-work.md) + [`paper/refs.bib`](paper/refs.bib) |
 | **Multi-repo artifact map** | Draft | [`artifact-map.md`](artifact-map.md) |
-| **Evaluation evidence** | Inventory | [`evaluation.md`](evaluation.md) — functional / PoC evidence exists; comparative empirical study does **not** |
+| **Evaluation evidence** | Partial | [`evaluation.md`](evaluation.md) — `--local-only` green (105+47+61+17 pytest, 15 vitest). **No** PR CI, **no** Java/PHP/operator in the driver, **no** cluster E2E in this environment, **no** comparative study |
 | **ACM artifact badges** | Partial | [`artifact-checklist.md`](artifact-checklist.md) — Available is blocked until Zenodo/Software Heritage DOI; Reusable needs a reviewer-timed Kind path |
 | **SEIP / full research track** | Not ready | Needs industrial context or a controlled comparative study; see [`gaps.md`](gaps.md) |
 
-**Recommended first submission:** ICSE 2027 Tool Demonstration (4 pages + 3–5 min video, due 23 Oct 2026), with SESoS 2027 as the workshop alternative. See [`venues.md`](venues.md).
+**Short answer: no, the testing work is not “all done.”** There is a real, passing *local* unit/static suite. Cluster E2E, several language libraries, the operator, GitHub Actions coverage, and every comparative study a workshop PC might still ask for are incomplete or unenforced.
+
+See [`evaluation.md`](evaluation.md) for counts from a live `--local-only` run.
 
 ## How to use this folder
 
