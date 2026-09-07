@@ -20,8 +20,9 @@ docgen:
           templates, GUI panels, Prometheus/cost labels, cross-cluster deploy,
           Results/Neo4j backup polish.
       - >-
-          Post-M14: M15 control-plane hygiene (idempotent PipelineRun create).
-          Remaining M16: demo spoken narration/MP4 rebuild. S34 intercept E2E is parked.
+          Post-M14: M15 hygiene and M16 follow-ons (Team overlay, continueFrom,
+          Kind webhook installer, escape-hatch retirement, spoken demos 01/08/18/19)
+          are landed. S34 intercept E2E is parked.
       context:
         paths:
         - milestones/milestone-13.md
