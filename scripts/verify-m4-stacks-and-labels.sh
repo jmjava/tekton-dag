@@ -71,6 +71,12 @@ else
   echo "  FAIL: stack-file param missing or wrong"
   ((ERRORS++)) || true
 fi
+if ./scripts/generate-run.sh --pipeline-run --mode pr --stack test-stack-flask-forwarder.yaml --app analytics-api --pr 99 >/dev/null 2>&1; then
+  echo "  FAIL: --pipeline-run should exit nonzero (removed in M16)"
+  ((ERRORS++)) || true
+else
+  echo "  OK: --pipeline-run is rejected"
+fi
 
 echo ""
 if [[ $ERRORS -gt 0 ]]; then

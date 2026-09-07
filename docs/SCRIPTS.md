@@ -55,7 +55,7 @@ Shared helpers live in [`scripts/common.sh`](../scripts/common.sh) (sourced by m
 |--------|---------|
 | [`publish-build-images.sh`](../scripts/publish-build-images.sh) | Build/push **compile** images (polyglot builders). |
 | [`publish-orchestrator-image.sh`](../scripts/publish-orchestrator-image.sh) | Build/push **orchestrator** image. |
-| [`generate-run.sh`](../scripts/generate-run.sh) | Emit/apply a **StackRun** (operator). Pass `--pipeline-run` for a raw Tekton PipelineRun (`pr` / `merge` only). |
+| [`generate-run.sh`](../scripts/generate-run.sh) | Emit/apply a **StackRun** (operator). `--pipeline-run` was removed in M16. |
 | [`promote-pipelines.sh`](../scripts/promote-pipelines.sh) | Promote pipeline definitions across environments/namespaces. |
 | [`create-and-push-sample-repos.sh`](../scripts/create-and-push-sample-repos.sh) | Sample app repos for demos/regression. |
 | [`ensure-git-ssh-secret.sh`](../scripts/ensure-git-ssh-secret.sh) | Git SSH secret for cluster git operations. |

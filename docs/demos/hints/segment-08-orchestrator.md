@@ -16,9 +16,8 @@ docgen:
           including promote.
       - >-
           Orchestrator still owns webhook HMAC (fail-closed when named Secret missing) and
-          stack resolve. When STACKRUN_VIA_CRD is true it creates StackRun CRs instead of
-          PipelineRuns — operator reconciles (see segment 19). Default remains direct
-          PipelineRun creation.
+          stack resolve. Flask always creates StackRun CRs; the operator reconciles
+          them to PipelineRuns (see segment 19).
       context:
         paths:
         - README.md

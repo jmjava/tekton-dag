@@ -79,7 +79,6 @@ Packaged content under `raw/` is **not** committed by default; `package.sh` copi
 | `orchestrationService.replicas` | int | `1` | Replica count |
 | `orchestrationService.port` | int | `8080` | Container and Service port |
 | `orchestrationService.resources` | object | requests/limits | Pod resources |
-| `orchestrationService.stackrunViaCrd` | bool | `true` | When `operator.enabled`, set `STACKRUN_VIA_CRD` (set `false` to keep direct PipelineRun creates) |
 | `operator.enabled` | bool | `true` | Deploy M14 Go operator + use CRDs from chart `crds/` |
 | `operator.image` | string | `localhost:5000/tekton-dag-operator:latest` | Operator manager image |
 | `operator.imagePullPolicy` | string | `Always` | Pull policy (`Always` for Kind local registry) |
@@ -89,6 +88,8 @@ Packaged content under `raw/` is **not** committed by default; `package.sh` copi
 | `triggers.webhookSecretName` | string | `"github-webhook-secret"` | Secret for GitHub HMAC (orchestrator env) |
 | `triggers.githubTokenSecretName` | string | `"github-token"` | Secret name for PR comment token (pipelines) |
 | `dashboard.url` | string | `""` | Optional Tekton Dashboard base URL for PR links |
+
+The orchestrator always creates **StackRun** CRs (`STACKRUN_VIA_CRD` is hard-coded `"true"`). `orchestrationService.stackrunViaCrd` was removed in M16; `--pipeline-run` on `generate-run.sh` is unsupported.
 
 `compileImages` / `compileImageVariants` are the **source of truth** for image URLs you pass into PipelineRuns as `compile-image-*` parameters (see `scripts/generate-run.sh`). Wiring those params from Helm into every trigger is cluster-specific; keep values aligned with the images you push.
 

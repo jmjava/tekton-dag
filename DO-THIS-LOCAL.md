@@ -154,11 +154,10 @@ CRD-primary path (see [milestones/milestone-14.md](milestones/milestone-14.md)):
 # Newman against orchestrator creating StackRuns (skips isolation/phase2 if already green)
 ./scripts/run-cluster-ci.sh --skip-isolation --skip-phase2 --with-operator
 
-# Or Helm (also sets STACKRUN_VIA_CRD when operator.enabled)
+# Or Helm (Flask always creates StackRuns; operator.enabled still controls the manager)
 cd helm/tekton-dag && ./package.sh
 helm upgrade --install tekton-dag . -n tekton-pipelines \
-  --set operator.enabled=true \
-  --set orchestrationService.stackrunViaCrd=true
+  --set operator.enabled=true
 
 # Expect Stack status.valid=true and StackRun to create a PipelineRun
 kubectl get stacks,stackruns -n tekton-pipelines

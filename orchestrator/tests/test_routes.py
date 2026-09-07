@@ -37,23 +37,23 @@ def test_api_teams(client, flask_app):
     assert rv.get_json() == teams
 
 
-@patch("routes.k8s_client.list_pipelineruns")
-def test_api_runs_summarizes_pipelineruns(mock_list, client, flask_app):
+@patch("routes.k8s_client.list_stackruns")
+def test_api_runs_summarizes_stackruns(mock_list, client, flask_app):
     mock_list.return_value = [
         {
             "metadata": {
-                "name": "pr-1",
+                "name": "stackrun-pr-1",
                 "creationTimestamp": "2024-01-01T00:00:00Z",
-                "labels": {"tekton.dev/pipeline": "stack-pr-test"},
             },
-            "status": {"conditions": [{"reason": "Succeeded"}]},
+            "spec": {"mode": "pr"},
+            "status": {"phase": "Succeeded", "pipelineRunName": "stackrun-pr-1"},
         },
         {
             "metadata": {
-                "name": "pr-2",
+                "name": "stackrun-pr-2",
                 "creationTimestamp": "",
-                "labels": {},
             },
+            "spec": {},
             "status": {},
         },
     ]
@@ -61,16 +61,19 @@ def test_api_runs_summarizes_pipelineruns(mock_list, client, flask_app):
     assert rv.status_code == 200
     mock_list.assert_called_once_with(namespace=flask_app.config["NAMESPACE"], limit=10)
     data = rv.get_json()
-    assert data[0]["name"] == "pr-1"
-    assert data[0]["pipeline"] == "stack-pr-test"
+    assert data[0]["name"] == "stackrun-pr-1"
+    assert data[0]["pipeline"] == "pr"
     assert data[0]["status"] == "Succeeded"
+    assert data[0]["pipelinerun"] == "stackrun-pr-1"
     assert data[1]["status"] == "Unknown"
 
 
-@patch("routes.k8s_client.create_pipelinerun")
-@patch("routes.builder.build_pr_pipelinerun")
-def test_api_run_pr_success(mock_build_pr, mock_create, client):
-    mock_build_pr.return_value = {"metadata": {"name": "built"}}
+def _created_spec(mock_create):
+    return mock_create.call_args.args[0]["spec"]
+
+
+@patch("routes.k8s_client.create_stackrun")
+def test_api_run_pr_success(mock_create, client):
     mock_create.return_value = "run-created"
     rv = client.post(
         "/api/run",
@@ -85,13 +88,22 @@ def test_api_run_pr_success(mock_build_pr, mock_create, client):
         content_type="application/json",
     )
     assert rv.status_code == 200
-    assert rv.get_json() == {"status": "created", "pipelinerun": "run-created", "mode": "pr"}
-    mock_build_pr.assert_called_once()
+    assert rv.get_json() == {
+        "status": "created",
+        "stackrun": "run-created",
+        "pipelinerun": "run-created",
+        "mode": "pr",
+    }
     mock_create.assert_called_once()
+    spec = _created_spec(mock_create)
+    assert spec["mode"] == "pr"
+    assert spec["changedApp"] == "fe"
+    assert spec["prNumber"] == 42
+    assert spec["gitRevision"] == "topic"
 
 
-@patch("routes.builder.build_pr_pipelinerun")
-def test_api_run_pr_missing_changed_app(mock_build_pr, client):
+@patch("routes.k8s_client.create_stackrun")
+def test_api_run_pr_missing_changed_app(mock_create, client):
     rv = client.post(
         "/api/run",
         data=json.dumps({"mode": "pr", "pr_number": 1}),
@@ -99,24 +111,22 @@ def test_api_run_pr_missing_changed_app(mock_build_pr, client):
     )
     assert rv.status_code == 400
     assert "changed_app" in rv.get_json()["error"]
-    mock_build_pr.assert_not_called()
+    mock_create.assert_not_called()
 
 
-@patch("routes.builder.build_pr_pipelinerun")
-def test_api_run_pr_missing_pr_number(mock_build_pr, client):
+@patch("routes.k8s_client.create_stackrun")
+def test_api_run_pr_missing_pr_number(mock_create, client):
     rv = client.post(
         "/api/run",
         data=json.dumps({"mode": "pr", "changed_app": "fe"}),
         content_type="application/json",
     )
     assert rv.status_code == 400
-    mock_build_pr.assert_not_called()
+    mock_create.assert_not_called()
 
 
-@patch("routes.k8s_client.create_pipelinerun")
-@patch("routes.builder.build_merge_pipelinerun")
-def test_api_run_merge_success(mock_build_merge, mock_create, client):
-    mock_build_merge.return_value = {}
+@patch("routes.k8s_client.create_stackrun")
+def test_api_run_merge_success(mock_create, client):
     mock_create.return_value = "merge-run"
     rv = client.post(
         "/api/run",
@@ -125,24 +135,23 @@ def test_api_run_merge_success(mock_build_merge, mock_create, client):
     )
     assert rv.status_code == 200
     assert rv.get_json()["mode"] == "merge"
-    mock_build_merge.assert_called_once()
+    assert rv.get_json()["stackrun"] == "merge-run"
+    assert _created_spec(mock_create)["changedApp"] == "api"
 
 
-@patch("routes.builder.build_merge_pipelinerun")
-def test_api_run_merge_missing_changed_app(mock_build_merge, client):
+@patch("routes.k8s_client.create_stackrun")
+def test_api_run_merge_missing_changed_app(mock_create, client):
     rv = client.post(
         "/api/run",
         data=json.dumps({"mode": "merge"}),
         content_type="application/json",
     )
     assert rv.status_code == 400
-    mock_build_merge.assert_not_called()
+    mock_create.assert_not_called()
 
 
-@patch("routes.k8s_client.create_pipelinerun")
-@patch("routes.builder.build_bootstrap_pipelinerun")
-def test_api_run_bootstrap_mode(mock_build_boot, mock_create, client):
-    mock_build_boot.return_value = {}
+@patch("routes.k8s_client.create_stackrun")
+def test_api_run_bootstrap_mode(mock_create, client):
     mock_create.return_value = "boot-1"
     rv = client.post(
         "/api/run",
@@ -151,25 +160,22 @@ def test_api_run_bootstrap_mode(mock_build_boot, mock_create, client):
     )
     assert rv.status_code == 200
     assert rv.get_json()["mode"] == "bootstrap"
-    mock_build_boot.assert_called_once()
+    assert _created_spec(mock_create)["mode"] == "bootstrap"
 
 
-@patch("routes.k8s_client.create_pipelinerun")
-@patch("routes.builder.build_bootstrap_pipelinerun")
-def test_api_bootstrap_route(mock_build_boot, mock_create, client):
-    mock_build_boot.return_value = {}
+@patch("routes.k8s_client.create_stackrun")
+def test_api_bootstrap_route(mock_create, client):
     mock_create.return_value = "boot-2"
     rv = client.post("/api/bootstrap", data=json.dumps({}), content_type="application/json")
     assert rv.status_code == 200
     body = rv.get_json()
     assert body["status"] == "created"
     assert body["mode"] == "bootstrap"
+    assert body["stackrun"] == "boot-2"
 
 
-@patch("routes.k8s_client.create_pipelinerun")
-@patch("routes.builder.build_pr_pipelinerun")
-def test_api_run_k8s_failure(mock_build, mock_create, client):
-    mock_build.return_value = {}
+@patch("routes.k8s_client.create_stackrun")
+def test_api_run_k8s_failure(mock_create, client):
     mock_create.side_effect = RuntimeError("apiserver down")
     rv = client.post(
         "/api/run",
@@ -180,9 +186,8 @@ def test_api_run_k8s_failure(mock_build, mock_create, client):
     assert "apiserver down" in rv.get_json()["error"]
 
 
-@patch("routes.k8s_client.create_pipelinerun")
-@patch("routes.builder.build_pr_pipelinerun")
-def test_webhook_ignores_non_pull_request(mock_build_pr, mock_create, client):
+@patch("routes.k8s_client.create_stackrun")
+def test_webhook_ignores_non_pull_request(mock_create, client):
     rv = client.post(
         "/webhook/github",
         data=json.dumps({"action": "created"}),
@@ -192,12 +197,10 @@ def test_webhook_ignores_non_pull_request(mock_build_pr, mock_create, client):
     assert rv.status_code == 200
     assert rv.get_json()["status"] == "ignored"
     mock_create.assert_not_called()
-    mock_build_pr.assert_not_called()
 
 
-@patch("routes.k8s_client.create_pipelinerun")
-@patch("routes.builder.build_pr_pipelinerun")
-def test_webhook_unknown_repo_ignored(mock_build_pr, mock_create, client, flask_app):
+@patch("routes.k8s_client.create_stackrun")
+def test_webhook_unknown_repo_ignored(mock_create, client, flask_app):
     flask_app.config["RESOLVER"].resolve_repo.return_value = None
     payload = _pr_payload("opened", repo_name="unknown-repo", pr_number=7)
     rv = client.post(
@@ -211,9 +214,8 @@ def test_webhook_unknown_repo_ignored(mock_build_pr, mock_create, client, flask_
     mock_create.assert_not_called()
 
 
-@patch("routes.k8s_client.create_pipelinerun")
-@patch("routes.builder.build_pr_pipelinerun")
-def test_webhook_opened_creates_pr(mock_build_pr, mock_create, client, flask_app):
+@patch("routes.k8s_client.create_stackrun")
+def test_webhook_opened_creates_pr(mock_create, client, flask_app):
     flask_app.config["RESOLVER"].resolve_repo.return_value = {
         "stack_file": "stacks/s.yaml",
         "app_name": "fe",
@@ -229,16 +231,15 @@ def test_webhook_opened_creates_pr(mock_build_pr, mock_create, client, flask_app
     )
     assert rv.status_code == 200
     assert rv.get_json()["pipelinerun"] == "webhook-pr"
-    mock_build_pr.assert_called_once()
-    call_kw = mock_build_pr.call_args.kwargs
-    assert call_kw["changed_app"] == "fe"
-    assert call_kw["pr_number"] == 3
-    assert '"fe"' in call_kw["app_revisions"] and "abc123" in call_kw["app_revisions"]
+    assert rv.get_json()["stackrun"] == "webhook-pr"
+    spec = _created_spec(mock_create)
+    assert spec["changedApp"] == "fe"
+    assert spec["prNumber"] == 3
+    assert '"fe"' in spec["appRevisions"] and "abc123" in spec["appRevisions"]
 
 
-@patch("routes.k8s_client.create_pipelinerun")
-@patch("routes.builder.build_pr_pipelinerun")
-def test_webhook_synchronize_creates_pr(mock_build_pr, mock_create, client, flask_app):
+@patch("routes.k8s_client.create_stackrun")
+def test_webhook_synchronize_creates_pr(mock_create, client, flask_app):
     mock_create.return_value = "sync-run"
     payload = _pr_payload("synchronize", repo_name="demo-fe", pr_number=9, head_sha="sha")
     rv = client.post(
@@ -248,12 +249,11 @@ def test_webhook_synchronize_creates_pr(mock_build_pr, mock_create, client, flas
         headers={"X-GitHub-Event": "pull_request"},
     )
     assert rv.status_code == 200
-    mock_build_pr.assert_called_once()
+    assert _created_spec(mock_create)["prNumber"] == 9
 
 
-@patch("routes.k8s_client.create_pipelinerun")
-@patch("routes.builder.build_merge_pipelinerun")
-def test_webhook_closed_merged_creates_merge(mock_build_merge, mock_create, client):
+@patch("routes.k8s_client.create_stackrun")
+def test_webhook_closed_merged_creates_merge(mock_create, client):
     mock_create.return_value = "merge-run"
     payload = _pr_payload(
         "closed",
@@ -269,13 +269,11 @@ def test_webhook_closed_merged_creates_merge(mock_build_merge, mock_create, clie
     )
     assert rv.status_code == 200
     assert rv.get_json()["mode"] == "merge"
-    mock_build_merge.assert_called_once()
-    assert mock_build_merge.call_args.kwargs["git_revision"] == "main"
+    assert _created_spec(mock_create)["gitRevision"] == "main"
 
 
-@patch("routes.k8s_client.create_pipelinerun")
-@patch("routes.builder.build_merge_pipelinerun")
-def test_webhook_closed_not_merged_ignored(mock_build_merge, mock_create, client):
+@patch("routes.k8s_client.create_stackrun")
+def test_webhook_closed_not_merged_ignored(mock_create, client):
     payload = _pr_payload("closed", repo_name="demo-fe", pr_number=2, merged=False)
     rv = client.post(
         "/webhook/github",
@@ -285,12 +283,11 @@ def test_webhook_closed_not_merged_ignored(mock_build_merge, mock_create, client
     )
     assert rv.status_code == 200
     assert rv.get_json()["status"] == "ignored"
-    mock_build_merge.assert_not_called()
+    mock_create.assert_not_called()
 
 
-@patch("routes.k8s_client.create_pipelinerun")
-@patch("routes.builder.build_pr_pipelinerun")
-def test_webhook_pr_create_failure_500(mock_build_pr, mock_create, client):
+@patch("routes.k8s_client.create_stackrun")
+def test_webhook_pr_create_failure_500(mock_create, client):
     mock_create.side_effect = OSError("network")
     payload = _pr_payload("opened", repo_name="demo-fe", pr_number=1, head_sha="s")
     rv = client.post(
@@ -431,10 +428,8 @@ def test_create_app_env_overrides(monkeypatch, tmp_path):
     assert app.config["MAX_RETRIES"] == 3
 
 
-@patch("routes.k8s_client.create_pipelinerun")
-@patch("routes.builder.build_promote_pipelinerun")
-def test_api_run_promote_success(mock_build_promote, mock_create, client):
-    mock_build_promote.return_value = {}
+@patch("routes.k8s_client.create_stackrun")
+def test_api_run_promote_success(mock_create, client):
     mock_create.return_value = "promote-1"
     rv = client.post(
         "/api/run",
@@ -451,15 +446,13 @@ def test_api_run_promote_success(mock_build_promote, mock_create, client):
     )
     assert rv.status_code == 200
     assert rv.get_json()["mode"] == "promote"
-    mock_build_promote.assert_called_once()
-    assert mock_build_promote.call_args.kwargs["release_version"] == "0.1.0"
-    assert mock_build_promote.call_args.kwargs["changed_app"] == "demo-fe"
+    spec = _created_spec(mock_create)
+    assert spec["releaseVersion"] == "0.1.0"
+    assert spec["changedApp"] == "demo-fe"
 
 
-@patch("routes.k8s_client.create_pipelinerun")
-@patch("routes.builder.build_promote_pipelinerun")
-def test_api_run_promote_with_approval(mock_build_promote, mock_create, client):
-    mock_build_promote.return_value = {}
+@patch("routes.k8s_client.create_stackrun")
+def test_api_run_promote_with_approval(mock_create, client):
     mock_create.return_value = "promote-approved"
     rv = client.post(
         "/api/run",
@@ -478,17 +471,15 @@ def test_api_run_promote_with_approval(mock_build_promote, mock_create, client):
         content_type="application/json",
     )
     assert rv.status_code == 200
-    kw = mock_build_promote.call_args.kwargs
-    assert kw["require_approval"] is True
-    assert kw["approved_by"] == "alice@example.com"
-    assert kw["timeout"] == "30m"
-    assert kw["max_retries"] == 1
+    spec = _created_spec(mock_create)
+    assert spec["requireApproval"] is True
+    assert spec["approvedBy"] == "alice@example.com"
+    assert spec["timeout"] == "30m"
+    assert spec["maxRetries"] == 1
 
 
-@patch("routes.k8s_client.create_pipelinerun")
-@patch("routes.builder.build_pr_pipelinerun")
-def test_api_run_pr_forwards_reliability(mock_build_pr, mock_create, client):
-    mock_build_pr.return_value = {}
+@patch("routes.k8s_client.create_stackrun")
+def test_api_run_pr_forwards_reliability(mock_create, client):
     mock_create.return_value = "pr-rel"
     rv = client.post(
         "/api/run",
@@ -504,24 +495,26 @@ def test_api_run_pr_forwards_reliability(mock_build_pr, mock_create, client):
         content_type="application/json",
     )
     assert rv.status_code == 200
-    kw = mock_build_pr.call_args.kwargs
-    assert kw["timeout"] == "15m"
-    assert kw["max_retries"] == 0
+    spec = _created_spec(mock_create)
+    assert spec["timeout"] == "15m"
+    assert spec["maxRetries"] == 0
 
 
-@patch("routes.builder.build_promote_pipelinerun")
-def test_api_run_promote_requires_fields(mock_build_promote, client):
+@patch("routes.k8s_client.create_stackrun")
+def test_api_run_promote_requires_fields(mock_create, client):
     rv = client.post(
         "/api/run",
         data=json.dumps({"mode": "promote", "release_version": "0.1.0"}),
         content_type="application/json",
     )
     assert rv.status_code == 400
-    mock_build_promote.assert_not_called()
+    mock_create.assert_not_called()
 
 
-@patch("routes.builder.build_promote_pipelinerun")
-def test_api_run_promote_requires_approval_actor(mock_build_promote, client):
+@patch("routes.k8s_client.create_stackrun")
+def test_api_run_promote_without_approved_by_is_pending_approval(mock_create, client):
+    """require_approval without approved_by creates a StackRun; operator waits."""
+    mock_create.return_value = "stackrun-promote-wait"
     rv = client.post(
         "/api/run",
         data=json.dumps(
@@ -535,14 +528,14 @@ def test_api_run_promote_requires_approval_actor(mock_build_promote, client):
         ),
         content_type="application/json",
     )
-    assert rv.status_code == 400
-    assert "approved_by" in rv.get_json()["error"]
-    mock_build_promote.assert_not_called()
+    assert rv.status_code == 200, rv.get_json()
+    spec = _created_spec(mock_create)
+    assert spec["requireApproval"] is True
+    assert "approvedBy" not in spec
 
 
-@patch("routes.k8s_client.create_pipelinerun")
-@patch("routes.builder.build_pr_pipelinerun")
-def test_webhook_rejects_invalid_signature(mock_build_pr, mock_create, client, flask_app):
+@patch("routes.k8s_client.create_stackrun")
+def test_webhook_rejects_invalid_signature(mock_create, client, flask_app):
     flask_app.config["WEBHOOK_SECRET"] = "s3cr3t"
     payload = _pr_payload("opened", repo_name="demo-fe", pr_number=1)
     rv = client.post(
@@ -559,10 +552,9 @@ def test_webhook_rejects_invalid_signature(mock_build_pr, mock_create, client, f
 
 
 @patch("routes.k8s_client.get_secret_data")
-@patch("routes.k8s_client.create_pipelinerun")
-@patch("routes.builder.build_pr_pipelinerun")
+@patch("routes.k8s_client.create_stackrun")
 def test_webhook_fail_closed_when_named_secret_missing(
-    mock_build_pr, mock_create, mock_get_secret, client, flask_app
+    mock_create, mock_get_secret, client, flask_app
 ):
     flask_app.config["WEBHOOK_SECRET"] = ""
     flask_app.config["WEBHOOK_SECRET_NAME"] = "github-webhook-secret"
@@ -579,9 +571,8 @@ def test_webhook_fail_closed_when_named_secret_missing(
     mock_create.assert_not_called()
 
 
-@patch("routes.k8s_client.create_pipelinerun")
-@patch("routes.builder.build_pr_pipelinerun")
-def test_webhook_accepts_valid_signature(mock_build_pr, mock_create, client, flask_app):
+@patch("routes.k8s_client.create_stackrun")
+def test_webhook_accepts_valid_signature(mock_create, client, flask_app):
     import webhook_auth
 
     flask_app.config["WEBHOOK_SECRET"] = "s3cr3t"
@@ -603,10 +594,9 @@ def test_webhook_accepts_valid_signature(mock_build_pr, mock_create, client, fla
 
 
 @patch("routes.k8s_client.get_secret_data")
-@patch("routes.k8s_client.create_pipelinerun")
-@patch("routes.builder.build_pr_pipelinerun")
+@patch("routes.k8s_client.create_stackrun")
 def test_webhook_accepts_valid_signature_from_named_secret(
-    mock_build_pr, mock_create, mock_get_secret, client, flask_app
+    mock_create, mock_get_secret, client, flask_app
 ):
     import webhook_auth
 
@@ -670,16 +660,12 @@ def test_injection_status_k8s_error_is_503(mock_secrets, mock_cms, client, flask
     assert "kubernetes lookup failed" in rv.get_json()["error"]
 
 
-@patch("routes.k8s_client.create_pipelinerun")
-@patch("routes.builder.build_promote_pipelinerun")
-def test_api_run_promote_resolves_registries_file(
-    mock_build_promote, mock_create, client, flask_app
-):
+@patch("routes.k8s_client.create_stackrun")
+def test_api_run_promote_resolves_registries_file(mock_create, client, flask_app):
     from pathlib import Path
 
     registries = Path(__file__).resolve().parents[2] / "stacks" / "registries.yaml"
     flask_app.config["REGISTRIES_FILE"] = str(registries)
-    mock_build_promote.return_value = {}
     mock_create.return_value = "promote-from-file"
     rv = client.post(
         "/api/run",
@@ -694,9 +680,9 @@ def test_api_run_promote_resolves_registries_file(
         content_type="application/json",
     )
     assert rv.status_code == 200
-    kw = mock_build_promote.call_args.kwargs
-    assert kw["target_registry"] == "localhost:5002"
-    assert kw["credentials_secret"] == "registry-prod-creds"
+    spec = _created_spec(mock_create)
+    assert spec["targetRegistry"] == "localhost:5002"
+    assert spec["credentialsSecret"] == "registry-prod-creds"
 
 
 @patch("routes.k8s_client.list_configmap_names")
