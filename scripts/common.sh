@@ -16,7 +16,7 @@ STACKS_DIR="${STACKS_DIR:-$REPO_ROOT/stacks}"
 
 # ── Configurable defaults (override via env or flags) ────────────────
 NAMESPACE="${NAMESPACE:-tekton-pipelines}"
-IMAGE_REGISTRY="${IMAGE_REGISTRY:-localhost:5001}"
+IMAGE_REGISTRY="${IMAGE_REGISTRY:-localhost:5000}"
 GIT_SSH_SECRET_NAME="${GIT_SSH_SECRET_NAME:-git-ssh-key}"
 GIT_URL="${GIT_URL:-https://github.com/jmjava/tekton-dag.git}"
 GIT_REVISION="${GIT_REVISION:-main}"
@@ -84,8 +84,10 @@ free_tcp_port() {
 }
 
 # ── Registry helpers ─────────────────────────────────────────────────
-# Kind maps localhost:5001 (host) -> localhost:5000 (in-cluster).
-# Compile/pipeline image refs always use the in-cluster address.
+# Kind registry: kind-with-registry.sh publishes on localhost:${REG_PORT:-5000}
+# and aliases the same host:port inside the node. common.sh matches that.
+# If IMAGE_REGISTRY is the old host port localhost:5001, compile/pipeline
+# refs still remap to localhost:5000 (in-cluster).
 resolve_compile_registry() {
   local reg="${1:-$IMAGE_REGISTRY}"
   if [[ "$reg" == "localhost:5001" ]]; then

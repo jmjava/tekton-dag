@@ -459,7 +459,7 @@ VS Code multi-root workspace configs in `.vscode/launch.json` support debugging 
 
 | Container | Host port | In-cluster address | Purpose |
 |-----------|-----------|-------------------|---------|
-| `kind-registry` | `localhost:5001` | `localhost:5000` | Kind cluster registry — push here, pods pull via `localhost:5000` |
+| `kind-registry` | `localhost:5000` | `localhost:5000` | Kind cluster registry (`kind-with-registry.sh`). Host push and pod pull use the same port. Old `IMAGE_REGISTRY=localhost:5001` is still remapped to `:5000` in-cluster. |
 
 Pod image refs must use `localhost:5000`. Kind's containerd config redirects to `kind-registry:5000` on the Docker network.
 

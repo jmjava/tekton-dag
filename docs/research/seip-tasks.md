@@ -60,10 +60,12 @@ Each slice is independently useful even if Gate 0 is still open.
 - [x] **S31** Add Java (`mvn test` in both baggage modules) and PHPUnit to that same driver or a second CI job.
 - [x] **S32** Add `go test ./internal/...` for `operator/`.
 - [x] **S33** Nightly or manual cluster job: Playwright + Newman + `stack-dag-verify` (and optionally `run-isolation-eval.sh --cluster`). Record a log on a tagged release; do not pretend every PR ran Kind. Implementation: [`.github/workflows/cluster-regression.yml`](../../.github/workflows/cluster-regression.yml) (`workflow_dispatch`, nightly on default branch, `v*` tags) calling [`scripts/run-cluster-ci.sh`](../../scripts/run-cluster-ci.sh). Artifacts: `cluster-ci.log` + measured CSV. **Not** on pull requests.
-- [ ] **S34** On a chosen tag: `run-e2e-with-intercepts.sh` for Telepresence **and** mirrord; attach logs to the release.
+- [ ] **S34** On a chosen tag: `run-e2e-with-intercepts.sh` for Telepresence **and** mirrord; attach logs to the release. **Not** implied by Phase 2 (`stack-dag-verify` only clones this repo and resolves the DAG). Needs git-ssh (or HTTPS) for app repos, intercept Traffic Manager, Pod Security exceptions.
 - [ ] **S35** Refresh README / milestone test counts from CI (orchestrator is already 105 pytest, not 62).
 - [ ] **S36** License + `CITATION.cff` already landed; add a Zenodo DOI when you freeze a “paper artifact” tag (any year).
 - [x] **S37** Scripted Kind isolation harness: clone-vs-intercept, stack width, probes, CSV (`scripts/run-isolation-eval.sh`). Offline plan is in `--local-only`; `--cluster` is measured Kind data, **not** site evidence (S21).
+- [x] **S38** Pin Tekton Pipelines / Triggers / git-clone (stop `…/latest/release.yaml`). Keep hook Tasks on a contract that `kubectl apply` accepts on that pin (cluster resolver, not `taskRef.name: $(params.*)`). Pytest must fail if a pipeline reintroduces param substitution in `taskRef.name`.
+- [x] **S39** One Kind registry story: host publish address and pod pull address documented in one place. `common.sh` default must match `kind-with-registry.sh` (today that is **`:5000`**). Keep a 5001→5000 shim for old `.env` files only.
 
 C can proceed indefinitely around other jobs. It is **necessary for trust**, not sufficient for SEIP.
 
@@ -111,10 +113,11 @@ Do this only when you have picked a specific year/track. Not now.
 ## Suggested iteration order (when a slice of time appears)
 
 1. **S00–S03** if you have even a short window with the site — or skip SEIP and stay on the artifact (C).
-2. **S34** (intercept E2E on a chosen tag) when you next have a Kind environment with Telepresence/mirrord; S30–S33 and S37 already landed. Trigger cluster CI with **workflow_dispatch** on this branch until it is the default.
-3. **S11 / S24 / lessons-learned** whenever you hit a real incident; one paragraph per incident is enough.
-4. **S20–S22** once a metrics window exists (needs the site or a real staging fleet).
-5. **S40+** last. Prose without B is what gets rejected.
+2. **S38 / S39** (Tekton pin + Kind registry defaults) when cluster-ci is the work in front of you — they unblock Newman and stop `latest` from breaking hook pipelines.
+3. **S34** (intercept E2E on a chosen tag) when you next have a Kind environment with Telepresence/mirrord **and** app-repo clone credentials; S30–S33 and S37 already landed. Trigger cluster CI with **workflow_dispatch** on this branch until it is the default.
+4. **S11 / S24 / lessons-learned** whenever you hit a real incident; one paragraph per incident is enough.
+5. **S20–S22** once a metrics window exists (needs the site or a real staging fleet).
+6. **S40+** last. Prose without B is what gets rejected.
 
 ---
 

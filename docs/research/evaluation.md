@@ -2,11 +2,11 @@
 
 Workshop and tool-demo reviewers accept **functional** evidence if claims stay inside it. Research-track and SEIP reviewers will not. This inventory lists what already exists in-tree so the paper does not invent numbers.
 
-**Short answer: no, the testing work is not “all done.”** There is a real, passing *local* unit/static suite, now **gated on GitHub PRs**. Full Kind cluster CI (`run-cluster-ci.sh`: Tekton Phase 2 + Newman) and every comparative study a research PC would ask for remain incomplete or unenforced.
+**Short answer: no, the testing work is not “all done.”** There is a real, passing *local* unit/static suite, now **gated on GitHub PRs**. Kind **Phase 2** ran here. Newman and intercept E2E (S34) have not. Comparative studies a research PC would ask for remain incomplete.
 
 ## What actually ran (this packaging branch)
 
-On 2026-09-07, `bash scripts/run-regression-stream.sh --local-only --require-lang-tests` is the CI path (Phase 1 + pytest + vitest + isolation-eval protocol + Maven + PHPUnit + operator `go test`). Playwright later ran locally (**69 passed**, Vite only). Nested Docker + Kind were added on this Cloud Agent VM: `run-isolation-eval.sh --cluster` measured **6/6** `isolation_ok=true` (dummy echo stacks, widths 1/3/5, clone and intercept). **`run-cluster-ci.sh` (Phase 2 + Newman) was not run.** GitHub `cluster-regression` was not dispatched.
+On 2026-09-07, `bash scripts/run-regression-stream.sh --local-only --require-lang-tests` is the CI path (Phase 1 + pytest + vitest + isolation-eval protocol + Maven + PHPUnit + operator `go test`). Playwright later ran locally (**69 passed**, Vite only). Nested Docker + Kind: `run-isolation-eval.sh --cluster` measured **6/6** `isolation_ok=true` after a `kubectl wait` race fix. **`stack-dag-verify` Phase 2 Succeeded** on this Kind cluster. Newman did **not** finish: orchestrator image push targeted `localhost:5001` while the Kind registry is on **`:5000`** (S39). Intercept E2E (S34) was not run. GitHub `cluster-regression` was not dispatched.
 
 | Suite | Collected / result |
 |-------|-------------------|
@@ -15,13 +15,13 @@ On 2026-09-07, `bash scripts/run-regression-stream.sh --local-only --require-lan
 | pytest `tekton-dag-common` | **47 passed** (README still says 14) |
 | pytest management-gui backend | **61 passed** (README still says 56) |
 | pytest baggage-python | **17 passed** |
-| pytest isolation-eval | **9 passed** |
+| pytest isolation-eval | **10 passed** |
 | vitest baggage-node | **15 passed** |
 | PHPUnit baggage-php | **19 passed** |
 | Maven Java baggage | both modules OK (`--require-lang-tests`) |
 | operator `go test` | `internal/pipeline` + `internal/controller` OK |
 
-`--local-only` **skips** Playwright on purpose. This environment ran `npx playwright test` in `management-gui/frontend`: **69 passed** (Vite only, no cluster). Kind isolation-eval **did** run here after Docker (fuse-overlayfs) + kube-proxy nftables. `run-cluster-ci.sh` (Tekton + Newman) was **not** run.
+`--local-only` **skips** Playwright on purpose. This environment ran `npx playwright test` in `management-gui/frontend`: **69 passed** (Vite only, no cluster). Kind isolation-eval **did** run here after Docker (fuse-overlayfs) + kube-proxy nftables. Phase 2 **Succeeded**. Newman image push failed on `:5001` before S39.
 
 ## What exists but is *not* CI-gated on every PR
 

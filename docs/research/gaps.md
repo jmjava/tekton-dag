@@ -45,6 +45,15 @@ Engineering completeness is separate from the HotCRP PDF. As of this branch:
 
 Until a **recorded** cluster-regression artifact exists for a tagged commit, do not tell reviewers the *platform* (Tekton/intercepts) is continuously verified on every PR. Local unit/static CI plus an on-demand Kind job is the honest claim.
 
+**Kind cluster-ci design debt (2026-09-07 run, not site evidence):**
+
+| Id | Finding | Status |
+|----|---------|--------|
+| **S38** | `install-tekton.sh` tracked `latest`; v1.6 rejected `taskRef.name: $(params.pre-build-task)`. Hooks use cluster resolver; pin Pipelines/Triggers. | Landed |
+| **S39** | `common.sh` defaulted host `localhost:5001` while `kind-with-registry.sh` listens on **`:5000`**. Newman image push failed (`connection refused` on 5001). Phase 2 `stack-dag-verify` **Succeeded**. | Landed |
+| **S34** | Phase 2 ≠ intercept E2E. Dummy isolation-eval ≠ Telepresence/mirrord. Bootstrap skipped SSH/GitHub secrets. | Open |
+| Lessons | Dual-port registry, Kaniko stdout vs results, intercept vs Pod Security: see [seip/lessons-learned.md](seip/lessons-learned.md). | Registry default paid in S39; intercept PSS still S34 |
+
 ## Must-not-do
 
 - Cite hallucinated papers; every key is in [`paper/refs.bib`](paper/refs.bib).

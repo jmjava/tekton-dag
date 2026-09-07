@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # Build and push tekton-dag build images to the same registry used by the pipelines.
 # Replicate this whenever you need to publish the build images (e.g. after changing Dockerfiles,
-# or on a new host/CI). Uses IMAGE_REGISTRY from .env or defaults to localhost:5001 (Kind test env).
+# or on a new host/CI). Uses IMAGE_REGISTRY from .env or defaults to localhost:5000 (Kind).
 #
 # Prerequisites:
 #   - Docker
 #   - Registry reachable at REGISTRY (start with: docker run -d -p 5000:5000 --name registry registry:2)
 #
 # Usage:
-#   ./scripts/publish-build-images.sh              # use .env IMAGE_REGISTRY or localhost:5001, tag latest
+#   ./scripts/publish-build-images.sh              # use .env IMAGE_REGISTRY or localhost:5000, tag latest
 #   ./scripts/publish-build-images.sh myreg:5000  # override registry
 #   ./scripts/publish-build-images.sh myreg:5000 v1 # registry and tag
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

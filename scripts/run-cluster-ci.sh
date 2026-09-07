@@ -27,8 +27,9 @@ WITH_GRAPH=false
 ISOLATION_REPEATS="${ISOLATION_EVAL_REPEATS:-1}"
 HELP=false
 KIND_CLUSTER_NAME="${KIND_CLUSTER_NAME:-tekton-stack}"
-# Host registry port must match kind-with-registry.sh (in-cluster is localhost:5000).
-export IMAGE_REGISTRY="${IMAGE_REGISTRY:-localhost:5000}"
+# Kind registry host port (kind-with-registry.sh REG_PORT, default 5000).
+# Override with CLUSTER_CI_REGISTRY; do not inherit a stale IMAGE_REGISTRY=5001.
+export IMAGE_REGISTRY="${CLUSTER_CI_REGISTRY:-localhost:5000}"
 GIT_REV="${CLUSTER_CI_GIT_REVISION:-${GITHUB_SHA:-$(git rev-parse HEAD)}}"
 GIT_URL_CI="${CLUSTER_CI_GIT_URL:-${GIT_URL:-https://github.com/jmjava/tekton-dag.git}}"
 PHASE2_TIMEOUT="${DAG_VERIFY_TIMEOUT:-420}"
