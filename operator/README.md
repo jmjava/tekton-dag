@@ -16,7 +16,10 @@ go test ./internal/pipeline/ ./internal/controller/
 # Build image for Kind
 ../scripts/publish-operator-image.sh
 
-# Install CRDs + samples
+# Kind cluster soak (CRDs + Deployment; Newman uses --with-operator)
+../scripts/install-operator-kind.sh
+
+# Install CRDs + samples (no image)
 kubectl apply -f config/crd/bases/
 kubectl apply -f config/samples/
 ```

@@ -82,6 +82,8 @@ orchestrationService:
 operator:
   enabled: false
   image: "localhost:5000/tekton-dag-operator:latest"
+  # Always: nested Kind often cannot kind-load overlayfs; pull from the local registry.
+  imagePullPolicy: Always
   replicas: 1
   resources:
     requests:

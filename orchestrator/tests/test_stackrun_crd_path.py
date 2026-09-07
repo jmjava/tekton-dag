@@ -17,6 +17,7 @@ def test_api_run_bootstrap_via_crd(mock_pr, mock_sr, client, flask_app):
     assert rv.status_code == 200
     body = rv.get_json()
     assert body["stackrun"] == "stackrun-bootstrap-abc12"
+    assert body["pipelinerun"] == "stackrun-bootstrap-abc12"
     assert body["mode"] == "bootstrap"
     mock_sr.assert_called_once()
     mock_pr.assert_not_called()

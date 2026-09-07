@@ -16,6 +16,10 @@ on:
         description: Skip orchestrator Newman (Kind + Phase 2 + isolation only)
         type: boolean
         default: false
+      with_operator:
+        description: Install operator and Newman with STACKRUN_VIA_CRD=true
+        type: boolean
+        default: false
   schedule:
     # GitHub only fires this on the default branch after merge.
     - cron: "17 6 * * *"
@@ -107,6 +111,9 @@ jobs:
           extra=()
           if [[ "${{ github.event.inputs.skip_newman || false }}" == "true" ]]; then
             extra+=(--skip-newman)
+          fi
+          if [[ "${{ github.event.inputs.with_operator || false }}" == "true" ]]; then
+            extra+=(--with-operator)
           fi
           bash scripts/run-cluster-ci.sh --isolation-repeats "$ISOLATION_EVAL_REPEATS" \
             --out "$ISOLATION_EVAL_OUT" "${extra[@]}" 2>&1 | tee cluster-ci.log

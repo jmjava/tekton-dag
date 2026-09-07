@@ -46,8 +46,8 @@ Regenerate goldens: `python scripts/generate-pipelinerun-goldens.py`
 - [x] StackRun reconciler (create PipelineRun, sync status) + Stack validation
 - [x] Flask `STACKRUN_VIA_CRD` path + Helm wiring
 - [x] Milestone / README / DO-THIS-LOCAL smoke notes
-- [ ] Kind: build/push operator image + live StackRun → PipelineRun create
-- [ ] Newman with `STACKRUN_VIA_CRD=true` against cluster
+- [ ] Kind: build/push operator image + live StackRun → PipelineRun create (`scripts/install-operator-kind.sh`)
+- [ ] Newman with `STACKRUN_VIA_CRD=true` against cluster (`run-cluster-ci.sh --with-operator`)
 - [ ] Default `operator.enabled=true` after soak
 
 ## Exit criteria

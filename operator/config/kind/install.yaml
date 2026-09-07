@@ -1,19 +1,21 @@
-{{- if .Values.operator.enabled }}
+# Kind/cluster-ci operator install (no Helm). Applied by scripts/install-operator-kind.sh.
+# Helm equivalent: helm/tekton-dag/templates/operator.yaml with operator.enabled=true.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: tekton-dag-operator
-  namespace: {{ .Values.namespace }}
+  namespace: tekton-pipelines
   labels:
     app: tekton-dag-operator
-    {{- include "tekton-dag.labels" . | nindent 4 }}
+    app.kubernetes.io/part-of: tekton-job-standardization
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: tekton-dag-operator-{{ .Values.namespace }}
+  name: tekton-dag-operator-tekton-pipelines
   labels:
-    {{- include "tekton-dag.labels" . | nindent 4 }}
+    app: tekton-dag-operator
+    app.kubernetes.io/part-of: tekton-job-standardization
 rules:
   - apiGroups: ["tektondag.io"]
     resources: ["stacks", "stackruns"]
@@ -37,28 +39,29 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: tekton-dag-operator-{{ .Values.namespace }}
+  name: tekton-dag-operator-tekton-pipelines
   labels:
-    {{- include "tekton-dag.labels" . | nindent 4 }}
+    app: tekton-dag-operator
+    app.kubernetes.io/part-of: tekton-job-standardization
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: tekton-dag-operator-{{ .Values.namespace }}
+  name: tekton-dag-operator-tekton-pipelines
 subjects:
   - kind: ServiceAccount
     name: tekton-dag-operator
-    namespace: {{ .Values.namespace }}
+    namespace: tekton-pipelines
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: tekton-dag-operator
-  namespace: {{ .Values.namespace }}
+  namespace: tekton-pipelines
   labels:
     app: tekton-dag-operator
-    {{- include "tekton-dag.labels" . | nindent 4 }}
+    app.kubernetes.io/part-of: tekton-job-standardization
 spec:
-  replicas: {{ .Values.operator.replicas }}
+  replicas: 1
   selector:
     matchLabels:
       app: tekton-dag-operator
@@ -66,13 +69,14 @@ spec:
     metadata:
       labels:
         app: tekton-dag-operator
-        tekton-dag/team: {{ .Values.teamName }}
+        tekton-dag/team: default
     spec:
       serviceAccountName: tekton-dag-operator
       containers:
         - name: manager
-          image: {{ .Values.operator.image }}
-          imagePullPolicy: {{ .Values.operator.imagePullPolicy }}
+          image: localhost:5000/tekton-dag-operator:latest
+          # Nested Kind often cannot kind-load overlayfs; Always pulls from the local registry.
+          imagePullPolicy: Always
           args:
             - --leader-elect=false
             - --health-probe-bind-address=:8081
@@ -94,5 +98,9 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 10
           resources:
-            {{- toYaml .Values.operator.resources | nindent 12 }}
-{{- end }}
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi

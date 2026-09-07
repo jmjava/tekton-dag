@@ -15,6 +15,7 @@
 # Env:
 #   ORCHESTRATOR_TEST_PORT  Local port for kubectl port-forward (default 9091).
 #   ORCHESTRATOR_FREE_PORT  If 0, do not kill listeners on that port first (default: free it).
+#   WAIT_STACKRUN_RECONCILE If 1/true, after Newman wait until StackRuns have PipelineRuns (M14).
 [ -z "${BASH_VERSION:-}" ] && exec bash "$0" "$@"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -54,6 +55,11 @@ cleanup() {
   kubectl delete pipelinerun -n "$NS" -l app.kubernetes.io/part-of=tekton-job-standardization \
     --field-selector='metadata.name!=stack-bootstrap-2h86t,metadata.name!=stack-pr-1-dnljs,metadata.name!=stack-pr-1-n99kc' \
     2>/dev/null || true
+  if kubectl get crd stackruns.tektondag.io >/dev/null 2>&1; then
+    echo "  Deleting test StackRuns..."
+    kubectl delete stackrun -n "$NS" -l app.kubernetes.io/part-of=tekton-job-standardization \
+      2>/dev/null || true
+  fi
   echo "  Done."
 }
 trap cleanup EXIT
@@ -116,6 +122,57 @@ if [ "$NEWMAN_FAILED" = "true" ]; then
 fi
 
 echo "=== Newman passed ==="
+
+wait_stackrun_reconcile() {
+  echo ""
+  echo "=== Waiting for operator to reconcile Newman StackRuns ==="
+  if ! kubectl get crd stackruns.tektondag.io >/dev/null 2>&1; then
+    echo "ERROR: stackruns.tektondag.io CRD missing (install operator first)" >&2
+    return 1
+  fi
+  local timeout="${STACKRUN_RECONCILE_TIMEOUT:-90}"
+  local elapsed=0
+  local ready=0
+  local total=0
+  local pr_count=0
+  while [[ "$elapsed" -lt "$timeout" ]]; do
+    ready=0
+    total=0
+    local names
+    names="$(kubectl get stackrun -n "$NS" -l app.kubernetes.io/part-of=tekton-job-standardization \
+      -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null || true)"
+    if [[ -n "$names" ]]; then
+      while IFS= read -r name; do
+        [[ -z "$name" ]] && continue
+        total=$((total + 1))
+        local pr
+        pr="$(kubectl get stackrun "$name" -n "$NS" -o jsonpath='{.status.pipelineRunName}' 2>/dev/null || true)"
+        if [[ -n "$pr" ]]; then
+          ready=$((ready + 1))
+        fi
+      done <<< "$names"
+    fi
+    pr_count="$(kubectl get pipelinerun -n "$NS" -l tektondag.io/stackrun --no-headers 2>/dev/null | wc -l | tr -d ' ')"
+    echo "  StackRuns with PipelineRunName: ${ready}/${total}; labeled PipelineRuns: ${pr_count} (${elapsed}s)"
+    if [[ "$total" -ge 1 && "$ready" -ge 1 && "$pr_count" -ge 1 ]]; then
+      kubectl get stackrun -n "$NS" -l app.kubernetes.io/part-of=tekton-job-standardization
+      kubectl get pipelinerun -n "$NS" -l tektondag.io/stackrun
+      echo "  Operator soak: StackRun -> PipelineRun OK"
+      return 0
+    fi
+    sleep 5
+    elapsed=$((elapsed + 5))
+  done
+  echo "ERROR: operator did not reconcile Newman StackRuns within ${timeout}s" >&2
+  kubectl get stackrun,pipelinerun -n "$NS" || true
+  kubectl logs -n "$NS" -l app=tekton-dag-operator --tail=80 || true
+  return 1
+}
+
+_WAIT_SR="${WAIT_STACKRUN_RECONCILE:-0}"
+if [[ "$_WAIT_SR" == "1" || "$_WAIT_SR" == "true" || "$_WAIT_SR" == "yes" ]]; then
+  wait_stackrun_reconcile || exit 1
+fi
 
 if [ "$SKIP_INTEGRATION" = "true" ]; then
   echo ""

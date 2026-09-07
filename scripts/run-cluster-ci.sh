@@ -10,6 +10,7 @@
 # Usage:
 #   ./scripts/run-cluster-ci.sh
 #   ./scripts/run-cluster-ci.sh --skip-newman
+#   ./scripts/run-cluster-ci.sh --with-operator
 #   ./scripts/run-cluster-ci.sh --isolation-repeats 3
 #   ./scripts/run-cluster-ci.sh --help
 set -euo pipefail
@@ -24,6 +25,12 @@ SKIP_ISOLATION=false
 SKIP_PHASE2=false
 SKIP_NEWMAN=false
 WITH_GRAPH=false
+WITH_OPERATOR="${CLUSTER_CI_WITH_OPERATOR:-false}"
+if [[ "$WITH_OPERATOR" == "1" || "$WITH_OPERATOR" == "true" || "$WITH_OPERATOR" == "yes" ]]; then
+  WITH_OPERATOR=true
+else
+  WITH_OPERATOR=false
+fi
 ISOLATION_REPEATS="${ISOLATION_EVAL_REPEATS:-1}"
 HELP=false
 KIND_CLUSTER_NAME="${KIND_CLUSTER_NAME:-tekton-stack}"
@@ -41,6 +48,7 @@ while [[ $# -gt 0 ]]; do
     --skip-phase2)    SKIP_PHASE2=true; shift ;;
     --skip-newman)    SKIP_NEWMAN=true; shift ;;
     --with-graph)     WITH_GRAPH=true; shift ;;
+    --with-operator)  WITH_OPERATOR=true; shift ;;
     --isolation-repeats) ISOLATION_REPEATS="$2"; shift 2 ;;
     --out)            ISOLATION_OUT="$2"; shift 2 ;;
     --help|-h)        HELP=true; shift ;;
@@ -49,7 +57,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ "$HELP" == "true" ]]; then
-  sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
   exit 0
 fi
 
@@ -67,7 +75,7 @@ fi
 
 echo "=============================================="
 echo "  tekton-dag cluster CI (Kind)"
-echo "  cluster=$KIND_CLUSTER_NAME git-rev=${GIT_REV:0:12} registry=$IMAGE_REGISTRY"
+echo "  cluster=$KIND_CLUSTER_NAME git-rev=${GIT_REV:0:12} registry=$IMAGE_REGISTRY operator=$WITH_OPERATOR"
 echo "=============================================="
 
 echo ""
@@ -94,6 +102,16 @@ kubectl wait --for=condition=Ready pod -l app.kubernetes.io/part-of=tekton-trigg
 echo ""
 echo ">>> Namespace bootstrap (SA + RBAC)"
 bash "$SCRIPT_DIR/bootstrap-namespace.sh" "$NAMESPACE"
+
+if [[ "$WITH_OPERATOR" == "true" ]]; then
+  echo ""
+  echo ">>> M14 operator (CRDs + image + Deployment)"
+  sample_args=()
+  if [[ "$SKIP_NEWMAN" == "true" ]]; then
+    sample_args+=(--with-sample-run)
+  fi
+  bash "$SCRIPT_DIR/install-operator-kind.sh" "${sample_args[@]}"
+fi
 
 if [[ "$SKIP_PHASE2" != "true" ]]; then
   echo ""
@@ -131,6 +149,9 @@ if [[ "$SKIP_NEWMAN" != "true" ]]; then
   kubectl patch deployment tekton-dag-orchestrator -n "$NAMESPACE" --type=json \
     -p '[{"op":"add","path":"/spec/template/spec/containers/0/imagePullPolicy","value":"IfNotPresent"}]' \
     >/dev/null || true
+  if [[ "$WITH_OPERATOR" == "true" ]]; then
+    kubectl set env deployment/tekton-dag-orchestrator -n "$NAMESPACE" STACKRUN_VIA_CRD=true
+  fi
   kubectl rollout status deployment/tekton-dag-orchestrator -n "$NAMESPACE" --timeout=180s
 
   newman_args=(--skip-integration)
@@ -145,6 +166,9 @@ if [[ "$SKIP_NEWMAN" != "true" ]]; then
 
   echo ""
   echo ">>> Newman vs in-cluster orchestrator"
+  if [[ "$WITH_OPERATOR" == "true" ]]; then
+    export WAIT_STACKRUN_RECONCILE=1
+  fi
   bash "$SCRIPT_DIR/run-orchestrator-tests.sh" "${newman_args[@]}"
 fi
 

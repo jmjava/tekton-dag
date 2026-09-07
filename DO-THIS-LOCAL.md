@@ -148,14 +148,13 @@ Use when changing bootstrap, intercepts, or full-stack deploy behavior. Long-run
 CRD-primary path (see [milestones/milestone-14.md](milestones/milestone-14.md)):
 
 ```bash
-# Build/push operator image (Kind registry)
-./scripts/publish-operator-image.sh
+# Kind: CRDs + operator image + Deployment (requires local registry)
+./scripts/install-operator-kind.sh
 
-# Install CRDs + sample Stack / StackRun
-kubectl apply -f operator/config/crd/bases/
-kubectl apply -f operator/config/samples/
+# Newman against orchestrator creating StackRuns (skips isolation/phase2 if already green)
+./scripts/run-cluster-ci.sh --skip-isolation --skip-phase2 --with-operator
 
-# Or via Helm (also sets STACKRUN_VIA_CRD when operator.enabled)
+# Or Helm (also sets STACKRUN_VIA_CRD when operator.enabled)
 cd helm/tekton-dag && ./package.sh
 helm upgrade --install tekton-dag . -n tekton-pipelines \
   --set operator.enabled=true \
@@ -179,7 +178,7 @@ These are **not** blocked on this checklist; track in [milestones/milestone-13.m
 - Helm `appConfig` / ESO templates
 - Cross-cluster deploy task
 - `pytest-cov` CI gate
-- Live operator image + Newman with `STACKRUN_VIA_CRD=true`
+- Default `operator.enabled=true` after Kind soak (`run-cluster-ci.sh --with-operator`)
 
 ## Done when
 
