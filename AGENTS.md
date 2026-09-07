@@ -1,5 +1,11 @@
 # Agent instructions (tekton-dag)
 
+## Product first (papers follow)
+
+This repo is a **platform**. Architecture and backlog come from how Stack/StackRun, Tekton, Kind, and intercepts should work in a cluster — [milestones/milestone-14.md](milestones/milestone-14.md), [docs/REGRESSION.md](docs/REGRESSION.md), Helm, `scripts/`.
+
+[`docs/research/`](docs/research/) is **packaging**: what a paper may claim, venue notes, evidence inventory. It must **not** veto a control-plane change (operator default-on, Tekton pin, registry topology, intercept E2E) because that change is “not a workshop contribution.” Record what ran in `evaluation.md` after the fact. Do not shrink the product to fit a 4-page claim list.
+
 ## Regression — iterate until complete
 
 Full **`run-regression*.sh`** is a **system / integration** suite for this repo (cluster-backed tiers optional). It is **not** the same as "every test on every application pull request" — see [docs/REGRESSION.md](docs/REGRESSION.md) for PR vs platform scope.

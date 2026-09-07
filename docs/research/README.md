@@ -2,7 +2,7 @@
 
 This folder organizes the **existing** tekton-dag engineering work so it can be reviewed as a software-engineering **artifact + paper**, not as a product changelog.
 
-It does **not** invent a new platform. It maps what is already in this repo (and sibling repos) onto the structure academic reviewers expect: claimed contributions, related work, evaluation evidence, threats to validity, and a citable artifact.
+It does **not** invent a new platform and it does **not** drive design. Architecture lives in milestones, Helm, `operator/`, and `scripts/`. This tree maps what shipped onto reviewer-shaped documents: claimed contributions, related work, evaluation evidence, threats, citation. If product work and a paper claim list disagree, **change the paper**, not the platform.
 
 ## Current status
 

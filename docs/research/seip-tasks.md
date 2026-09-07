@@ -1,6 +1,6 @@
 # SEIP submission backlog (no this-cycle deadline)
 
-**Stance.** Do **not** aim at ICSE 2027 dates (SEIP paper due 23 Oct 2026). Other work comes first. This file is the standing bar for a later **Software Engineering in Practice** cycle (ICSE 2028 or equivalent FSE/ASE industry track). The requirements below are the CFP shape, not a calendar.
+**Stance.** This file is a **paper** backlog (later SEIP). It does not rank platform work. Operator soak, Tekton pins, registry topology, and intercept E2E are decided in milestones and `scripts/`, then recorded here if a paper needs the evidence.
 
 **What this is not.** Not a tool-demo 4-pager. Not a research-track experiment (baselines, p-values). SEIP wants a **practical problem, investigated in a real context, with evidence for the conclusions**, plus insights a practitioner could use.
 
