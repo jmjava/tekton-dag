@@ -88,6 +88,20 @@ def test_deploy_full_stack_has_validate_secrets_param():
     assert "volname" in script or "ascii_downcase" in script
 
 
+def test_resolve_stack_installs_jq_and_yq_without_swallowing_errors():
+    """Kind cluster CI failed when mikefarah/yq:4 had no jq and apk was `|| true`."""
+    task = _load("tasks/resolve-stack.yaml")
+    assert task["metadata"]["name"] == "resolve-stack"
+    step = task["spec"]["steps"][0]
+    assert step["image"] == "alpine:3.21"
+    script = step["script"]
+    assert "apk add --no-cache jq yq-go" in script
+    assert "apk add --no-cache jq >/dev/null 2>&1 || true" not in script
+    assert "command -v jq" in script
+    assert "command -v yq" in script
+    assert "stack file not found" in script
+
+
 def test_registries_yaml_loads():
     data = _load("stacks/registries.yaml")
     assert "registries" in data
