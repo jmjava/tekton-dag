@@ -1,5 +1,5 @@
 # Task that posts a comment on the GitHub PR with pipeline run status and optional link to Tekton Dashboard.
-# Requires a Kubernetes secret with key 'token' (GitHub token with repo scope for creating issue comments).
+# Uses a Kubernetes secret with key 'token' when configured; without one, the Task skips posting.
 # Pipeline should pass: git-url, pr-number, dashboard-url (optional), and optionally test-summary.
 # Status and pipeline run name/namespace can come from pipeline context.
 apiVersion: tekton.dev/v1
@@ -44,6 +44,7 @@ spec:
             secretKeyRef:
               name: $(params.github-secret-name)
               key: token
+              optional: true
         - name: GIT_URL
           value: $(params.git-url)
         - name: PR_REPO_URL

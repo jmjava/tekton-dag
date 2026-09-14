@@ -11,6 +11,11 @@ def test_intercept_workflow_has_explicit_backend_cadence_and_evidence():
     assert "pull_request:" in workflow
     assert '".github/workflows/intercept-e2e.yml"' in workflow
     assert '"helm/tekton-dag/**"' in workflow
+    assert '"operator/**"' in workflow
+    assert '"orchestrator/**"' in workflow
+    assert '"pipeline/**"' in workflow
+    assert '"tasks/**"' in workflow
+    assert '"scripts/install-tekton.sh"' in workflow
     assert '"scripts/bootstrap-namespace.sh"' in workflow
     assert "workflow_dispatch:" in workflow
     assert "schedule:" in workflow
@@ -99,3 +104,12 @@ def test_pipelinerun_builders_use_installed_build_cache_claim():
     assert '"claimName": "build-cache-pvc"' not in go_builder
     assert '"claimName": "build-cache"' in python_builder
     assert '"claimName": "build-cache-pvc"' not in python_builder
+
+
+def test_pr_comment_token_is_optional_when_commenting_is_not_configured():
+    task = (ROOT / "tasks/post-pr-comment.yaml").read_text()
+
+    token_ref = task.split("secretKeyRef:", 1)[1].split("- name: GIT_URL", 1)[0]
+    assert "key: token" in token_ref
+    assert "optional: true" in token_ref
+    assert 'if [ -z "$GITHUB_TOKEN" ]' in task

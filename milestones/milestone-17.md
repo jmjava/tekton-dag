@@ -24,7 +24,7 @@ regression criteria in `docs/AGENT-REGRESSION.md` are satisfied.
 
 ## P0 — Security and execution truth
 
-- [ ] **M17.1 Replace default `cluster-admin` pipeline RBAC**
+- [x] **M17.1 Replace default `cluster-admin` pipeline RBAC**
   - Default Helm installs must use a documented least-privilege role.
   - `rbac.clusterAdmin=true` remains an explicit local-development escape hatch.
   - Acceptance: `helm template` assertions cover both defaults and opt-in
@@ -38,7 +38,7 @@ regression criteria in `docs/AGENT-REGRESSION.md` are satisfied.
     deny-by-default production configuration, and negative-path tests.
   - Acceptance: pytest and Newman prove missing/invalid/valid credentials.
 
-- [ ] **M17.3 Automate a real PR/intercept product path**
+- [x] **M17.3 Automate a real PR/intercept product path**
   - Scheduled/manual CI must cover webhook or trigger → StackRun → operator →
     PR PipelineRun → build → intercept route → app tests → cleanup.
   - Cover Telepresence and mirrord over an explicit cadence; neither may be
@@ -158,8 +158,9 @@ regression criteria in `docs/AGENT-REGRESSION.md` are satisfied.
 |------|-------|----------|--------|
 | 2026-09-14 | Audit baseline | Local regression; Playwright; Go test/vet; coverage; latest cluster CI | Recorded |
 | 2026-09-14 | M17.2 mutation API authentication | Shared constant-time bearer check; 108 orchestrator, 68 GUI backend, and 61 common tests; frontend build; local regression exit 0 | Local green; Helm rendering and live-cluster Newman pending because this runner has no Helm or kubectl |
-| 2026-09-14 | M17.3 intercept product automation | Weekly/manual Telepresence + mirrord matrix; authenticated trigger-to-StackRun runner; retained traffic diagnostics; 3 static acceptance tests; local regression exit 0 | Automation green locally; first live matrix run and SSH repository secret still required |
+| 2026-09-14 | M17.3 intercept product automation | Weekly/manual Telepresence + mirrord matrix; authenticated trigger-to-StackRun runner; public HTTPS clone fallback; retained traffic diagnostics | Live run 34890630726 passed both trigger-to-traffic jobs and retained backend-specific evidence artifacts |
 | 2026-09-14 | M17.4 strict Results automation | Weekly/manual pinned Results v0.20.0 + ephemeral Postgres workflow; fail-closed installers; failure diagnostics; 2 static acceptance tests; local regression exit 0 | Automation green locally; first live strict workflow run still required |
 | 2026-09-14 | M17.2 mutation authentication acceptance | Strict Kind run 34874792600; least-privilege RBAC; Phase 2 passed; Newman missing/invalid/valid bearer paths; 38 assertions | Passed, zero Newman failures |
 | 2026-09-14 | M17.5 operator CI acceptance | Root operator workflow; lint, unit, envtest, generated-file checks; Kind StackRun domain E2E | Passed in PR #42 |
+| 2026-09-14 | M17.1 least-privilege RBAC acceptance | Helm default/opt-in assertions; strict Kind run 34883804213 passed Phase 2 and Newman; intercept run 34890630726 passed Telepresence and mirrord | Passed without pipeline `cluster-admin` |
 
