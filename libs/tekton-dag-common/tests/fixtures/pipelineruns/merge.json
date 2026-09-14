@@ -74,7 +74,7 @@
       {
         "name": "build-cache",
         "persistentVolumeClaim": {
-          "claimName": "build-cache-pvc"
+          "claimName": "build-cache"
         }
       }
     ]

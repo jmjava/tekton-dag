@@ -38,6 +38,7 @@ def test_product_script_covers_trigger_stackrun_tests_and_cleanup():
     assert "pipeline-results.json" in script
     assert "tekton.dev/pipelineTask=run-tests" in script
     assert 'pipeline_status" == "False"' in script
+    assert "kubectl get pvc build-cache" in script
     assert "pr-traffic-evidence.log" in script
     assert "kubectl delete pipelinerun" in script
     assert "kubectl delete stackrun" in script
@@ -88,3 +89,13 @@ def test_compile_pipeline_defaults_are_valid_container_images():
             marker = f"- name: compile-image-{image_param}"
             default = pipeline.split(marker, 1)[1].split("- name:", 1)[0]
             assert 'default: "ubuntu:22.04"' in default
+
+
+def test_pipelinerun_builders_use_installed_build_cache_claim():
+    go_builder = (ROOT / "operator/internal/pipeline/builder.go").read_text()
+    python_builder = (ROOT / "orchestrator/pipelinerun_builder.py").read_text()
+
+    assert '"claimName": "build-cache"' in go_builder
+    assert '"claimName": "build-cache-pvc"' not in go_builder
+    assert '"claimName": "build-cache"' in python_builder
+    assert '"claimName": "build-cache-pvc"' not in python_builder

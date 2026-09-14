@@ -145,7 +145,7 @@ func defaultWorkspaces(storage string) []any {
 		map[string]any{
 			"name": "build-cache",
 			"persistentVolumeClaim": map[string]any{
-				"claimName": "build-cache-pvc",
+				"claimName": "build-cache",
 			},
 		},
 	}
