@@ -67,7 +67,7 @@ Packaged content under `raw/` is **not** committed by default; `package.sh` copi
 | `stackFile` | string | `"stacks/stack-one.yaml"` | Default stack path for orchestrator (`STACK_FILE`) |
 | `rbac.create` | bool | `true` | Create ServiceAccount |
 | `rbac.serviceAccountName` | string | `"tekton-pr-sa"` | Service account name for pipelines and orchestrator |
-| `rbac.clusterAdmin` | bool | `true` | Bind SA to `cluster-admin` (tighten for production) |
+| `rbac.clusterAdmin` | bool | `false` | Use the chart's least-privilege pipeline ClusterRole by default; set `true` only as an explicit disposable-cluster escape hatch |
 | `workspaces.sharedWorkspace.storageClass` | string | `""` | Storage class for shared PVCs created by PipelineRuns (if you use volumeClaimTemplate externally) |
 | `workspaces.sharedWorkspace.size` | string | `"2Gi"` | Documented default size for shared workspace |
 | `workspaces.buildCache.enabled` | bool | `true` | Whether pipelines expect a `build-cache` workspace |
@@ -166,7 +166,7 @@ orchestrationService:
       memory: "512Mi"
 
 rbac:
-  clusterAdmin: false   # prefer a dedicated Role/RoleBinding in production
+  clusterAdmin: false   # chart-managed least-privilege pipeline role
 ```
 
 Install:

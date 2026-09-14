@@ -44,7 +44,10 @@ stackFile: "stacks/stack-one.yaml"
 rbac:
   create: true
   serviceAccountName: "tekton-pr-sa"
-  clusterAdmin: true
+  # Least-privilege ClusterRole is the default. Set clusterAdmin only for
+  # disposable local clusters whose intercept backend needs permissions not
+  # represented by the built-in role.
+  clusterAdmin: false
 
 workspaces:
   sharedWorkspace:
