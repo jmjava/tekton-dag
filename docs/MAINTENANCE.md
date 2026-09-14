@@ -137,8 +137,8 @@ Implement a Tekton `Task`, install it in the cluster, then set the pipeline para
 
 | Scope | Command | Notes |
 |-------|---------|--------|
-| Orchestrator unit tests | `cd orchestrator && python3 -m pytest tests/ -v` | **106** tests at the M17 baseline. |
-| Management GUI backend | `cd management-gui/backend && python3 -m pytest tests/ -v` | **65** tests at the M17 baseline. |
+| Orchestrator unit tests | `cd orchestrator && python3 -m pytest tests/ -v` | **108** tests at the M17 baseline. |
+| Management GUI backend | `cd management-gui/backend && python3 -m pytest tests/ -v` | **68** tests at the M17 baseline. |
 | Management GUI frontend (E2E) | `cd management-gui/frontend && npx playwright test` | **70** tests at the M17 baseline. |
 | Newman / Postman (cluster) | `./scripts/run-orchestrator-tests.sh --all` | Requires running orchestrator (and Neo4j for graph collection); see script header for prerequisites. |
 

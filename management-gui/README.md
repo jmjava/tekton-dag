@@ -58,7 +58,7 @@ cd backend
 python3 -m pytest tests/ -v
 ```
 
-**65** tests.
+**68** tests.
 
 ## Features (overview)
 

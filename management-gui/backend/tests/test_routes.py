@@ -1,15 +1,17 @@
 """Tests for Flask route blueprints — uses Flask test client with mocked backends."""
 
 import json
-from unittest.mock import patch, MagicMock
+import os
+import sys
+from unittest.mock import patch
 
 import pytest
 
-import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from app import create_app
 from flask.testing import FlaskClient
+
+from app import create_app
 
 
 class AuthenticatedFlaskClient(FlaskClient):
@@ -151,6 +153,7 @@ def test_injection_status_respects_team_stack_allow_list(
 ):
     """App in a stack not listed for the team must 404."""
     import os
+
     from app import create_app
 
     teams_dir = tmp_path / "teams" / "default"

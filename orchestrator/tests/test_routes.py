@@ -3,8 +3,6 @@
 import json
 from unittest.mock import patch
 
-import pytest
-
 
 def test_healthz(client):
     rv = client.get("/healthz")
@@ -374,7 +372,7 @@ def test_api_graph_ingest_neither_key(client):
 
 @patch("routes.graph_client.ingest_from_file")
 def test_api_graph_ingest_exception(mock_ingest, client):
-    mock_ingest.side_effect = IOError("bad file")
+    mock_ingest.side_effect = OSError("bad file")
     rv = client.post(
         "/api/graph/ingest",
         data=json.dumps({"fixture_file": "x"}),

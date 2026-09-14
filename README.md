@@ -87,7 +87,7 @@ Each row links to the **in-browser player** on Pages (`#seg-…`) and to the **c
 | [M9](milestones/milestone-9.md) | **Completed** | Test-trace regression graph + minimal test selection (Neo4j, mock Datadog). 10 Newman requests, 36 assertions. Test filtering in PR pipeline. |
 | [M10](milestones/milestone-10.md) | **Completed** | Multi-team scaling: orchestration service, Helm chart, ArgoCD, batched builds |
 | [M10.1](milestones/milestone-10-1.md) | **Completed** | Orchestration service testing: Postman/Newman (15 requests, 30 assertions), integration validation |
-| [M11](milestones/milestone-11.md) | **Completed** | Vue 3 Management GUI + Python/Flask backend (replaces `reporting-gui/`). Multi-team, multi-cluster, DAG visualization. Current regression inventory: 70 Playwright tests and 65 backend pytest tests. |
+| [M11](milestones/milestone-11.md) | **Completed** | Vue 3 Management GUI + Python/Flask backend (replaces `reporting-gui/`). Multi-team, multi-cluster, DAG visualization. Current regression inventory: 70 Playwright tests and 68 backend pytest tests. |
 | [M12](milestones/milestone-12.md) | **Completed** | Architecture customization: shared Python package, Helm ConfigMap/PVC templates, parameterized pipelines (no hardcoded `localhost:5000`), `scripts/common.sh`, build image variants (Java 11/17/21, Node 18/20/22, Python 3.10–3.12, PHP 8.1–8.3), custom pipeline hook tasks (pre/post build/test), stack JSON schema, 62 orchestrator pytest tests, 14 shared-package tests. Full docs: [CUSTOMIZATION.md](docs/CUSTOMIZATION.md), [TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md](docs/TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md), MAINTENANCE.md, Helm README. |
 | [M12.2](milestones/milestone-12.2.md) | **Partial** | **Part A done:** doc sync + archive. **Part B open:** regression + Management GUI [docs & demo plan](docs/TESTING-AND-REGRESSION-OVERVIEW.md) / [GUI extension](docs/MANAGEMENT-GUI-EXTENSION.md) / [video segments](docs/demos/segments-m12-2-regression-gui.md) |
 | [doc-generator](milestones/milestone-doc-generator.md) | **Completed** | Reusable Python library ([`docgen`](https://github.com/jmjava/documentation-generator)) extracting the demo pipeline (TTS, Manim, VHS, ffmpeg, validation, Pages). OCR validation, A/V sync, narration linting, auto-generated GitHub Pages. All 18 demo segments regenerated via `docgen`. |
@@ -402,7 +402,7 @@ npm run dev  # http://localhost:3000 (proxies /api to Flask)
 **Testing:**
 
 ```bash
-# Backend unit tests (65 tests at the M17 baseline)
+# Backend unit tests (68 tests at the M17 baseline)
 cd management-gui/backend && source .venv/bin/activate
 pytest
 
@@ -411,7 +411,10 @@ cd management-gui/frontend
 npm run test:e2e
 
 # Backend API tests (Postman/Newman)
-newman run tests/postman/management-gui-tests.json --env-var baseUrl=http://localhost:5000
+cd ../..
+newman run tests/postman/management-gui-tests.json \
+  --env-var baseUrl=http://localhost:5000 \
+  --env-var apiMutationToken="$API_MUTATION_TOKEN"
 ```
 
 ---

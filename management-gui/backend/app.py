@@ -9,17 +9,17 @@ Deployment modes (controlled by TEAM_NAME env var):
   TEAM_NAME=default → per-team: loads one team, frontend hides switcher
 """
 
-import os
 import logging
+import os
 from pathlib import Path
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from tekton_dag_common.api_auth import bearer_token_matches
 
-from team_registry import TeamRegistry
-from stack_resolver import StackResolver
 import k8s_client
+from stack_resolver import StackResolver
+from team_registry import TeamRegistry
 
 logging.basicConfig(
     level=logging.INFO,
@@ -82,10 +82,10 @@ def create_app():
         return None
 
     from routes.health import bp as health_bp
-    from routes.teams import bp as teams_bp
     from routes.pipelines import bp as pipelines_bp
-    from routes.stacks import bp as stacks_bp
     from routes.repos import bp as repos_bp
+    from routes.stacks import bp as stacks_bp
+    from routes.teams import bp as teams_bp
 
     app.register_blueprint(health_bp)
     app.register_blueprint(teams_bp)

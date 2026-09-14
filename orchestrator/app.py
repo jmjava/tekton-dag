@@ -6,8 +6,8 @@ The operator reconciles those into Tekton PipelineRuns.
 Runs as an in-cluster pod alongside Tekton.
 """
 
-import os
 import logging
+import os
 
 from flask import Flask, jsonify, request
 from tekton_dag_common.api_auth import bearer_token_matches

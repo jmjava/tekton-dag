@@ -33,13 +33,13 @@ from tekton_dag_common.resource_profiles import (
     kaniko_resources,
     resources_for_app,
 )
+from tekton_dag_common.stack_cr import stack_ref_from_file, stack_yaml_to_cr
 from tekton_dag_common.stack_resolver_base import (
     extract_repo_map,
     get_build_apps,
     load_stack_yaml,
     parse_apps,
 )
-from tekton_dag_common.stack_cr import stack_ref_from_file, stack_yaml_to_cr
 from tekton_dag_common.stackrun_builder import build_stackrun
 from tekton_dag_common.team_cr import team_yaml_to_cr
 
@@ -53,8 +53,8 @@ __all__ = [
     "apply_reliability",
     "base_pipelinerun",
     "bearer_token_matches",
-    "build_stackrun",
     "build_env_from",
+    "build_stackrun",
     "build_volume_mounts_and_volumes",
     "classify_failure",
     "default_workspaces",
