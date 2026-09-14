@@ -1,6 +1,6 @@
 # Isolation evaluation data
 
-CSV produced by [`scripts/run-isolation-eval.sh`](../../../scripts/run-isolation-eval.sh).
+CSV produced by [`scripts/run-isolation-eval.sh`](../../../../scripts/run-isolation-eval.sh).
 
 | File | How it is produced | May be cited in a paper? |
 |------|--------------------|---------------------------|

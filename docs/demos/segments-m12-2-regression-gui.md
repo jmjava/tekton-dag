@@ -17,7 +17,7 @@ Shot list and narration beats for **new** videos (or M8 pipeline add-ons). Produ
 **Assets to add after recording:**
 
 - `docs/demos/recordings/12-regression-suite.mp4` (suggested name; **do not reuse** `09-results-db`)  
-- Narration stub: [narration/12-regression-suite.md](narration/12-regression-suite.md)  
+- Narration: [narration/15-regression-suite.md](narration/15-regression-suite.md)  
 - Update `docs/index.html` with a new card when the MP4 exists.  
 - Optional: `docs/demos/audio/12-regression-suite.mp3` + `timing.json` entry if using M8 automation.
 
@@ -31,7 +31,7 @@ Shot list and narration beats for **new** videos (or M8 pipeline add-ons). Produ
 | DAG | `DagView` with Vue Flow | “Graph comes from stack YAML resolved server-side.” |
 
 **Companion doc:** [MANAGEMENT-GUI-EXTENSION.md](../MANAGEMENT-GUI-EXTENSION.md)  
-**Narration stub:** [narration/13-management-gui-architecture.md](narration/13-management-gui-architecture.md)  
+**Narration:** [narration/16-management-gui.md](narration/16-management-gui.md)  
 **Recording:** e.g. `docs/demos/recordings/13-management-gui-architecture.mp4`
 
 ## Segment C — Extending the GUI for more Tekton (~2–3 min)
@@ -42,7 +42,7 @@ Shot list and narration beats for **new** videos (or M8 pipeline add-ons). Produ
 | Checklist | Bullet list on slide (from extension doc) | “Tests: pytest for API, Playwright for UI.” |
 | Example idea | Optional: mock “TaskRun logs” feature | “Backend streams logs; frontend shows a modal — same pattern for Results or Triggers.” |
 
-**Narration stub:** [narration/14-gui-tekton-extension.md](narration/14-gui-tekton-extension.md)  
+**Narration:** [narration/17-extending-gui.md](narration/17-extending-gui.md)
 **Recording:** e.g. `docs/demos/recordings/14-gui-tekton-extension.mp4`
 
 ## Cross-links

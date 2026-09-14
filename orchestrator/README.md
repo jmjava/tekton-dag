@@ -1,6 +1,6 @@
 # Orchestrator service
 
-Flask service that runs in (or beside) the Kubernetes cluster: it receives **GitHub webhooks** and **manual API calls**, **resolves** which stack and app a repo maps to, **creates Tekton `PipelineRun`** objects via the Kubernetes API, and can **query Neo4j** for test-plan / graph helpers.
+Flask service that runs in (or beside) the Kubernetes cluster: it receives **GitHub webhooks** and **manual API calls**, **resolves** which stack and app a repo maps to, creates `StackRun` custom resources, and can **query Neo4j** for test-plan / graph helpers. The Go operator reconciles each `StackRun` into a Tekton `PipelineRun`.
 
 ## Endpoints
 
@@ -10,7 +10,7 @@ Flask service that runs in (or beside) the Kubernetes cluster: it receives **Git
 | GET | `/readyz` | Readiness: confirms stack config loaded (`stacks_loaded` count). |
 | GET | `/api/stacks` | List registered stacks from the resolver. |
 | GET | `/api/teams` | List teams discovered from team config. |
-| GET | `/api/runs` | Recent `PipelineRun` summary (`limit` query param, default 20). |
+| GET | `/api/runs` | Recent `StackRun` summary (`limit` query param, default 20). |
 | POST | `/api/run` | Manual trigger: JSON body with `mode` `pr` \| `bootstrap` \| `merge` \| `promote` and fields per mode (see `routes.py`). |
 | POST | `/api/bootstrap` | Trigger bootstrap pipeline (optional JSON `stack_file`). |
 | POST | `/webhook/github` | GitHub `pull_request` webhook: HMAC-verified when secret configured; opens PR runs, merged close runs merge pipeline. |
@@ -26,7 +26,7 @@ Defined in `app.py` (with defaults). Common ones:
 
 | Variable | Purpose |
 |----------|---------|
-| `NAMESPACE` | Namespace for created `PipelineRun` resources. |
+| `NAMESPACE` | Namespace for created `StackRun` resources. |
 | `TEAM_NAME` | Team identifier (logging / config context). |
 | `IMAGE_REGISTRY` | Container registry base passed into runs. |
 | `CACHE_REPO` | Kaniko cache repository. |

@@ -37,7 +37,7 @@ cd frontend
 npx playwright test
 ```
 
-**69** E2E tests across the suite (`npx playwright test --list`).
+**70** E2E tests across the suite (`npx playwright test --list`).
 
 **Backend (pytest):**
 
@@ -46,7 +46,7 @@ cd backend
 python3 -m pytest tests/ -v
 ```
 
-**56** tests.
+**65** tests.
 
 ## Features (overview)
 

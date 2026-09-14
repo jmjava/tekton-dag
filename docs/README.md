@@ -6,7 +6,7 @@ This folder contains design, operations, and verification docs for the tekton-da
 
 | Area | Where |
 |------|--------|
-| **Milestones (current)** | [../milestones/](../milestones/) — M4 through M12, M12.2, [M8](../milestones/milestone-8.md) (partial demos) |
+| **Milestones (current)** | [../milestones/](../milestones/) — M4 through M17, including [M13 production hardening](../milestones/milestone-13.md), [M14 CRD control plane](../milestones/milestone-14.md), and [M17 audit closure](../milestones/milestone-17.md) |
 | **Milestones (historical)** | [../milestones/completed/](../milestones/completed/) — M2, M3 |
 | **Archive (not maintained)** | [archive/](archive/) — obsolete session plans and similar |
 | **Customization & ops** | [CUSTOMIZATION.md](CUSTOMIZATION.md), [MAINTENANCE.md](MAINTENANCE.md) |

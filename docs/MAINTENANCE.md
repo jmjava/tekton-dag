@@ -11,7 +11,7 @@ The system wires **stack definitions** (YAML) to **Tekton** pipelines, with an i
 | **`stacks/`** | Stack YAML: applications, build tool per app, downstream dependencies, test configuration. Often synced into the cluster via Helm ConfigMaps. |
 | **`tasks/`** | Tekton `Task` manifests: resolve stack, clone repos, compile (per tool), containerize, deploy intercepts / full stack, validate propagation, run tests, versioning, cleanup, graph helpers, etc. |
 | **`pipeline/`** | Tekton `Pipeline` definitions and trigger bindings. Core flows: PR test, bootstrap deploy, merge/release. Additional pipelines exist for continuation and DAG verification. |
-| **`orchestrator/`** | Flask service: `app.py` (config), `routes.py` (HTTP API), `stack_resolver.py` (repo → stack), `pipelinerun_builder.py` (Run YAML), `k8s_client.py`, `graph_client.py` (Neo4j). |
+| **`orchestrator/`** | Flask service: `app.py` (config), `routes.py` (HTTP API), `stack_resolver.py` (repo → stack), `stackrun_builder.py` (StackRun CRs), `k8s_client.py`, `graph_client.py` (Neo4j). The legacy PipelineRun builder is a golden-contract oracle, not the runtime path. |
 | **`management-gui/`** | Vue 3 (Vite) frontend plus Flask backend for operating and observing pipelines, teams, and repos. |
 | **`helm/tekton-dag/`** | Helm chart: orchestrator, management GUI, RBAC, ConfigMaps for stacks/teams, optional PVCs, values for registry and defaults. |
 | **`scripts/`** | Bash utilities; new scripts should `source` **`scripts/common.sh`** for shared defaults (`NAMESPACE`, `GIT_URL`, port-forward helpers, etc.). |
@@ -108,8 +108,9 @@ Tasks live under `tasks/` (see filenames for the canonical Tekton `metadata.name
 
 1. Add a `spec.params` entry in the **`Pipeline`** manifest (`pipeline/stack-*-pipeline.yaml`).
 2. Thread `$(params.your-param)` into the tasks that need it.
-3. If the orchestrator must set it, extend **`orchestrator/pipelinerun_builder.py`** for each mode (`build_pr_pipelinerun`, `build_bootstrap_pipelinerun`, `build_merge_pipelinerun`) and any callers (`routes.py`).
-4. Re-apply pipelines to the cluster; bump Helm/app version if you version the chart with the change.
+3. Extend **`libs/tekton-dag-common/tekton_dag_common/stackrun_builder.py`** and its callers so the new value is represented on the StackRun.
+4. Extend the operator's canonical builder under **`operator/internal/pipeline/`** and update shared golden contracts.
+5. Re-apply pipelines to the cluster; bump Helm/app version if you version the chart with the change.
 
 ### Add a compile tool (e.g. Rust, Go)
 
@@ -136,9 +137,9 @@ Implement a Tekton `Task`, install it in the cluster, then set the pipeline para
 
 | Scope | Command | Notes |
 |-------|---------|--------|
-| Orchestrator unit tests | `cd orchestrator && python3 -m pytest tests/ -v` | **62** tests (collector count). |
-| Management GUI backend | `cd management-gui/backend && python3 -m pytest tests/ -v` | **56** tests. |
-| Management GUI frontend (E2E) | `cd management-gui/frontend && npx playwright test` | **69** tests. |
+| Orchestrator unit tests | `cd orchestrator && python3 -m pytest tests/ -v` | **106** tests at the M17 baseline. |
+| Management GUI backend | `cd management-gui/backend && python3 -m pytest tests/ -v` | **65** tests at the M17 baseline. |
+| Management GUI frontend (E2E) | `cd management-gui/frontend && npx playwright test` | **70** tests at the M17 baseline. |
 | Newman / Postman (cluster) | `./scripts/run-orchestrator-tests.sh --all` | Requires running orchestrator (and Neo4j for graph collection); see script header for prerequisites. |
 
 ---
