@@ -15,6 +15,10 @@ Do **not** confuse these:
 
 So: **not all tests run on every PR.** `--local-only` (including Java/PHP/operator) is PR-gated. Playwright, Newman, Phase 2, and Kind isolation measurements run on **cluster-regression** (nightly / `workflow_dispatch` / version tags), not on pull requests. The slower Telepresence and mirrord product paths run weekly and on dispatch. App PRs run a narrower, stack-scoped test stage.
 
+The existence of the intercept workflow is not proof that either backend is
+currently healthy. Treat only a recent successful matrix job and its retained
+traffic artifact as verification.
+
 **Streaming / timestamps:** use **`scripts/run-regression-stream.sh`** — same arguments, prefixes each line with `[HH:MM:SS]` and preserves the real exit code (plain `| while read` does not).
 
 **Port-forward prep:** [common.sh](../scripts/common.sh) defines **`free_tcp_port`**. Regression (**[run-regression.sh](../scripts/run-regression.sh)**) runs a **prep** step when `kubectl` works: frees **`ORCHESTRATOR_TEST_PORT`** (default **9091**) and **`RESULTS_API_LOCAL_PORT`** (default **8080**). Set **`REGRESSION_FREE_PORTS=0`** to skip that prep. [run-orchestrator-tests.sh](../scripts/run-orchestrator-tests.sh) also frees the orchestrator local port; [verify-results-in-db.sh](../scripts/verify-results-in-db.sh) frees **8080** (or **`RESULTS_API_LOCAL_PORT`**) before forwarding the Results API.
