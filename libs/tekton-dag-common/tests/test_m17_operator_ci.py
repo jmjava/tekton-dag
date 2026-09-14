@@ -27,3 +27,10 @@ def test_operator_domain_integration_covers_m17_lifecycle_contracts():
     assert 't.Run("approval blocks then creates"' in test
     assert 't.Run("continuation carries results and pvc"' in test
     assert "TestInvalidStackRejectedByCRDSchema" in test
+
+
+def test_tekton_install_retries_controller_owned_resource_apply_races():
+    installer = (ROOT / "scripts/install-tekton.sh").read_text()
+
+    assert "apply_with_retry()" in installer
+    assert 'apply_with_retry -f "$MILESTONE_DIR/pipeline/"' in installer

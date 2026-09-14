@@ -19,6 +19,23 @@ TEKTON_GIT_CLONE_URL="${TEKTON_GIT_CLONE_URL:-https://raw.githubusercontent.com/
 
 need kubectl
 
+apply_with_retry() {
+  local attempts=3
+  local attempt
+
+  for attempt in $(seq 1 "$attempts"); do
+    if kubectl apply "$@"; then
+      return 0
+    fi
+    if [ "$attempt" -lt "$attempts" ]; then
+      echo "  kubectl apply raced with a controller; retrying ($attempt/$attempts)..." >&2
+      sleep "$attempt"
+    fi
+  done
+
+  return 1
+}
+
 echo "=============================================="
 echo "  Install Tekton (Pipelines + git-clone + stack tasks/pipelines)"
 echo "  Pipelines: ${TEKTON_PIPELINE_VERSION}  Triggers: ${TEKTON_TRIGGERS_VERSION}"
@@ -53,7 +70,9 @@ kubectl apply -f "$TEKTON_GIT_CLONE_URL" -n "$NAMESPACE" 2>/dev/null || \
 # 4. This repo's tasks and pipelines (kubectl apply is idempotent; triggers apply now that Triggers is installed)
 echo "  Applying stack tasks and pipelines..."
 kubectl apply -f "$MILESTONE_DIR/tasks/" -n "$NAMESPACE"
-kubectl apply -f "$MILESTONE_DIR/pipeline/" -n "$NAMESPACE"
+# EventListener reconciliation creates el-* Services. It can race the explicit
+# Service in triggers.yaml between kubectl's read and create operations.
+apply_with_retry -f "$MILESTONE_DIR/pipeline/" -n "$NAMESPACE"
 
 echo ""
 echo "  Done. For full PR pipeline (intercepts), also install the Traffic Manager:"
