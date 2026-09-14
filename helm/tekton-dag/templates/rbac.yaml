@@ -58,9 +58,10 @@ rules:
     resources: ["ingresses", "networkpolicies"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   # Pipeline tasks inspect execution resources for status and cleanup.
+  # The orchestrator uses this ServiceAccount to create PipelineRuns.
   - apiGroups: ["tekton.dev"]
     resources: ["pipelineruns", "taskruns"]
-    verbs: ["get", "list", "watch", "patch", "delete"]
+    verbs: ["get", "list", "watch", "create", "patch", "delete"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

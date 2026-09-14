@@ -98,7 +98,7 @@ rules:
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   - apiGroups: ["tekton.dev"]
     resources: ["pipelineruns", "taskruns"]
-    verbs: ["get", "list", "watch", "patch", "delete"]
+    verbs: ["get", "list", "watch", "create", "patch", "delete"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
