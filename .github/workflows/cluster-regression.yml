@@ -8,6 +8,7 @@ name: cluster regression
 on:
   pull_request:
     paths:
+      - ".github/workflows/cluster-regression.yml"
       - "helm/tekton-dag/**"
       - "scripts/bootstrap-namespace.sh"
       - "scripts/run-cluster-ci.sh"
