@@ -51,11 +51,11 @@ spec:
       description: "Image for Composer/PHP compile step"
       default: ""
     - name: pre-build-task
-      description: "Optional Tekton Task to run after clone, before compile. Empty = skip."
-      default: ""
+      description: "Optional Tekton Task to run after clone, before compile."
+      default: "tekton-dag-hook-noop"
     - name: post-build-task
-      description: "Optional Tekton Task to run after containerize, before tag-release. Empty = skip."
-      default: ""
+      description: "Optional Tekton Task to run after containerize, before tag-release."
+      default: "tekton-dag-hook-noop"
 
   workspaces:
     - name: shared-workspace
@@ -156,7 +156,7 @@ spec:
       when:
         - input: $(params.pre-build-task)
           operator: notin
-          values: [""]
+          values: ["tekton-dag-hook-noop"]
       taskRef:
         resolver: cluster
         params:
@@ -308,7 +308,7 @@ spec:
       when:
         - input: $(params.post-build-task)
           operator: notin
-          values: [""]
+          values: ["tekton-dag-hook-noop"]
       taskRef:
         resolver: cluster
         params:

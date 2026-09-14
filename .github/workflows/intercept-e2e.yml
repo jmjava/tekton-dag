@@ -83,7 +83,7 @@ jobs:
           else
             echo "No E2E SSH key configured; public application repositories will use HTTPS."
           fi
-          kubectl create secret generic git-ssh-key \
+          kubectl create secret generic ssh-key-secret \
             -n tekton-pipelines \
             "${secret_args[@]}" \
             --dry-run=client -o yaml | kubectl apply -f -

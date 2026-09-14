@@ -145,6 +145,7 @@ trigger_run() {
 
 wait_for_stackrun() {
   local stackrun="$1" label="$2" elapsed=0 phase="" pipeline_run=""
+  local pipeline_status="" pipeline_reason=""
   while (( elapsed < TIMEOUT )); do
     phase="$(kubectl get stackrun "$stackrun" -n "$NAMESPACE" \
       -o jsonpath='{.status.phase}' 2>/dev/null || true)"
@@ -158,6 +159,16 @@ wait_for_stackrun() {
         die "$label StackRun $stackrun failed with phase $phase"
         ;;
     esac
+    if [[ -n "$pipeline_run" ]]; then
+      pipeline_status="$(kubectl get pipelinerun "$pipeline_run" -n "$NAMESPACE" \
+        -o jsonpath='{.status.conditions[?(@.type=="Succeeded")].status}' 2>/dev/null || true)"
+      pipeline_reason="$(kubectl get pipelinerun "$pipeline_run" -n "$NAMESPACE" \
+        -o jsonpath='{.status.conditions[?(@.type=="Succeeded")].reason}' 2>/dev/null || true)"
+      if [[ "$pipeline_status" == "False" ]]; then
+        collect_run_evidence "$stackrun" "$label"
+        die "$label PipelineRun $pipeline_run failed with reason ${pipeline_reason:-Unknown}"
+      fi
+    fi
     sleep "$POLL_INTERVAL"
     elapsed=$((elapsed + POLL_INTERVAL))
   done

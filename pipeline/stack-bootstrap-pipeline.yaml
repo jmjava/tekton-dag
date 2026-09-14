@@ -45,11 +45,11 @@ spec:
       description: "Max concurrent Kaniko pods for containerize. 0 = unlimited."
       default: "0"
     - name: pre-build-task
-      description: "Optional Tekton Task to run after clone, before compile. Empty = skip."
-      default: ""
+      description: "Optional Tekton Task to run after clone, before compile."
+      default: "tekton-dag-hook-noop"
     - name: post-build-task
-      description: "Optional Tekton Task to run after containerize, before deploy. Empty = skip."
-      default: ""
+      description: "Optional Tekton Task to run after containerize, before deploy."
+      default: "tekton-dag-hook-noop"
   workspaces:
     - name: shared-workspace
     - name: ssh-key
@@ -123,7 +123,7 @@ spec:
       when:
         - input: $(params.pre-build-task)
           operator: notin
-          values: [""]
+          values: ["tekton-dag-hook-noop"]
       # Tekton v1.6+ validates taskRef.name as a DNS label before param
       # substitution, so $(params.*) cannot be the name field. Cluster
       # resolver takes the Task name as a param (skipped when empty).
@@ -282,7 +282,7 @@ spec:
       when:
         - input: $(params.post-build-task)
           operator: notin
-          values: [""]
+          values: ["tekton-dag-hook-noop"]
       taskRef:
         resolver: cluster
         params:
