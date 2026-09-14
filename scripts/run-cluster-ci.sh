@@ -104,6 +104,24 @@ kubectl wait --for=condition=Ready pod -l app.kubernetes.io/part-of=tekton-trigg
 echo ""
 echo ">>> Namespace bootstrap (SA + RBAC)"
 bash "$SCRIPT_DIR/bootstrap-namespace.sh" "$NAMESPACE"
+pipeline_subject="system:serviceaccount:${NAMESPACE}:tekton-pr-sa"
+if [[ "$(kubectl auth can-i '*' '*' --as="$pipeline_subject" 2>/dev/null || true)" != "no" ]]; then
+  die "tekton-pr-sa unexpectedly has cluster-admin-equivalent access"
+fi
+for permission in \
+  "create deployments.apps" \
+  "create pods" \
+  "get secrets" \
+  "delete pipelineruns.tekton.dev"; do
+  read -r verb resource <<<"$permission"
+  if [[ "$(kubectl auth can-i "$verb" "$resource" --as="$pipeline_subject" 2>/dev/null || true)" != "yes" ]]; then
+    die "tekton-pr-sa lacks required permission: $permission"
+  fi
+done
+if [[ "$(kubectl auth can-i create secrets --as="$pipeline_subject" 2>/dev/null || true)" != "no" ]]; then
+  die "tekton-pr-sa must not mutate Secrets"
+fi
+echo "  OK: tekton-pr-sa uses least-privilege pipeline RBAC"
 
 if [[ "$WITH_OPERATOR" == "true" ]]; then
   echo ""

@@ -44,7 +44,7 @@ Shared helpers live in [`scripts/common.sh`](../scripts/common.sh) (sourced by m
 | [`install-tekton-results.sh`](../scripts/install-tekton-results.sh) | Tekton Results components. |
 | [`install-postgres-kind.sh`](../scripts/install-postgres-kind.sh) | Postgres in Kind (Results / app DB). |
 | [`install-neo4j-kind.sh`](../scripts/install-neo4j-kind.sh) | Neo4j in Kind for graph features. |
-| [`bootstrap-namespace.sh`](../scripts/bootstrap-namespace.sh) | Bootstrap namespace resources for a stack. |
+| [`bootstrap-namespace.sh`](../scripts/bootstrap-namespace.sh) | Bootstrap namespace resources with least-privilege pipeline RBAC. `--cluster-admin` is an explicit disposable-cluster escape hatch. |
 | [`install-operator-webhook-kind.sh`](../scripts/install-operator-webhook-kind.sh) | Kind: TLS certs + Stack ValidatingWebhookConfiguration (`failurePolicy: Fail`). |
 
 ---

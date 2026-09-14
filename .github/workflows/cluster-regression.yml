@@ -6,6 +6,11 @@
 name: cluster regression
 
 on:
+  pull_request:
+    paths:
+      - "helm/tekton-dag/**"
+      - "scripts/bootstrap-namespace.sh"
+      - "scripts/run-cluster-ci.sh"
   workflow_dispatch:
     inputs:
       isolation_repeats:

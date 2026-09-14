@@ -56,6 +56,18 @@ jobs:
           go-version: "1.23"
           cache-dependency-path: operator/go.sum
 
+      - name: Install Helm
+        env:
+          HELM_VERSION: v4.3.0
+          HELM_SHA256: 86584a54def73570558f66f5111cc53dfed56689637ae32c1201205d494f54fb
+        run: |
+          archive="helm-${HELM_VERSION}-linux-amd64.tar.gz"
+          curl -fsSLo "/tmp/${archive}" "https://get.helm.sh/${archive}"
+          echo "${HELM_SHA256}  /tmp/${archive}" | sha256sum -c -
+          tar -xzf "/tmp/${archive}" -C /tmp
+          sudo install /tmp/linux-amd64/helm /usr/local/bin/helm
+          helm version
+
       - name: Bootstrap Python venv
         run: ./scripts/bootstrap-regression-venv.sh
 
