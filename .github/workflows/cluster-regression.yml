@@ -8,6 +8,7 @@ name: cluster regression
 on:
   pull_request:
     paths:
+      - ".github/workflows/cluster-regression.yml"
       - "helm/tekton-dag/**"
       - "scripts/bootstrap-namespace.sh"
       - "scripts/run-cluster-ci.sh"
@@ -116,6 +117,11 @@ jobs:
           extra=()
           if [[ "${{ github.event.inputs.skip_newman || false }}" == "true" ]]; then
             extra+=(--skip-newman)
+          fi
+          # RBAC/chart PRs need the deterministic Tekton Phase 2 + Newman gate.
+          # Isolation benchmarking remains part of nightly/manual/tag runs.
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            extra+=(--skip-isolation)
           fi
           # Script defaults WITH_OPERATOR=true. Honor dispatch uncheck only.
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.with_operator }}" == "false" ]]; then
