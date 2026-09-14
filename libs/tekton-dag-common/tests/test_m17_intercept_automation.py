@@ -17,6 +17,8 @@ def test_intercept_workflow_has_explicit_backend_cadence_and_evidence():
     assert "if: always()" in workflow
     assert "actions/upload-artifact@" in workflow
     assert "retention-days: 30" in workflow
+    # Workflow-level expressions are evaluated before matrix expansion.
+    assert "matrix." not in workflow.split("jobs:", 1)[0]
 
 
 def test_product_script_covers_trigger_stackrun_tests_and_cleanup():
