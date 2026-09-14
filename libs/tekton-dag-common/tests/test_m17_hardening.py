@@ -69,6 +69,10 @@ def test_helm_renders_least_privilege_pipeline_rbac_by_default():
 
     assert binding["roleRef"]["name"] == role["metadata"]["name"]
     assert all(rule.get("resources") != ["clusterrolebindings"] for rule in role["rules"])
+    tekton_rule = next(
+        rule for rule in role["rules"] if rule.get("apiGroups") == ["tekton.dev"]
+    )
+    assert "create" in tekton_rule["verbs"]
     assert not any(
         document.get("roleRef", {}).get("name") == "cluster-admin"
         for document in documents
@@ -98,6 +102,15 @@ def test_cluster_bootstrap_and_regression_enforce_least_privilege_rbac():
     assert 'kubectl delete clusterrolebinding "tekton-pr-sa-admin-${NAMESPACE}"' in bootstrap
     assert "tekton-pr-sa unexpectedly has cluster-admin-equivalent access" in cluster_ci
     assert "tekton-pr-sa must not mutate Secrets" in cluster_ci
+
+
+def test_newman_auth_negatives_override_collection_credentials():
+    orchestrator = (ROOT / "tests/postman/orchestrator-tests.json").read_text()
+    gui = (ROOT / "tests/postman/management-gui-tests.json").read_text()
+
+    for collection in (orchestrator, gui):
+        assert '"key": "Authorization"' in collection
+        assert '"value": "Bearer invalid-token"' in collection
 
 
 def test_local_regression_installs_checksum_verified_helm():
