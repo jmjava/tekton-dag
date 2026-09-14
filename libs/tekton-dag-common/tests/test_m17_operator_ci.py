@@ -13,6 +13,7 @@ def test_operator_workflow_runs_pinned_quality_and_domain_jobs():
     assert "make lint" in workflow
     assert "GOTOOLCHAIN: auto" in workflow
     assert "make test-envtest" in workflow
+    assert workflow.count('"scripts/install-tekton.sh"') == 2
     assert "Kind StackRun domain E2E" in workflow
     assert "v0.27.0/kind-linux-amd64" in workflow
     assert "sha256sum -c -" in workflow
