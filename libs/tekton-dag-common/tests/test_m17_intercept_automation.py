@@ -11,6 +11,11 @@ def test_intercept_workflow_has_explicit_backend_cadence_and_evidence():
     assert "pull_request:" in workflow
     assert '".github/workflows/intercept-e2e.yml"' in workflow
     assert '"helm/tekton-dag/**"' in workflow
+    assert '"operator/**"' in workflow
+    assert '"orchestrator/**"' in workflow
+    assert '"pipeline/**"' in workflow
+    assert '"tasks/**"' in workflow
+    assert '"scripts/install-tekton.sh"' in workflow
     assert '"scripts/bootstrap-namespace.sh"' in workflow
     assert "workflow_dispatch:" in workflow
     assert "schedule:" in workflow
