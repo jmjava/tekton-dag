@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	tektondagv1alpha1 "github.com/jmjava/tekton-dag/operator/api/v1alpha1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 

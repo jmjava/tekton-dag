@@ -67,35 +67,35 @@ type StackDefaults struct {
 
 // StackApp is one node in the stack DAG.
 type StackApp struct {
-	Name             string                `json:"name"`
-	Repo             string                `json:"repo"`
-	Role             string                `json:"role"`
-	PropagationRole  string                `json:"propagationRole,omitempty"`
-	ContainerPort    string                `json:"containerPort,omitempty"`
-	ContextDir       string                `json:"contextDir,omitempty"`
-	Dockerfile       string                `json:"dockerfile,omitempty"`
-	Build            *StackAppBuild        `json:"build,omitempty"`
-	Downstream       []string              `json:"downstream,omitempty"`
-	Tests            *runtime.RawExtension `json:"tests,omitempty"`
-	Secrets          *StackInjection       `json:"secrets,omitempty"`
-	Config           *StackInjection       `json:"config,omitempty"`
+	Name            string                `json:"name"`
+	Repo            string                `json:"repo"`
+	Role            string                `json:"role"`
+	PropagationRole string                `json:"propagationRole,omitempty"`
+	ContainerPort   string                `json:"containerPort,omitempty"`
+	ContextDir      string                `json:"contextDir,omitempty"`
+	Dockerfile      string                `json:"dockerfile,omitempty"`
+	Build           *StackAppBuild        `json:"build,omitempty"`
+	Downstream      []string              `json:"downstream,omitempty"`
+	Tests           *runtime.RawExtension `json:"tests,omitempty"`
+	Secrets         *StackInjection       `json:"secrets,omitempty"`
+	Config          *StackInjection       `json:"config,omitempty"`
 }
 
 // StackAppBuild describes how to compile/containerize an app.
 type StackAppBuild struct {
-	Tool         string `json:"tool,omitempty"`
-	Runtime      string `json:"runtime,omitempty"`
-	JavaVersion  string `json:"javaVersion,omitempty"`
-	NodeVersion  string `json:"nodeVersion,omitempty"`
+	Tool          string `json:"tool,omitempty"`
+	Runtime       string `json:"runtime,omitempty"`
+	JavaVersion   string `json:"javaVersion,omitempty"`
+	NodeVersion   string `json:"nodeVersion,omitempty"`
 	PythonVersion string `json:"pythonVersion,omitempty"`
-	PhpVersion   string `json:"phpVersion,omitempty"`
-	BuildCommand string `json:"buildCommand,omitempty"`
+	PhpVersion    string `json:"phpVersion,omitempty"`
+	BuildCommand  string `json:"buildCommand,omitempty"`
 }
 
 // StackInjection is secrets or config envFrom / volumeMounts.
 type StackInjection struct {
-	EnvFrom      []string                `json:"envFrom,omitempty"`
-	VolumeMounts []StackVolumeMount      `json:"volumeMounts,omitempty"`
+	EnvFrom      []string           `json:"envFrom,omitempty"`
+	VolumeMounts []StackVolumeMount `json:"volumeMounts,omitempty"`
 }
 
 // StackVolumeMount mounts a Secret or ConfigMap as files.

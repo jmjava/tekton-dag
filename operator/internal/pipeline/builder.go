@@ -221,8 +221,8 @@ func BuildPR(opt Options) (*unstructured.Unstructured, error) {
 			"name":      name,
 			"namespace": ns(opt),
 			"labels": map[string]any{
-				"tekton.dev/pipeline":          "stack-pr-test",
-				"app.kubernetes.io/part-of":    StandardPartOf,
+				"tekton.dev/pipeline":       "stack-pr-test",
+				"app.kubernetes.io/part-of": StandardPartOf,
 			},
 		},
 		"spec": map[string]any{
@@ -262,8 +262,8 @@ func BuildBootstrap(opt Options) (*unstructured.Unstructured, error) {
 			"name":      name,
 			"namespace": ns(opt),
 			"labels": map[string]any{
-				"tekton.dev/pipeline":          "stack-bootstrap",
-				"app.kubernetes.io/part-of":    StandardPartOf,
+				"tekton.dev/pipeline":       "stack-bootstrap",
+				"app.kubernetes.io/part-of": StandardPartOf,
 			},
 		},
 		"spec": map[string]any{
@@ -297,8 +297,8 @@ func BuildMerge(opt Options) (*unstructured.Unstructured, error) {
 			"name":      name,
 			"namespace": ns(opt),
 			"labels": map[string]any{
-				"tekton.dev/pipeline":          "stack-merge-release",
-				"app.kubernetes.io/part-of":    StandardPartOf,
+				"tekton.dev/pipeline":       "stack-merge-release",
+				"app.kubernetes.io/part-of": StandardPartOf,
 			},
 		},
 		"spec": map[string]any{
@@ -362,9 +362,9 @@ func BuildPromote(opt Options) (*unstructured.Unstructured, error) {
 			"name":      name,
 			"namespace": ns(opt),
 			"labels": map[string]any{
-				"tekton.dev/pipeline":          "stack-promote",
-				"app.kubernetes.io/part-of":    StandardPartOf,
-				"tekton-dag.io/environment":    opt.TargetEnvironment,
+				"tekton.dev/pipeline":       "stack-promote",
+				"app.kubernetes.io/part-of": StandardPartOf,
+				"tekton-dag.io/environment": opt.TargetEnvironment,
 			},
 			"annotations": map[string]any{
 				"tekton-dag.io/release-version":  opt.ReleaseVersion,
