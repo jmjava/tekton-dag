@@ -99,6 +99,12 @@ rules:
   - apiGroups: ["tekton.dev"]
     resources: ["pipelineruns", "taskruns"]
     verbs: ["get", "list", "watch", "create", "patch", "delete"]
+  - apiGroups: ["tektondag.io"]
+    resources: ["stackruns"]
+    verbs: ["get", "list", "watch", "create"]
+  - apiGroups: ["tektondag.io"]
+    resources: ["stacks", "teams"]
+    verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

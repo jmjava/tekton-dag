@@ -42,10 +42,10 @@
       "item": [
         {
           "name": "POST /api/run rejects missing bearer token",
-          "auth": {
-            "type": "noauth"
-          },
           "request": {
+            "auth": {
+              "type": "noauth"
+            },
             "method": "POST",
             "header": [
               {
@@ -76,10 +76,10 @@
         },
         {
           "name": "POST /api/run rejects invalid bearer token",
-          "auth": {
-            "type": "noauth"
-          },
           "request": {
+            "auth": {
+              "type": "noauth"
+            },
             "method": "POST",
             "header": [
               {
