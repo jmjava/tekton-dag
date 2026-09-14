@@ -99,6 +99,16 @@ def test_local_regression_installs_checksum_verified_helm():
     assert "sha256sum -c -" in workflow
 
 
+def test_rbac_changes_trigger_strict_cluster_regression():
+    workflow = (ROOT / ".github/workflows/cluster-regression.yml").read_text()
+
+    assert "pull_request:" in workflow
+    assert '"helm/tekton-dag/**"' in workflow
+    assert '"scripts/bootstrap-namespace.sh"' in workflow
+    assert '"scripts/run-cluster-ci.sh"' in workflow
+    assert "Kind isolation-eval + Phase 2 + Newman" in workflow
+
+
 def test_orchestrator_mutation_token_is_secret_backed_and_fail_closed():
     values = yaml.safe_load((ROOT / "helm/tekton-dag/values.yaml").read_text())
     api_auth = values["orchestrationService"]["apiAuth"]
