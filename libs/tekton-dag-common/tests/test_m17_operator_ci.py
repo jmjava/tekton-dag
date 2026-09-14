@@ -11,6 +11,7 @@ def test_operator_workflow_runs_pinned_quality_and_domain_jobs():
     assert "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" in workflow
     assert "actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e" in workflow
     assert "make lint" in workflow
+    assert "GOTOOLCHAIN: auto" in workflow
     assert "make test-envtest" in workflow
     assert "Kind StackRun domain E2E" in workflow
     assert "v0.27.0/kind-linux-amd64" in workflow
