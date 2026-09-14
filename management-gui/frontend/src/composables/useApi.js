@@ -18,10 +18,18 @@ export function useApi() {
     return r.json()
   }
 
+  function mutationHeaders() {
+    const token = sessionStorage.getItem('tektonDagApiToken') || import.meta.env.VITE_API_MUTATION_TOKEN
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    }
+  }
+
   async function post(url, body) {
     const r = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: mutationHeaders(),
       body: JSON.stringify(body),
     })
     const data = await r.json().catch(() => ({}))
@@ -32,7 +40,7 @@ export function useApi() {
   async function patch(url, body) {
     const r = await fetch(url, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: mutationHeaders(),
       body: JSON.stringify(body),
     })
     const data = await r.json().catch(() => ({}))

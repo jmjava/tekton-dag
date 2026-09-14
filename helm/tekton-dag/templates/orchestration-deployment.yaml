@@ -57,6 +57,13 @@ spec:
             - name: STACKRUN_VIA_CRD
               # Retired M16: Flask always creates StackRuns. Kept true so mixed-image rollouts stay on the CRD path.
               value: "true"
+{{- with .Values.orchestrationService.apiAuth.existingSecret }}
+            - name: API_MUTATION_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ . | quote }}
+                  key: {{ $.Values.orchestrationService.apiAuth.key | quote }}
+{{- end }}
             - name: STACKS_DIR
               value: /stacks
             - name: TEAMS_DIR

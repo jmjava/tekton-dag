@@ -28,6 +28,18 @@ python3 app.py
 
 Listens on **port 5000** by default; override with env **`PORT`**.
 
+Set backend `API_MUTATION_TOKEN` to a high-entropy bearer token. Trigger and
+approval requests fail closed when it is unset; health and read-only APIs stay
+available. The frontend reads the token from the per-tab
+`sessionStorage` key `tektonDagApiToken`:
+
+```js
+sessionStorage.setItem('tektonDagApiToken', '<token>')
+```
+
+`VITE_API_MUTATION_TOKEN` is also supported for disposable local builds, but
+must not be used for production because Vite embeds it in the browser bundle.
+
 ## Testing
 
 **Frontend (Playwright E2E):**
@@ -37,7 +49,7 @@ cd frontend
 npx playwright test
 ```
 
-**69** E2E tests across the suite (`npx playwright test --list`).
+**70** E2E tests across the suite (`npx playwright test --list`).
 
 **Backend (pytest):**
 
@@ -46,7 +58,7 @@ cd backend
 python3 -m pytest tests/ -v
 ```
 
-**56** tests.
+**68** tests.
 
 ## Features (overview)
 

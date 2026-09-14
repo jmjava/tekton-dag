@@ -460,7 +460,7 @@ tekton-job-standardization/
 
 You can run **both** the build pipelines and the **full PR pipeline** (deploy intercepts, validate propagation, run tests) on a **local Kubernetes cluster**. No AWS, no Argo CD required.
 
-**Verification plan:** For a step-by-step plan to verify the stack **DAG structure** locally (script checks → resolve task in Tekton → full pipeline behavior), see [docs/local-dag-verification-plan.md](docs/local-dag-verification-plan.md).
+**Verification plan:** For a step-by-step plan to verify the stack **DAG structure** locally (script checks → resolve task in Tekton → full pipeline behavior), see [local-dag-verification-plan.md](local-dag-verification-plan.md).
 
 **Standalone local repo:** To work in a new git repo with no AWS and paths at repo root (easier for local runs and Phase 2 clone), run `./scripts/extract-standalone-repo.sh [OUTPUT_DIR]`. This copies the milestone into a new tree with `stacks/`, `tasks/`, etc. at root and a README + SHARING-BACK.md for contributing back when it works. See the script for next steps (`git init`, remote, push).
 
@@ -584,7 +584,7 @@ Create `tekton-pr-sa` in namespace `tekton-pipelines` with permissions to clone 
 
 ## Architecture Diagrams
 
-See [docs/c4-diagrams.md](docs/c4-diagrams.md) for the full C4 diagram set:
+See [c4-diagrams.md](c4-diagrams.md) for the full C4 diagram set:
 - **Level 1 — System Context**: external actors and systems
 - **Level 2 — Container**: pipelines, config stores, CLI scripts
 - **Level 3 — Component**: task-level internals for PR and merge pipelines

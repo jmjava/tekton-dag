@@ -111,16 +111,16 @@ func TestBuildersMatchGolden(t *testing.T) {
 
 func TestBuildPRContinue(t *testing.T) {
 	opt := Options{
-		NameSuffix:         "fixed",
-		Namespace:          "tekton-pipelines",
-		GitURL:             "https://github.com/jmjava/tekton-dag.git",
-		GitRevision:        "main",
-		ChangedApp:         "demo-fe",
-		WorkspacePVC:       "ws-pvc",
-		ContinueStackJSON:  `{"apps":[]}`,
-		ContinueBuildApps:  "demo-fe",
-		ContinueImages:     `{"demo-fe":"img"}`,
-		ContinueFrom:       "stack-pr-1",
+		NameSuffix:        "fixed",
+		Namespace:         "tekton-pipelines",
+		GitURL:            "https://github.com/jmjava/tekton-dag.git",
+		GitRevision:       "main",
+		ChangedApp:        "demo-fe",
+		WorkspacePVC:      "ws-pvc",
+		ContinueStackJSON: `{"apps":[]}`,
+		ContinueBuildApps: "demo-fe",
+		ContinueImages:    `{"demo-fe":"img"}`,
+		ContinueFrom:      "stack-pr-1",
 	}
 	u, err := BuildPRContinue(opt)
 	if err != nil {
@@ -134,4 +134,3 @@ func TestBuildPRContinue(t *testing.T) {
 		t.Fatalf("pipelineRef=%s", ref)
 	}
 }
-

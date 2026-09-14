@@ -63,8 +63,9 @@ spec:
                 description: ChangedApp is required for pr/merge/promote.
                 type: string
               continueFrom:
-                description: PipelineRun or StackRun name whose resolve/build results
-                  feed stack-pr-continue.
+                description: |-
+                  ContinueFrom is a PipelineRun or StackRun name whose successful
+                  resolve/build results should feed stack-pr-continue (not a new CRD).
                 type: string
               credentialsSecret:
                 type: string

@@ -47,8 +47,9 @@ spec:
           metadata:
             type: object
           spec:
-            description: TeamSpec is in-cluster team identity (replaces teams/*/team.yaml
-              ConfigMaps).
+            description: |-
+              TeamSpec is in-cluster team identity mirrored from teams/*/team.yaml.
+              Flask and the GUI overlay these CRs onto Git YAML when the cluster is reachable.
             properties:
               cacheRepo:
                 type: string

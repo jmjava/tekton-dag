@@ -203,7 +203,7 @@ Create one scene per segment so you can switch cleanly. Name them so the list or
 
 ## 6. References
 
-- [Milestone 8](milestones/milestone-8.md) — demo scope and success criteria.
+- [Milestone 8](../milestones/milestone-8.md) — demo scope and success criteria.
 - [Quick start (README)](../README.md#quick-start-local) — setup (including optional Postgres + Tekton Results).
 - [Mirrord PoC results](mirrord-poc-results.md) — config and how to run mirrord.
 - [Mirrord M6 test scenarios](mirrord-m6-test-scenarios.md) — in-cluster test procedures.

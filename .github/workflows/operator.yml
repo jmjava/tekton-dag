@@ -1,0 +1,50 @@
+name: operator
+
+on:
+  pull_request:
+    paths:
+      - "operator/**"
+      - ".github/workflows/operator.yml"
+  push:
+    branches: [main]
+    paths:
+      - "operator/**"
+      - ".github/workflows/operator.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: operator-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-envtest:
+    name: Unit, generation, vet, and envtest
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: operator
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: operator/go.mod
+          cache-dependency-path: operator/go.sum
+
+      - name: Check formatting
+        run: test -z "$(gofmt -l .)"
+
+      - name: Unit tests
+        run: go test ./internal/pipeline/ ./internal/controller/ ./api/... -race -coverprofile=unit-cover.out
+
+      - name: Envtest
+        run: make test-envtest
+
+      - name: Generated files are current
+        run: git diff --exit-code

@@ -3,8 +3,6 @@
 import json
 from unittest.mock import patch
 
-import pytest
-
 
 def test_healthz(client):
     rv = client.get("/healthz")
@@ -374,7 +372,7 @@ def test_api_graph_ingest_neither_key(client):
 
 @patch("routes.graph_client.ingest_from_file")
 def test_api_graph_ingest_exception(mock_ingest, client):
-    mock_ingest.side_effect = IOError("bad file")
+    mock_ingest.side_effect = OSError("bad file")
     rv = client.post(
         "/api/graph/ingest",
         data=json.dumps({"fixture_file": "x"}),
@@ -408,6 +406,46 @@ def test_create_app_defaults(monkeypatch, tmp_path):
     assert app.config["NAMESPACE"] == "tekton-pipelines"
     assert "RESOLVER" in app.config
     assert app.config["RESOLVER"] is not None
+
+
+def test_create_app_authenticates_mutations_but_not_reads(monkeypatch, tmp_path):
+    monkeypatch.setenv("STACKS_DIR", str(tmp_path))
+    monkeypatch.setenv("TEAMS_DIR", str(tmp_path))
+    monkeypatch.setenv("API_MUTATION_TOKEN", "test-mutation-token")
+    from app import create_app
+
+    test_client = create_app().test_client()
+
+    assert test_client.get("/api/stacks").status_code == 200
+    assert test_client.post("/api/run", json={}).status_code == 401
+    assert (
+        test_client.post(
+            "/api/run",
+            headers={"Authorization": "Bearer wrong-token"},
+            json={},
+        ).status_code
+        == 401
+    )
+    # The valid credential reaches route validation instead of the auth guard.
+    assert (
+        test_client.post(
+            "/api/run",
+            headers={"Authorization": "Bearer test-mutation-token"},
+            json={},
+        ).status_code
+        == 400
+    )
+
+
+def test_create_app_mutations_fail_closed_without_token(monkeypatch, tmp_path):
+    monkeypatch.setenv("STACKS_DIR", str(tmp_path))
+    monkeypatch.setenv("TEAMS_DIR", str(tmp_path))
+    monkeypatch.delenv("API_MUTATION_TOKEN", raising=False)
+    from app import create_app
+
+    response = create_app().test_client().post("/api/run", json={})
+    assert response.status_code == 503
+    assert "not configured" in response.get_json()["error"]
 
 
 def test_create_app_env_overrides(monkeypatch, tmp_path):

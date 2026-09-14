@@ -22,5 +22,59 @@ subjects:
   - kind: ServiceAccount
     name: {{ include "tekton-dag.serviceAccountName" . }}
     namespace: {{ .Values.namespace }}
+{{- else }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "tekton-dag.serviceAccountName" . }}-pipeline-{{ .Values.namespace }}
+  labels:
+    {{- include "tekton-dag.labels" . | nindent 4 }}
+rules:
+  # Tasks create short-lived build/intercept pods and deploy application
+  # workloads into Stack-selected namespaces.
+  - apiGroups: [""]
+    resources:
+      - namespaces
+      - pods
+      - pods/log
+      - pods/exec
+      - pods/portforward
+      - services
+      - endpoints
+      - configmaps
+      - persistentvolumeclaims
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Runtime credentials are consumed, never mutated, by pipeline tasks.
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "deployments/scale", "replicasets", "statefulsets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses", "networkpolicies"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Pipeline tasks inspect execution resources for status and cleanup.
+  - apiGroups: ["tekton.dev"]
+    resources: ["pipelineruns", "taskruns"]
+    verbs: ["get", "list", "watch", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "tekton-dag.serviceAccountName" . }}-pipeline-{{ .Values.namespace }}
+  labels:
+    {{- include "tekton-dag.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "tekton-dag.serviceAccountName" . }}-pipeline-{{ .Values.namespace }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "tekton-dag.serviceAccountName" . }}
+    namespace: {{ .Values.namespace }}
 {{- end }}
 {{- end }}
