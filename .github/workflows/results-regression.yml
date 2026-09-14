@@ -1,0 +1,106 @@
+name: Tekton Results regression
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly strict Results/Postgres evidence on the default branch.
+    - cron: "19 9 * * 3"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: results-regression-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  strict-results:
+    name: Strict regression with Results DB
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      RESULTS_ARTIFACT_DIR: ${{ github.workspace }}/artifacts/results
+      TEKTON_RESULTS_VERSION: v0.20.0
+      KIND_VERSION: v0.27.0
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: management-gui/frontend/package-lock.json
+
+      - name: Install Kind and Newman
+        run: |
+          curl -fsSL -o /tmp/kind "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64"
+          echo "a6875aaea358acf0ac07786b1a6755d08fd640f4c79b7a2e46681cc13f49a04b  /tmp/kind" | sha256sum -c -
+          chmod +x /tmp/kind
+          sudo mv /tmp/kind /usr/local/bin/kind
+          npm install -g newman@6.2.1
+          ./scripts/bootstrap-regression-venv.sh
+
+      - name: Install cluster control plane
+        env:
+          CLUSTER_CI_GIT_REVISION: ${{ github.sha }}
+          CLUSTER_CI_GIT_URL: https://github.com/${{ github.repository }}.git
+        run: |
+          set -o pipefail
+          bash scripts/run-cluster-ci.sh --skip-isolation 2>&1 | tee cluster-setup.log
+
+      - name: Install PostgreSQL and Tekton Results
+        run: |
+          set -o pipefail
+          {
+            bash scripts/install-postgres-kind.sh --ephemeral
+            bash scripts/install-tekton-results.sh
+          } 2>&1 | tee results-install.log
+
+      - name: Run strict Results regression
+        run: |
+          set -o pipefail
+          bash scripts/run-regression-agent-full.sh 2>&1 | tee results-regression.log
+
+      - name: Collect Results failure diagnostics
+        if: failure()
+        run: |
+          mkdir -p "$RESULTS_ARTIFACT_DIR"
+          kubectl get deployment,pod,service,secret -n tekton-pipelines -o wide \
+            > "$RESULTS_ARTIFACT_DIR/control-plane.txt" 2>&1 || true
+          kubectl get pipelinerun,taskrun,stackrun -n tekton-pipelines -o yaml \
+            > "$RESULTS_ARTIFACT_DIR/run-resources.yaml" 2>&1 || true
+          kubectl describe deployment tekton-results-api tekton-results-watcher \
+            -n tekton-pipelines > "$RESULTS_ARTIFACT_DIR/results-deployments.txt" 2>&1 || true
+          kubectl logs -n tekton-pipelines deployment/tekton-results-api \
+            --all-containers=true --prefix=true \
+            > "$RESULTS_ARTIFACT_DIR/results-api.log" 2>&1 || true
+          kubectl logs -n tekton-pipelines deployment/tekton-results-watcher \
+            --all-containers=true --prefix=true \
+            > "$RESULTS_ARTIFACT_DIR/results-watcher.log" 2>&1 || true
+          kubectl logs -n tekton-pipelines -l app=tekton-results-postgres \
+            --all-containers=true --prefix=true \
+            > "$RESULTS_ARTIFACT_DIR/postgres.log" 2>&1 || true
+          kubectl get events -n tekton-pipelines --sort-by=.lastTimestamp \
+            > "$RESULTS_ARTIFACT_DIR/events.txt" 2>&1 || true
+
+      - name: Upload strict Results evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: results-regression-${{ github.sha }}
+          path: |
+            artifacts/results/
+            cluster-setup.log
+            results-install.log
+            results-regression.log
+          if-no-files-found: warn
+          retention-days: 30

@@ -7,7 +7,9 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
-RESULTS_RELEASE="${RESULTS_RELEASE:-https://storage.googleapis.com/tekton-releases/results/latest/release.yaml}"
+# Pinned LTS release. Override only for an intentional compatibility test.
+TEKTON_RESULTS_VERSION="${TEKTON_RESULTS_VERSION:-v0.20.0}"
+RESULTS_RELEASE="${RESULTS_RELEASE:-https://infra.tekton.dev/tekton-releases/results/previous/${TEKTON_RESULTS_VERSION}/release.yaml}"
 API_CN="tekton-results-api-service.${NAMESPACE}.svc.cluster.local"
 
 need kubectl
@@ -41,7 +43,7 @@ fi
 # Apply release but exclude the release's Postgres (StatefulSet, Service, ConfigMap) so we use our own Postgres
 echo "  Fetching Tekton Results release and excluding its Postgres (using our Postgres)..."
 TMP_RELEASE=$(mktemp)
-curl -sL "$RESULTS_RELEASE" -o "$TMP_RELEASE"
+curl -fsSL "$RESULTS_RELEASE" -o "$TMP_RELEASE"
 yq eval-all '
   select(
     ( (.kind == "StatefulSet" and .metadata.name == "tekton-results-postgres") or
@@ -53,8 +55,8 @@ yq eval-all '
 rm -f "$TMP_RELEASE"
 
 echo "  Waiting for Results API and Watcher to be ready..."
-kubectl wait --for=condition=Available deployment/tekton-results-api -n "$NAMESPACE" --timeout=120s 2>/dev/null || echo "  (API may still be rolling out.)"
-kubectl wait --for=condition=Available deployment/tekton-results-watcher -n "$NAMESPACE" --timeout=120s 2>/dev/null || echo "  (Watcher may still be rolling out.)"
+kubectl wait --for=condition=Available deployment/tekton-results-api -n "$NAMESPACE" --timeout=180s
+kubectl wait --for=condition=Available deployment/tekton-results-watcher -n "$NAMESPACE" --timeout=180s
 
 # Grant default SA list/get on Results API so verify-results-in-db.sh can list results (watcher has create/update only)
 kubectl create clusterrolebinding tekton-results-readonly-default \
