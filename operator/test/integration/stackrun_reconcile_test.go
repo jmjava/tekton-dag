@@ -132,7 +132,9 @@ func TestStackRunDomainLifecycle(t *testing.T) {
 			t.Fatal(err)
 		}
 		list := &unstructured.UnstructuredList{}
-		list.SetGroupVersionKind(pipeline.PipelineRunListGVK)
+		list.SetGroupVersionKind(schema.GroupVersionKind{
+			Group: "tekton.dev", Version: "v1", Kind: "PipelineRunList",
+		})
 		if err := testClient.List(ctx, list, client.InNamespace(namespace.Name)); err != nil {
 			t.Fatal(err)
 		}
