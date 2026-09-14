@@ -30,7 +30,16 @@ def _render_chart(*values):
     helm = shutil.which("helm")
     if helm is None:
         pytest.skip("Helm is not installed")
-    command = [helm, "template", "m17", str(ROOT / "helm/tekton-dag")]
+    # RBAC rendering is independent of packaged Stack/Team CRs. A clean
+    # checkout intentionally lacks those generated files until package.sh runs.
+    command = [
+        helm,
+        "template",
+        "m17",
+        str(ROOT / "helm/tekton-dag"),
+        "--set",
+        "operator.enabled=false",
+    ]
     for value in values:
         command.extend(["--set", value])
     rendered = subprocess.run(
