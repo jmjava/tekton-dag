@@ -62,21 +62,56 @@ spec:
       description: "JSON map of app → version (registry defaults merged with overrides)"
   steps:
     - name: resolve
-      image: mikefarah/yq:4
+      # alpine:3.21 ships a shell (unlike relying on mikefarah/yq:4, whose
+      # ENTRYPOINT is yq and which does not include jq). Fail loudly if tools
+      # cannot be installed — the previous `apk add jq || true` left Kind CI
+      # with "jq: not found" and no useful PipelineRun logs.
+      image: alpine:3.21
       workingDir: $(workspaces.source.path)
-      # apk add needs root; image runs non-root by default
       securityContext:
         runAsUser: 0
+      env:
+        - name: YQ_VERSION
+          value: v4.45.4
+        - name: JQ_VERSION
+          value: jq-1.7.1
       script: |
         #!/bin/sh
-        set -e
-        apk add --no-cache jq >/dev/null 2>&1 || true
+        set -eu
+
+        arch=$(uname -m)
+        case "$arch" in
+          x86_64) arch=amd64 ;;
+          aarch64|arm64) arch=arm64 ;;
+          *) echo "ERROR: unsupported arch $arch" >&2; exit 1 ;;
+        esac
+        install_static() {
+          dest="$1"
+          url="$2"
+          wget -q -O "$dest" "$url"
+          chmod +x "$dest"
+        }
+        # Prefer distro packages; fall back to GitHub (reachable in Kind/GHA).
+        if ! apk add --no-cache jq yq-go; then
+          echo "apk add jq/yq-go failed; installing static binaries from GitHub" >&2
+          install_static /usr/local/bin/jq "https://github.com/jqlang/jq/releases/download/${JQ_VERSION}/jq-linux-${arch}"
+          install_static /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_${arch}"
+        fi
+        command -v jq >/dev/null || { echo "ERROR: jq is required" >&2; exit 1; }
+        command -v yq >/dev/null || { echo "ERROR: yq is required" >&2; exit 1; }
 
         STACK="$(params.stack-file)"
         VFILE="$(params.versions-file)"
         OVERRIDES='$(params.version-overrides)'
         CHANGED="$(params.changed-app)"
         PR="$(params.pr-number)"
+
+        if [ ! -f "$STACK" ]; then
+          echo "ERROR: stack file not found: $STACK (cwd=$(pwd))" >&2
+          ls -la >&2
+          ls -la stacks >&2 || true
+          exit 1
+        fi
 
         STACK_JSON=$(yq -o=json "$STACK")
 

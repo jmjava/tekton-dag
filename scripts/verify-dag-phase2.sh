@@ -111,6 +111,24 @@ spec:
               storage: 2Gi
 EOF
 
+dump_phase2_failure() {
+  local reason="${1:-unknown}"
+  echo "  PipelineRun failed (reason: $reason)."
+  echo "===== PipelineRun condition ====="
+  kubectl get pipelinerun "$RUN_NAME" -n "$NAMESPACE" \
+    -o jsonpath='{.status.conditions[0].type}={.status.conditions[0].reason}: {.status.conditions[0].message}{"\n"}' 2>/dev/null || true
+  echo "===== TaskRuns ====="
+  kubectl get taskrun -n "$NAMESPACE" -l "tekton.dev/pipelineRun=$RUN_NAME" -o wide 2>/dev/null || true
+  echo "===== TaskRun messages ====="
+  kubectl get taskrun -n "$NAMESPACE" -l "tekton.dev/pipelineRun=$RUN_NAME" \
+    -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.conditions[0].reason}{": "}{.status.conditions[0].message}{"\n"}{end}' 2>/dev/null || true
+  echo "===== Pod logs ====="
+  kubectl logs -n "$NAMESPACE" -l "tekton.dev/pipelineRun=$RUN_NAME" \
+    --all-containers --prefix --tail=200 --max-log-requests=20 2>/dev/null || true
+  echo "===== describe PipelineRun ====="
+  kubectl describe pipelinerun "$RUN_NAME" -n "$NAMESPACE" 2>/dev/null || true
+}
+
 echo "  PipelineRun: $RUN_NAME (waiting up to ${WAIT_TIMEOUT}s, polling every 5s)..."
 for i in $(seq 1 "$WAIT_TIMEOUT"); do
   if [ $((i % 5)) -eq 0 ]; then
@@ -122,15 +140,14 @@ for i in $(seq 1 "$WAIT_TIMEOUT"); do
     break
   fi
   if [[ "$STATUS" == "Failed" ]]; then
-    echo "  PipelineRun failed. Check: kubectl describe pipelinerun $RUN_NAME -n $NAMESPACE"
-    kubectl get taskrun -n "$NAMESPACE" -l "tekton.dev/pipelineRun=$RUN_NAME" -o wide 2>/dev/null || true
+    dump_phase2_failure "$STATUS"
     exit 1
   fi
   sleep 1
 done
 STATUS=$(kubectl get pipelinerun "$RUN_NAME" -n "$NAMESPACE" -o jsonpath='{.status.conditions[0].reason}' 2>/dev/null || echo "")
 if [[ "$STATUS" != "Succeeded" ]]; then
-  echo "  PipelineRun did not succeed within ${WAIT_TIMEOUT}s (reason: $STATUS). Check: kubectl describe pipelinerun $RUN_NAME -n $NAMESPACE"
+  dump_phase2_failure "$STATUS"
   exit 1
 fi
 
