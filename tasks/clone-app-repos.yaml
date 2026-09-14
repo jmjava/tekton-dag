@@ -7,11 +7,10 @@ metadata:
     app.kubernetes.io/version: "1.0.0"
 spec:
   description: >
-    Clones each app repo from the stack into workspace/<app-name> via SSH.
+    Clones each app repo from the stack into workspace/<app-name>.
     Run after fetch-source and resolve-stack. Stack .apps[].repo (e.g.
-    jmjava/tekton-dag-vue-fe) becomes git@github.com:<repo>.git. Workspace
-    ssh-key (required) must hold the SSH private key (id_ed25519 or id_rsa)
-    for GitHub auth.
+    jmjava/tekton-dag-vue-fe) uses SSH when the workspace contains a private
+    key and HTTPS otherwise. Private repositories require the SSH key.
   params:
     - name: stack-json
       type: string
@@ -31,7 +30,7 @@ spec:
     - name: source
       description: "Workspace with platform repo at root; app repos will be cloned into source/<app-name>"
     - name: ssh-key
-      description: "Volume with SSH private key (id_ed25519 or id_rsa) for git clone; required for SSH pull"
+      description: "Volume that may contain id_ed25519 or id_rsa for private-repository SSH clones"
   steps:
     - name: clone-apps
       image: alpine/git:latest
@@ -53,21 +52,26 @@ spec:
           rm -rf "$WORKSPACE/$APP"
         done
 
-        # SSH clone: use git@github.com:<repo>.git; ssh-key workspace is required
+        # Prefer authenticated SSH when a key is present. Public repositories
+        # can be cloned over HTTPS from an empty Secret workspace.
         mkdir -p /root/.ssh
         chmod 700 /root/.ssh
         KEY_DIR="$(workspaces.ssh-key.path)"
+        CLONE_TRANSPORT=https
         if [ -f "$KEY_DIR/id_ed25519" ]; then
           cp "$KEY_DIR/id_ed25519" /root/.ssh/id_ed25519
           chmod 600 /root/.ssh/id_ed25519
+          CLONE_TRANSPORT=ssh
         elif [ -f "$KEY_DIR/id_rsa" ]; then
           cp "$KEY_DIR/id_rsa" /root/.ssh/id_rsa
           chmod 600 /root/.ssh/id_rsa
+          CLONE_TRANSPORT=ssh
         else
-          echo "  ERROR: ssh-key workspace must contain id_ed25519 or id_rsa" >&2
-          exit 1
+          echo "  No SSH key found; cloning public repositories over HTTPS"
         fi
-        ssh-keyscan -H github.com >> /root/.ssh/known_hosts 2>/dev/null || true
+        if [ "$CLONE_TRANSPORT" = "ssh" ]; then
+          ssh-keyscan -H github.com >> /root/.ssh/known_hosts 2>/dev/null || true
+        fi
 
         # Clone all app repos in parallel (M7.1)
         clone_app() {
@@ -87,7 +91,11 @@ spec:
           fi
           REVISION=$(echo "$APP_REVISIONS" | jq -r --arg a "$APP" '.[$a] // empty')
           [ -z "$REVISION" ] && REVISION="$DEFAULT_REVISION"
-          URL="git@github.com:${REPO}.git"
+          if [ "$CLONE_TRANSPORT" = "ssh" ]; then
+            URL="git@github.com:${REPO}.git"
+          else
+            URL="https://github.com/${REPO}.git"
+          fi
           clone_app "$APP" "$REPO" "$REVISION" "$URL" &
           PIDS="$PIDS $!"
         done

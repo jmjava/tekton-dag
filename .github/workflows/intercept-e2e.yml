@@ -58,13 +58,6 @@ jobs:
           npm install -g newman@6.2.1
           ./scripts/bootstrap-regression-venv.sh
 
-      - name: Require E2E SSH credential
-        run: |
-          if [[ -z "$E2E_GIT_SSH_PRIVATE_KEY" ]]; then
-            echo "::error::Configure repository secret E2E_GIT_SSH_PRIVATE_KEY with read access to stack application repositories."
-            exit 1
-          fi
-
       - name: Install cluster control plane
         env:
           CLUSTER_CI_GIT_REVISION: ${{ github.sha }}
@@ -81,12 +74,18 @@ jobs:
             pod-security.kubernetes.io/audit=privileged \
             pod-security.kubernetes.io/warn=privileged \
             --overwrite
-          install -d -m 700 /tmp/e2e-ssh
-          printf '%s\n' "$E2E_GIT_SSH_PRIVATE_KEY" > /tmp/e2e-ssh/id_ed25519
-          chmod 600 /tmp/e2e-ssh/id_ed25519
+          secret_args=()
+          if [[ -n "$E2E_GIT_SSH_PRIVATE_KEY" ]]; then
+            install -d -m 700 /tmp/e2e-ssh
+            printf '%s\n' "$E2E_GIT_SSH_PRIVATE_KEY" > /tmp/e2e-ssh/id_ed25519
+            chmod 600 /tmp/e2e-ssh/id_ed25519
+            secret_args+=(--from-file=id_ed25519=/tmp/e2e-ssh/id_ed25519)
+          else
+            echo "No E2E SSH key configured; public application repositories will use HTTPS."
+          fi
           kubectl create secret generic git-ssh-key \
             -n tekton-pipelines \
-            --from-file=id_ed25519=/tmp/e2e-ssh/id_ed25519 \
+            "${secret_args[@]}" \
             --dry-run=client -o yaml | kubectl apply -f -
           rm -rf /tmp/e2e-ssh
 
