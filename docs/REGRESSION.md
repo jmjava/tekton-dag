@@ -11,9 +11,9 @@ Do **not** confuse these:
 | Scope | What runs | Typical trigger |
 |-------|-----------|-----------------|
 | **Application PR** (`stack-pr-test` on an **app** repo) | Stack-defined tests only — e.g. that app’s Newman/Playwright/Artillery as declared in `stacks/*.yaml`, against the intercept build. | Every PR on the **application** repository (when webhooks/Tekton are wired). |
-| **Platform regression** (`scripts/run-regression*.sh` on **this** repo) | **System / integration** tiers: Phase 1 + orchestrator + shared libs + GUI pytest, Playwright for **management-gui**, real **`stack-dag-verify`** PipelineRun, Newman against **orchestrator** API, optional Tekton Results, optional Kind E2E. | **PRs / `main`:** [`.github/workflows/local-regression.yml`](../.github/workflows/local-regression.yml) runs **`--local-only --require-lang-tests`**. **Nightly / dispatch / `v*` tags:** [`.github/workflows/cluster-regression.yml`](../.github/workflows/cluster-regression.yml) runs Playwright + Kind (`scripts/run-cluster-ci.sh`). Full intercept E2E remains **manual**. |
+| **Platform regression** (`scripts/run-regression*.sh` on **this** repo) | **System / integration** tiers: Phase 1 + orchestrator + shared libs + GUI pytest, Playwright for **management-gui**, real **`stack-dag-verify`** PipelineRun, Newman against **orchestrator** API, optional Tekton Results, optional Kind E2E. | **PRs / `main`:** [`.github/workflows/local-regression.yml`](../.github/workflows/local-regression.yml) runs **`--local-only --require-lang-tests`**. **Nightly / dispatch / `v*` tags:** [`.github/workflows/cluster-regression.yml`](../.github/workflows/cluster-regression.yml) runs Playwright + Kind. **Weekly / dispatch:** [`.github/workflows/intercept-e2e.yml`](../.github/workflows/intercept-e2e.yml) runs authenticated trigger-to-traffic paths for Telepresence and mirrord. |
 
-So: **not all tests run on every PR.** `--local-only` (including Java/PHP/operator) is PR-gated. Playwright, Newman, Phase 2, and Kind isolation measurements run on **cluster-regression** (nightly / `workflow_dispatch` / version tags), not on pull requests. App PRs run a narrower, stack-scoped test stage.
+So: **not all tests run on every PR.** `--local-only` (including Java/PHP/operator) is PR-gated. Playwright, Newman, Phase 2, and Kind isolation measurements run on **cluster-regression** (nightly / `workflow_dispatch` / version tags), not on pull requests. The slower Telepresence and mirrord product paths run weekly and on dispatch. App PRs run a narrower, stack-scoped test stage.
 
 **Streaming / timestamps:** use **`scripts/run-regression-stream.sh`** — same arguments, prefixes each line with `[HH:MM:SS]` and preserves the real exit code (plain `| while read` does not).
 
@@ -44,6 +44,7 @@ So: **not all tests run on every PR.** `--local-only` (including Java/PHP/operat
 | **E — Results + DB** | [run-full-test-and-verify-results.sh](../scripts/run-full-test-and-verify-results.sh) | **Auto** if `tekton-results-api` exists; **forced** with `--with-results-verify`; **off** with `--skip-results-verify` |
 | **F — GUI Postman** | [management-gui-tests.json](../tests/postman/management-gui-tests.json) vs `http://localhost:5000` | `--gui-newman` |
 | **G — Full Kind E2E** | [run-all-setup-and-test.sh](../scripts/run-all-setup-and-test.sh) | `--kind-e2e` |
+| **H — Intercept product E2E** | [run-product-intercept-e2e.sh](../scripts/run-product-intercept-e2e.sh) via authenticated orchestrator API | Weekly/dispatch matrix in `intercept-e2e.yml`; requires repository secret `E2E_GIT_SSH_PRIVATE_KEY` with read access to application repos |
 
 ## Prerequisites
 
@@ -95,6 +96,9 @@ chmod +x scripts/run-regression.sh   # once, if needed
 
 # Full platform smoke (Kind + Tekton + intercepts + DB) — use sparingly
 ./scripts/run-regression.sh --local-only --kind-e2e
+
+# On an already prepared cluster: trigger -> StackRun -> operator -> PR PipelineRun
+./scripts/run-product-intercept-e2e.sh --intercept-backend telepresence
 ```
 
 Environment:
@@ -109,7 +113,7 @@ Environment:
 1. **Often (fast, no cluster):** `./scripts/run-regression.sh --local-only` — Phase 1 + pytest + vitest; good for frequent pushes; safe to wire into lightweight CI.
 2. **System bar (cluster):** **`./scripts/run-regression.sh --cluster --require-dag-verify`** when you need a real **Succeeded** `stack-dag-verify` and orchestrator Newman — treat as **integration / system** work: before releases, after big platform changes, on a schedule, or when agents/docs require proof — **not** as “must pass on every GitHub PR” unless you explicitly configure that.
 3. **With Tekton Results:** `--with-results-verify` or rely on **auto** when the API exists.
-4. **Kind E2E:** `--kind-e2e` when changing bootstrap, intercepts, or Results integration (heavy; occasional).
+4. **Intercept E2E:** the weekly matrix exercises Telepresence and mirrord independently and retains StackRun, PipelineRun, TaskRun, pod-log, and test-traffic evidence for 30 days.
 
 After the tiers you care about are green, update [milestones/milestone-8.md](../milestones/milestone-8.md) and related testing docs.
 
