@@ -1,6 +1,12 @@
 name: intercept product E2E
 
 on:
+  pull_request:
+    paths:
+      - ".github/workflows/intercept-e2e.yml"
+      - "helm/tekton-dag/**"
+      - "scripts/bootstrap-namespace.sh"
+      - "scripts/run-product-intercept-e2e.sh"
   workflow_dispatch:
   schedule:
     # Weekly product-path evidence on the default branch.

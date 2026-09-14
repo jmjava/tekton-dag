@@ -8,6 +8,10 @@ ROOT = Path(__file__).resolve().parents[3]
 def test_intercept_workflow_has_explicit_backend_cadence_and_evidence():
     workflow = (ROOT / ".github/workflows/intercept-e2e.yml").read_text()
 
+    assert "pull_request:" in workflow
+    assert '".github/workflows/intercept-e2e.yml"' in workflow
+    assert '"helm/tekton-dag/**"' in workflow
+    assert '"scripts/bootstrap-namespace.sh"' in workflow
     assert "workflow_dispatch:" in workflow
     assert "schedule:" in workflow
     assert "backend: [telepresence, mirrord]" in workflow
