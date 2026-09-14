@@ -4,12 +4,14 @@ on:
   pull_request:
     paths:
       - "operator/**"
+      - "scripts/check-operator-coverage.sh"
       - "scripts/install-tekton.sh"
       - ".github/workflows/operator.yml"
   push:
     branches: [main]
     paths:
       - "operator/**"
+      - "scripts/check-operator-coverage.sh"
       - "scripts/install-tekton.sh"
       - ".github/workflows/operator.yml"
   workflow_dispatch:
@@ -49,8 +51,8 @@ jobs:
           GOTOOLCHAIN: auto
         run: make lint
 
-      - name: Unit tests
-        run: go test ./internal/pipeline/ ./internal/controller/ ./api/... -race -coverprofile=unit-cover.out
+      - name: Unit tests and coverage floors
+        run: bash ../scripts/check-operator-coverage.sh
 
       - name: Envtest domain integration
         run: make test-envtest

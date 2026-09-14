@@ -61,5 +61,5 @@ echo ">>> PHPUnit: libs/baggage-php"
 (cd "$REPO_ROOT/libs/baggage-php" && composer install --no-interaction --quiet && ./vendor/bin/phpunit)
 
 echo ""
-echo ">>> go test: operator internal (no envtest / e2e)"
-(cd "$REPO_ROOT/operator" && GOTOOLCHAIN=auto go test ./internal/pipeline/ ./internal/controller/ ./api/...)
+echo ">>> go test: operator coverage floors (no envtest / e2e)"
+bash "$SCRIPT_DIR/check-operator-coverage.sh"

@@ -55,6 +55,24 @@ def test_get_api_falls_back_to_kubeconfig():
         mock_config.load_kube_config.assert_called_once()
 
 
+def test_get_core_api_initializes_then_caches():
+    from unittest.mock import MagicMock
+
+    core_api = object()
+    ensure_config = MagicMock()
+    mock_client = MagicMock()
+    mock_client.CoreV1Api.return_value = core_api
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(k8s_client, "_ensure_config", ensure_config)
+        mp.setattr(k8s_client, "client", mock_client)
+
+        assert k8s_client._get_core_api() is core_api
+        assert k8s_client._get_core_api() is core_api
+
+    ensure_config.assert_called_once_with()
+    mock_client.CoreV1Api.assert_called_once_with()
+
+
 def test_get_pipelinerun_returns_body():
     from unittest.mock import MagicMock
 
@@ -124,6 +142,145 @@ def test_list_pipelineruns_api_error_returns_empty():
         assert k8s_client.list_pipelineruns(namespace="n") == []
 
 
+def test_list_teams_returns_items_and_uses_team_crd():
+    from unittest.mock import MagicMock
+
+    teams = [{"metadata": {"name": "alpha"}}]
+    api = MagicMock()
+    api.list_namespaced_custom_object.return_value = {"items": teams}
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(k8s_client, "_get_api", lambda: api)
+        assert k8s_client.list_teams("teams-ns") == teams
+
+    api.list_namespaced_custom_object.assert_called_once_with(
+        group=k8s_client.STACKRUN_GROUP,
+        version=k8s_client.STACKRUN_VERSION,
+        namespace="teams-ns",
+        plural=k8s_client.TEAM_PLURAL,
+    )
+
+
+def test_list_teams_returns_empty_for_missing_items_or_any_error():
+    from unittest.mock import MagicMock
+
+    api = MagicMock()
+    api.list_namespaced_custom_object.return_value = {}
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(k8s_client, "_get_api", lambda: api)
+        assert k8s_client.list_teams() == []
+
+    api.list_namespaced_custom_object.side_effect = RuntimeError("discovery failed")
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(k8s_client, "_get_api", lambda: api)
+        assert k8s_client.list_teams() == []
+
+
+def test_create_stackrun_returns_created_name():
+    from unittest.mock import MagicMock
+
+    manifest = {"metadata": {"generateName": "demo-"}}
+    api = MagicMock()
+    api.create_namespaced_custom_object.return_value = {
+        "metadata": {"name": "demo-abc"}
+    }
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(k8s_client, "_get_api", lambda: api)
+        assert k8s_client.create_stackrun(manifest, "runs") == "demo-abc"
+
+    api.create_namespaced_custom_object.assert_called_once_with(
+        group=k8s_client.STACKRUN_GROUP,
+        version=k8s_client.STACKRUN_VERSION,
+        namespace="runs",
+        plural=k8s_client.STACKRUN_PLURAL,
+        body=manifest,
+    )
+
+
+def test_create_stackrun_propagates_api_error():
+    from unittest.mock import MagicMock
+
+    error = ApiException(status=422, reason="Invalid")
+    api = MagicMock()
+    api.create_namespaced_custom_object.side_effect = error
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(k8s_client, "_get_api", lambda: api)
+        with pytest.raises(ApiException) as caught:
+            k8s_client.create_stackrun({}, "runs")
+    assert caught.value is error
+
+
+def test_list_stackruns_returns_items_and_request_parameters():
+    from unittest.mock import MagicMock
+
+    runs = [{"metadata": {"name": "run-1"}}]
+    api = MagicMock()
+    api.list_namespaced_custom_object.return_value = {"items": runs}
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(k8s_client, "_get_api", lambda: api)
+        assert k8s_client.list_stackruns("runs", limit=4) == runs
+
+    api.list_namespaced_custom_object.assert_called_once_with(
+        group=k8s_client.STACKRUN_GROUP,
+        version=k8s_client.STACKRUN_VERSION,
+        namespace="runs",
+        plural=k8s_client.STACKRUN_PLURAL,
+        limit=4,
+    )
+
+
+def test_list_stackruns_handles_missing_items_and_api_error():
+    from unittest.mock import MagicMock
+
+    api = MagicMock()
+    api.list_namespaced_custom_object.return_value = {}
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(k8s_client, "_get_api", lambda: api)
+        assert k8s_client.list_stackruns() == []
+
+    api.list_namespaced_custom_object.side_effect = ApiException(
+        status=403, reason="Forbidden"
+    )
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(k8s_client, "_get_api", lambda: api)
+        assert k8s_client.list_stackruns() == []
+
+
+def test_get_stackrun_returns_body_and_uses_stackrun_crd():
+    from unittest.mock import MagicMock
+
+    body = {"metadata": {"name": "run-1"}}
+    api = MagicMock()
+    api.get_namespaced_custom_object.return_value = body
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(k8s_client, "_get_api", lambda: api)
+        assert k8s_client.get_stackrun("run-1", "runs") is body
+
+    api.get_namespaced_custom_object.assert_called_once_with(
+        group=k8s_client.STACKRUN_GROUP,
+        version=k8s_client.STACKRUN_VERSION,
+        namespace="runs",
+        plural=k8s_client.STACKRUN_PLURAL,
+        name="run-1",
+    )
+
+
+@pytest.mark.parametrize("status, expected_none", [(404, True), (500, False)])
+def test_get_stackrun_error_semantics(status, expected_none):
+    from unittest.mock import MagicMock
+
+    api = MagicMock()
+    api.get_namespaced_custom_object.side_effect = ApiException(
+        status=status, reason="failure"
+    )
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(k8s_client, "_get_api", lambda: api)
+        if expected_none:
+            assert k8s_client.get_stackrun("missing") is None
+        else:
+            with pytest.raises(ApiException):
+                k8s_client.get_stackrun("broken")
+
+
 def test_get_secret_data_decodes():
     import base64
     from unittest.mock import MagicMock
@@ -150,6 +307,32 @@ def test_get_secret_data_404():
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr(k8s_client, "_get_core_api", lambda: api)
         assert k8s_client.get_secret_data("missing") is None
+
+
+def test_get_secret_data_handles_empty_data():
+    from unittest.mock import MagicMock
+
+    secret = MagicMock()
+    secret.data = None
+    api = MagicMock()
+    api.read_namespaced_secret.return_value = secret
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(k8s_client, "_get_core_api", lambda: api)
+        assert k8s_client.get_secret_data("empty", "ns") == {}
+    api.read_namespaced_secret.assert_called_once_with(name="empty", namespace="ns")
+
+
+def test_get_secret_data_non_404_propagates():
+    from unittest.mock import MagicMock
+
+    api = MagicMock()
+    api.read_namespaced_secret.side_effect = ApiException(
+        status=403, reason="Forbidden"
+    )
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(k8s_client, "_get_core_api", lambda: api)
+        with pytest.raises(ApiException):
+            k8s_client.get_secret_data("denied", "ns")
 
 
 def test_list_secret_and_configmap_names():
@@ -179,3 +362,16 @@ def test_list_secret_names_propagates_api_error():
         mp.setattr(k8s_client, "_get_core_api", lambda: api)
         with pytest.raises(ApiException):
             k8s_client.list_secret_names("ns")
+
+
+def test_list_configmap_names_propagates_api_error():
+    from unittest.mock import MagicMock
+
+    api = MagicMock()
+    api.list_namespaced_config_map.side_effect = ApiException(
+        status=403, reason="Forbidden"
+    )
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(k8s_client, "_get_core_api", lambda: api)
+        with pytest.raises(ApiException):
+            k8s_client.list_configmap_names("ns")
