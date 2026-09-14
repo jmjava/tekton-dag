@@ -89,6 +89,12 @@ collect_run_evidence() {
 
   kubectl get pipelinerun "$pipeline_run" -n "$NAMESPACE" -o yaml \
     >"$ARTIFACT_DIR/$prefix-pipelinerun.yaml" 2>&1 || true
+  kubectl get pipelinerun "$pipeline_run" -n "$NAMESPACE" -o json 2>/dev/null \
+    | jq '{
+        name: .metadata.name,
+        condition: (.status.conditions[0] // {}),
+        results: (.status.results // .status.pipelineResults // [])
+      }' >"$ARTIFACT_DIR/$prefix-pipeline-results.json" || true
   kubectl get taskrun -n "$NAMESPACE" -l "tekton.dev/pipelineRun=$pipeline_run" -o yaml \
     >"$ARTIFACT_DIR/$prefix-taskruns.yaml" 2>&1 || true
   kubectl logs -n "$NAMESPACE" -l "tekton.dev/pipelineRun=$pipeline_run" \

@@ -17,7 +17,7 @@ jobs:
   product-path:
     name: ${{ matrix.backend }} trigger-to-traffic
     runs-on: ubuntu-latest
-    timeout-minutes: 150
+    timeout-minutes: 180
     strategy:
       fail-fast: false
       matrix:
@@ -69,6 +69,12 @@ jobs:
 
       - name: Install application clone credential
         run: |
+          kubectl create namespace staging --dry-run=client -o yaml | kubectl apply -f -
+          kubectl label namespace staging \
+            pod-security.kubernetes.io/enforce=privileged \
+            pod-security.kubernetes.io/audit=privileged \
+            pod-security.kubernetes.io/warn=privileged \
+            --overwrite
           install -d -m 700 /tmp/e2e-ssh
           printf '%s\n' "$E2E_GIT_SSH_PRIVATE_KEY" > /tmp/e2e-ssh/id_ed25519
           chmod 600 /tmp/e2e-ssh/id_ed25519

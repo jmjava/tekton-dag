@@ -12,6 +12,7 @@ def test_intercept_workflow_has_explicit_backend_cadence_and_evidence():
     assert "schedule:" in workflow
     assert "backend: [telepresence, mirrord]" in workflow
     assert "E2E_GIT_SSH_PRIVATE_KEY" in workflow
+    assert "pod-security.kubernetes.io/enforce=privileged" in workflow
     assert "run-product-intercept-e2e.sh" in workflow
     assert "if: always()" in workflow
     assert "actions/upload-artifact@" in workflow
@@ -25,6 +26,7 @@ def test_product_script_covers_trigger_stackrun_tests_and_cleanup():
     assert "Authorization: Bearer $API_MUTATION_TOKEN" in script
     assert "kubectl get stackrun" in script
     assert "status.pipelineRunName" in script
+    assert "pipeline-results.json" in script
     assert "tekton.dev/pipelineTask=run-tests" in script
     assert "pr-traffic-evidence.log" in script
     assert "kubectl delete pipelinerun" in script
