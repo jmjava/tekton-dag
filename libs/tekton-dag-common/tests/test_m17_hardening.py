@@ -110,6 +110,9 @@ def test_cluster_bootstrap_and_regression_enforce_least_privilege_rbac():
     assert 'kubectl delete clusterrolebinding "tekton-pr-sa-admin-${NAMESPACE}"' in bootstrap
     assert "tekton-pr-sa unexpectedly has cluster-admin-equivalent access" in cluster_ci
     assert "tekton-pr-sa must not mutate Secrets" in cluster_ci
+    assert cluster_ci.index("install-operator-kind.sh") < cluster_ci.index(
+        "kubectl auth can-i create stackruns.tektondag.io"
+    )
 
 
 def test_newman_auth_negatives_override_collection_credentials():
