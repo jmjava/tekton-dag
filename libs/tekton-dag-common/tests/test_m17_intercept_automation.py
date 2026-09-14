@@ -16,6 +16,8 @@ def test_intercept_workflow_has_explicit_backend_cadence_and_evidence():
     assert "schedule:" in workflow
     assert "backend: [telepresence, mirrord]" in workflow
     assert "E2E_GIT_SSH_PRIVATE_KEY" in workflow
+    assert "Require E2E SSH credential" not in workflow
+    assert "public application repositories will use HTTPS" in workflow
     assert "pod-security.kubernetes.io/enforce=privileged" in workflow
     assert "run-product-intercept-e2e.sh" in workflow
     assert "if: always()" in workflow
@@ -48,3 +50,12 @@ def test_mirrord_image_uses_kind_registry_consistently():
     assert expected in task
     assert "localhost:5001/tekton-dag-build-mirrord" not in pipeline
     assert "localhost:5001/tekton-dag-build-mirrord" not in task
+
+
+def test_app_clone_supports_public_https_without_ssh_key():
+    task = (ROOT / "tasks/clone-app-repos.yaml").read_text()
+
+    assert "CLONE_TRANSPORT=https" in task
+    assert 'URL="https://github.com/${REPO}.git"' in task
+    assert 'URL="git@github.com:${REPO}.git"' in task
+    assert "ssh-key workspace must contain" not in task
