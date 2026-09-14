@@ -68,7 +68,7 @@ func (r *StackReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	stack.Status.MissingConfigMaps = missingC
 
 	cond := metav1.Condition{
-		Type:               "Ready",
+		Type:               conditionReady,
 		Status:             metav1.ConditionTrue,
 		Reason:             "Valid",
 		Message:            "Stack passed structural validation",

@@ -35,6 +35,23 @@ linters:
           - dupl
           - lll
         path: internal/*
+      # Repeated map keys are clearer inline in unstructured manifest builders.
+      - linters:
+          - goconst
+        path: internal/pipeline/builder.go
+      # Test fixtures intentionally repeat domain values and group scenarios.
+      - linters:
+          - goconst
+          - gocyclo
+        path: _test\.go
+      # Kubebuilder scaffold helpers retain compatibility-oriented constructs.
+      - linters:
+          - staticcheck
+        path: test/utils/
+      # mirrord is the product name, not a misspelling of "mirrored".
+      - linters:
+          - misspell
+        text: "`mirrord`"
     paths:
       - third_party$
       - builtin$
