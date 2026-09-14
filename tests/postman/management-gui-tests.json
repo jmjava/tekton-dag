@@ -25,8 +25,8 @@
       "item": [
         {
           "name": "POST trigger rejects missing bearer token",
-          "auth": { "type": "noauth" },
           "request": {
+            "auth": { "type": "noauth" },
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
@@ -46,8 +46,8 @@
         },
         {
           "name": "POST trigger rejects invalid bearer token",
-          "auth": { "type": "noauth" },
           "request": {
+            "auth": { "type": "noauth" },
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },

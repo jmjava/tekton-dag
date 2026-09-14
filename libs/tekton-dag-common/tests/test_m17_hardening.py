@@ -1,5 +1,6 @@
 """Static acceptance checks for M17 production-hardening defaults."""
 
+import json
 import shutil
 import subprocess
 from pathlib import Path
@@ -73,6 +74,13 @@ def test_helm_renders_least_privilege_pipeline_rbac_by_default():
         rule for rule in role["rules"] if rule.get("apiGroups") == ["tekton.dev"]
     )
     assert "create" in tekton_rule["verbs"]
+    stackrun_rule = next(
+        rule
+        for rule in role["rules"]
+        if rule.get("apiGroups") == ["tektondag.io"]
+        and rule.get("resources") == ["stackruns"]
+    )
+    assert "create" in stackrun_rule["verbs"]
     assert not any(
         document.get("roleRef", {}).get("name") == "cluster-admin"
         for document in documents
@@ -105,12 +113,23 @@ def test_cluster_bootstrap_and_regression_enforce_least_privilege_rbac():
 
 
 def test_newman_auth_negatives_override_collection_credentials():
-    orchestrator = (ROOT / "tests/postman/orchestrator-tests.json").read_text()
-    gui = (ROOT / "tests/postman/management-gui-tests.json").read_text()
+    paths = (
+        ROOT / "tests/postman/orchestrator-tests.json",
+        ROOT / "tests/postman/management-gui-tests.json",
+    )
 
-    for collection in (orchestrator, gui):
-        assert '"key": "Authorization"' in collection
-        assert '"value": "Bearer invalid-token"' in collection
+    for path in paths:
+        collection = json.loads(path.read_text())
+        missing, invalid = collection["item"][0]["item"][:2]
+        assert "auth" not in missing
+        assert "auth" not in invalid
+        assert missing["request"]["auth"] == {"type": "noauth"}
+        assert invalid["request"]["auth"] == {"type": "noauth"}
+        invalid_headers = {
+            header["key"]: header["value"]
+            for header in invalid["request"]["header"]
+        }
+        assert invalid_headers["Authorization"] == "Bearer invalid-token"
 
 
 def test_local_regression_installs_checksum_verified_helm():
