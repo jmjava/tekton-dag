@@ -42,19 +42,19 @@ spec:
       default: "{}"
     - name: compile-image-npm
       description: "Pre-built image for npm compile"
-      default: ""
+      default: "ubuntu:22.04"
     - name: compile-image-maven
       description: "Pre-built image for Maven compile"
-      default: ""
+      default: "ubuntu:22.04"
     - name: compile-image-gradle
       description: "Pre-built image for Gradle compile"
-      default: ""
+      default: "ubuntu:22.04"
     - name: compile-image-pip
       description: "Pre-built image for pip compile"
-      default: ""
+      default: "ubuntu:22.04"
     - name: compile-image-php
       description: "Pre-built image for Composer/PHP compile"
-      default: ""
+      default: "ubuntu:22.04"
     - name: compile-image-mirrord
       description: "Pre-built image for mirrord proxy pods (M7)"
       default: "localhost:5000/tekton-dag-build-mirrord:latest"
