@@ -57,7 +57,7 @@ spec:
       default: ""
     - name: compile-image-mirrord
       description: "Pre-built image for mirrord proxy pods (M7)"
-      default: ""
+      default: "localhost:5000/tekton-dag-build-mirrord:latest"
     - name: intercept-backend
       description: "Which intercept backend to use: telepresence (default) or mirrord"
       default: "telepresence"

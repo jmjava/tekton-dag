@@ -41,7 +41,7 @@ Publish with the other build images:
 ./scripts/publish-build-images.sh
 ```
 
-The pipeline uses this image for the mirrord-proxy pods (param `mirrord-image` on the task, default `localhost:5001/tekton-dag-build-mirrord:latest`).
+The pipeline uses this image for the mirrord-proxy pods (param `mirrord-image` on the task, default `localhost:5000/tekton-dag-build-mirrord:latest`).
 
 ---
 

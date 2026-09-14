@@ -35,7 +35,7 @@ spec:
       default: "staging"
     - name: mirrord-image
       type: string
-      default: "localhost:5001/tekton-dag-build-mirrord:latest"
+      default: "localhost:5000/tekton-dag-build-mirrord:latest"
       description: "Image for mirrord proxy pods (mirrord CLI + socat)"
   workspaces:
     - name: shared-workspace
