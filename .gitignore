@@ -40,6 +40,8 @@ node_modules/
 vendor/
 __pycache__/
 .pytest_cache/
+.coverage
+.coverage.*
 .phpunit.result.cache
 *.pyc
 .venv/
