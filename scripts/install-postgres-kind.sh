@@ -57,14 +57,15 @@ else
 fi
 # On Kind without --ephemeral and no default StorageClass, PVC may stay Pending; use --ephemeral or install a provisioner
 
-# 3. Wait for Postgres to be ready (resilient: PVC may stay Pending on Kind without StorageClass)
+# 3. Wait for Postgres to be ready. A successful installer must leave a usable DB.
 echo "  Waiting for PostgreSQL pod to be ready..."
-if kubectl wait --for=condition=Ready pod -l app=tekton-results-postgres -n "$NAMESPACE" --timeout=120s 2>/dev/null; then
-  echo "  PostgreSQL is ready."
-else
-  echo "  WARN: PostgreSQL pod not ready (PVC may be Pending; install a StorageClass or use --storage-class)."
-  echo "  Continuing; Tekton Results may fail until Postgres is up."
+if ! kubectl wait --for=condition=Ready pod -l app=tekton-results-postgres -n "$NAMESPACE" --timeout=180s; then
+  echo "  ERROR: PostgreSQL did not become ready." >&2
+  echo "  For Kind without a default StorageClass, re-run with --ephemeral." >&2
+  kubectl get pod,pvc -l app=tekton-results-postgres -n "$NAMESPACE" -o wide >&2 || true
+  exit 1
 fi
+echo "  PostgreSQL is ready."
 
 echo ""
 echo "  Done. PostgreSQL (or PVC) is in $NAMESPACE."
@@ -73,5 +74,5 @@ echo "  Database: tekton-results"
 echo ""
 echo "  Next (optional): install Tekton Results to persist pipeline/task run history:"
 echo "    1. Create TLS secret for the Results API (see Tekton Results install docs)."
-echo "    2. kubectl apply -f https://storage.googleapis.com/tekton-releases/results/latest/release.yaml"
+echo "    2. Run ./scripts/install-tekton-results.sh (pinned Tekton Results release)."
 echo ""
