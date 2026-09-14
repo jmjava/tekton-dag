@@ -1,0 +1,89 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  - package-ecosystem: gomod
+    directory: /operator
+    schedule:
+      interval: weekly
+    groups:
+      operator-go:
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /management-gui/frontend
+    schedule:
+      interval: weekly
+    groups:
+      management-frontend:
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /libs/baggage-node
+    schedule:
+      interval: weekly
+    groups:
+      baggage-node:
+        patterns: ["*"]
+
+  - package-ecosystem: pip
+    directory: /orchestrator
+    schedule:
+      interval: weekly
+    groups:
+      orchestrator-python:
+        patterns: ["*"]
+
+  - package-ecosystem: pip
+    directory: /management-gui/backend
+    schedule:
+      interval: weekly
+    groups:
+      management-backend-python:
+        patterns: ["*"]
+
+  - package-ecosystem: pip
+    directory: /libs/tekton-dag-common
+    schedule:
+      interval: weekly
+    groups:
+      common-python:
+        patterns: ["*"]
+
+  - package-ecosystem: pip
+    directory: /libs/baggage-python
+    schedule:
+      interval: weekly
+    groups:
+      baggage-python:
+        patterns: ["*"]
+
+  - package-ecosystem: maven
+    directory: /libs/baggage-spring-boot-starter
+    schedule:
+      interval: weekly
+    groups:
+      baggage-spring:
+        patterns: ["*"]
+
+  - package-ecosystem: maven
+    directory: /libs/baggage-servlet-filter
+    schedule:
+      interval: weekly
+    groups:
+      baggage-servlet:
+        patterns: ["*"]
+
+  - package-ecosystem: composer
+    directory: /libs/baggage-php
+    schedule:
+      interval: weekly
+    groups:
+      baggage-php:
+        patterns: ["*"]
