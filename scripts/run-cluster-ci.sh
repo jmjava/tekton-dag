@@ -147,6 +147,12 @@ if [[ "$SKIP_NEWMAN" != "true" ]]; then
 
   echo ""
   echo ">>> Deploy orchestrator"
+  API_MUTATION_TOKEN="${API_MUTATION_TOKEN:-$(openssl rand -hex 32)}"
+  export API_MUTATION_TOKEN
+  kubectl create secret generic tekton-dag-api-auth \
+    -n "$NAMESPACE" \
+    --from-literal="token=$API_MUTATION_TOKEN" \
+    --dry-run=client -o yaml | kubectl apply -f -
   kubectl apply -f "$REPO_ROOT/orchestrator/k8s-deployment.yaml"
   kubectl patch deployment tekton-dag-orchestrator -n "$NAMESPACE" --type=strategic \
     -p '{"spec":{"template":{"spec":{"containers":[{"name":"orchestrator","imagePullPolicy":"IfNotPresent"}]}}}}'

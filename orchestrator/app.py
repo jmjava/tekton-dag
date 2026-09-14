@@ -9,7 +9,8 @@ Runs as an in-cluster pod alongside Tekton.
 import os
 import logging
 
-from flask import Flask
+from flask import Flask, jsonify, request
+from tekton_dag_common.api_auth import bearer_token_matches
 
 from routes import register_routes
 from stack_resolver import StackResolver
@@ -47,6 +48,8 @@ def create_app():
             "REGISTRIES_FILE",
             os.path.join(os.environ.get("STACKS_DIR", "/stacks"), "registries.yaml"),
         ),
+        # Mutating /api routes fail closed when this token is not configured.
+        API_MUTATION_TOKEN=os.environ.get("API_MUTATION_TOKEN", ""),
         # Retired M16: Flask always creates StackRun CRs. STACKRUN_VIA_CRD env is ignored.
     )
 
@@ -67,6 +70,25 @@ def create_app():
         stacks_dir=stacks_dir, teams_dir=teams_dir, team_cr_loader=_team_crs
     )
     app.config["RESOLVER"] = resolver
+
+    @app.before_request
+    def authenticate_mutation():
+        if not request.path.startswith("/api/") or request.method in {
+            "GET",
+            "HEAD",
+            "OPTIONS",
+        }:
+            return None
+
+        token = app.config["API_MUTATION_TOKEN"]
+        if not token:
+            return jsonify({"error": "Mutation API authentication is not configured"}), 503
+        if not bearer_token_matches(request.headers.get("Authorization"), token):
+            response = jsonify({"error": "Missing or invalid bearer token"})
+            response.status_code = 401
+            response.headers["WWW-Authenticate"] = "Bearer"
+            return response
+        return None
 
     register_routes(app)
 

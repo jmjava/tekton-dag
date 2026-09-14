@@ -7,6 +7,8 @@ Tekton-based CI/CD for multi-app stacks: stack resolution, Kaniko builds, PR int
 - **Kubernetes** cluster with **Tekton Pipelines** installed (same major version your tasks/pipelines target).
 - Namespace for Tekton (default in values: `tekton-pipelines`).
 - For the orchestrator: **Secrets** referenced by values (`triggers.webhookSecretName`, `triggers.githubTokenSecretName`) when using webhooks / PR comments.
+- For orchestrator mutation APIs: a Secret containing a high-entropy bearer
+  token, configured with `orchestrationService.apiAuth.existingSecret`.
 - **Git SSH**: pipeline workspaces expect clone secrets (e.g. `ssh-key-secret`) consistent with your cluster bootstrap.
 - Before `helm template` / `helm install`, run **`./package.sh`** from this chart directory so `raw/tasks`, `raw/pipelines`, `raw/stacks`, `raw/stack-crs`, and `raw/team-crs` are populated. With `operator.enabled` (the default), an empty `raw/stack-crs` or `raw/team-crs` **fails** the template.
 
@@ -21,9 +23,14 @@ cd helm/tekton-dag
 mkdir -p raw/teams/default
 cp ../../teams/default/team.yaml raw/teams/default/
 
+kubectl create namespace tekton-pipelines --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n tekton-pipelines create secret generic tekton-dag-api-auth \
+  --from-literal=token="$(openssl rand -hex 32)"
+
 helm upgrade --install tekton-dag . \
   --namespace tekton-pipelines \
   --create-namespace \
+  --set orchestrationService.apiAuth.existingSecret=tekton-dag-api-auth \
   -f values.yaml
 ```
 
@@ -78,6 +85,8 @@ Packaged content under `raw/` is **not** committed by default; `package.sh` copi
 | `orchestrationService.image` | string | … | Orchestrator container image |
 | `orchestrationService.replicas` | int | `1` | Replica count |
 | `orchestrationService.port` | int | `8080` | Container and Service port |
+| `orchestrationService.apiAuth.existingSecret` | string | `""` | Existing Secret whose token protects mutating `/api/*` routes; mutations fail closed when empty |
+| `orchestrationService.apiAuth.key` | string | `"token"` | Key in the API authentication Secret |
 | `orchestrationService.resources` | object | requests/limits | Pod resources |
 | `operator.enabled` | bool | `true` | Deploy M14 Go operator + use CRDs from chart `crds/` |
 | `operator.image` | string | `localhost:5000/tekton-dag-operator:latest` | Operator manager image |

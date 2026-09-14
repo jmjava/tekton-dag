@@ -20,6 +20,11 @@ Flask service that runs in (or beside) the Kubernetes cluster: it receives **Git
 | POST | `/api/graph/ingest` | Ingest traces or fixture file into Neo4j (see `routes.py`). |
 | GET | `/api/graph/stats` | Graph node/edge statistics. |
 
+All non-read-only `/api/*` requests require
+`Authorization: Bearer <token>`. The service returns `503` for mutations when
+`API_MUTATION_TOKEN` is unset, and `401` for missing or invalid credentials.
+The GitHub webhook uses its separate HMAC authentication.
+
 ## Environment variables
 
 Defined in `app.py` (with defaults). Common ones:
@@ -37,6 +42,7 @@ Defined in `app.py` (with defaults). Common ones:
 | `STACK_FILE` | Default stack path in repo. |
 | `STACKS_DIR` | Directory mounted with stack YAML (default `/stacks`). |
 | `TEAMS_DIR` | Directory mounted with team YAML (default `/teams`). |
+| `API_MUTATION_TOKEN` | High-entropy bearer token required by mutating `/api/*` routes. No default; mutations fail closed when unset. |
 | `WEBHOOK_SECRET_NAME` | K8s Secret name holding the GitHub webhook HMAC secret (keys: `secret`, `value`, or `webhook-secret`). |
 | `WEBHOOK_SECRET` | Optional direct HMAC secret (local/dev); preferred over fetching the K8s Secret when set. |
 | `WEBHOOK_VERIFY_SIGNATURE` | When `true` (default) and a secret is available, require valid `X-Hub-Signature-256`. |

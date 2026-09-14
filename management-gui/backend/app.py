@@ -13,8 +13,9 @@ import os
 import logging
 from pathlib import Path
 
-from flask import Flask
+from flask import Flask, jsonify, request
 from flask_cors import CORS
+from tekton_dag_common.api_auth import bearer_token_matches
 
 from team_registry import TeamRegistry
 from stack_resolver import StackResolver
@@ -59,6 +60,26 @@ def create_app():
 
     app.config["TEAM_REGISTRY"] = registry
     app.config["STACK_RESOLVER"] = resolver
+    app.config["API_MUTATION_TOKEN"] = os.environ.get("API_MUTATION_TOKEN", "")
+
+    @app.before_request
+    def authenticate_mutation():
+        if not request.path.startswith("/api/") or request.method in {
+            "GET",
+            "HEAD",
+            "OPTIONS",
+        }:
+            return None
+
+        token = app.config["API_MUTATION_TOKEN"]
+        if not token:
+            return jsonify({"error": "Mutation API authentication is not configured"}), 503
+        if not bearer_token_matches(request.headers.get("Authorization"), token):
+            response = jsonify({"error": "Missing or invalid bearer token"})
+            response.status_code = 401
+            response.headers["WWW-Authenticate"] = "Bearer"
+            return response
+        return None
 
     from routes.health import bp as health_bp
     from routes.teams import bp as teams_bp

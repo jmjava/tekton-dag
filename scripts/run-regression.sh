@@ -309,10 +309,14 @@ fi
 
 if [[ "$RUN_GUI_NEWMAN" == "true" ]]; then
   need newman
+  [[ -n "${API_MUTATION_TOKEN:-}" ]] \
+    || die "--gui-newman requires API_MUTATION_TOKEN to match the backend"
   echo ""
   echo ">>> Newman: management-gui-tests.json → http://localhost:5000"
   newman run "$REPO_ROOT/tests/postman/management-gui-tests.json" \
-    --env-var "baseUrl=http://localhost:5000" --reporters cli --color on
+    --env-var "baseUrl=http://localhost:5000" \
+    --env-var "apiMutationToken=$API_MUTATION_TOKEN" \
+    --reporters cli --color on
 fi
 
 if [[ "$RUN_KIND_E2E" == "true" ]]; then

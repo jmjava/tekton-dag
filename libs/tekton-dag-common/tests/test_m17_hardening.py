@@ -21,3 +21,16 @@ def test_pipeline_rbac_has_explicit_least_privilege_fallback():
     assert 'verbs: ["get", "list", "watch"]' in template
     assert 'resources: ["pipelineruns", "taskruns"]' in template
     assert "deployments/scale" in template
+
+
+def test_orchestrator_mutation_token_is_secret_backed_and_fail_closed():
+    values = yaml.safe_load((ROOT / "helm/tekton-dag/values.yaml").read_text())
+    api_auth = values["orchestrationService"]["apiAuth"]
+    assert api_auth == {"existingSecret": "", "key": "token"}
+
+    template = (
+        ROOT / "helm/tekton-dag/templates/orchestration-deployment.yaml"
+    ).read_text()
+    assert "API_MUTATION_TOKEN" in template
+    assert "secretKeyRef:" in template
+    assert ".Values.orchestrationService.apiAuth.existingSecret" in template

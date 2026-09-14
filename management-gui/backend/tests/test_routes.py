@@ -9,6 +9,16 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from app import create_app
+from flask.testing import FlaskClient
+
+
+class AuthenticatedFlaskClient(FlaskClient):
+    """Use the configured mutation token unless a test overrides the header."""
+
+    def open(self, *args, **kwargs):
+        headers = kwargs.setdefault("headers", {})
+        headers.setdefault("Authorization", "Bearer test-mutation-token")
+        return super().open(*args, **kwargs)
 
 
 @pytest.fixture
@@ -36,22 +46,54 @@ def client(tmp_path):
     os.environ["TEAMS_DIR"] = str(tmp_path / "teams")
     os.environ["STACKS_DIR"] = str(stacks_dir)
     os.environ["TEAM_NAME"] = "*"
+    os.environ["API_MUTATION_TOKEN"] = "test-mutation-token"
 
     with patch("k8s_client.list_teams", return_value=[]):
         app = create_app()
     app.config["TESTING"] = True
+    app.test_client_class = AuthenticatedFlaskClient
     with app.test_client() as c:
         yield c
 
     os.environ.pop("TEAMS_DIR", None)
     os.environ.pop("STACKS_DIR", None)
     os.environ.pop("TEAM_NAME", None)
+    os.environ.pop("API_MUTATION_TOKEN", None)
 
 
 def test_health(client):
     resp = client.get("/api/health")
     assert resp.status_code == 200
     assert resp.get_json()["ok"] is True
+
+
+def test_mutation_rejects_missing_or_invalid_token(client):
+    missing = client.post(
+        "/api/teams/default/trigger",
+        headers={"Authorization": ""},
+        json={},
+    )
+    invalid = client.post(
+        "/api/teams/default/trigger",
+        headers={"Authorization": "Bearer wrong-token"},
+        json={},
+    )
+
+    assert missing.status_code == 401
+    assert invalid.status_code == 401
+    assert invalid.headers["WWW-Authenticate"] == "Bearer"
+
+
+def test_mutation_fails_closed_when_token_is_unconfigured(client):
+    client.application.config["API_MUTATION_TOKEN"] = ""
+    resp = client.post("/api/teams/default/trigger", json={})
+    assert resp.status_code == 503
+    assert "not configured" in resp.get_json()["error"]
+
+
+def test_read_only_api_does_not_require_token(client):
+    resp = client.get("/api/teams", headers={"Authorization": ""})
+    assert resp.status_code == 200
 
 
 def test_list_teams(client):

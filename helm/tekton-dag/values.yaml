@@ -64,6 +64,11 @@ orchestrationService:
   image: "localhost:5000/tekton-dag-orchestrator:latest"
   replicas: 1
   port: 8080
+  # Mutating /api routes fail closed unless this Secret reference is configured.
+  # The Secret key must contain a high-entropy bearer token.
+  apiAuth:
+    existingSecret: ""
+    key: "token"
   # M13 reliability defaults (PipelineRun timeouts / max-retries audit param)
   pipelineTimeout: "2h"
   maxRetries: 2

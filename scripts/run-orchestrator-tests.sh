@@ -30,6 +30,15 @@ SKIP_INTEGRATION=false
 RUN_ORCH=false
 RUN_GRAPH=false
 
+if [[ -z "${API_MUTATION_TOKEN:-}" ]]; then
+  API_MUTATION_TOKEN="$(
+    kubectl get secret tekton-dag-api-auth -n "$NS" \
+      -o jsonpath='{.data.token}' 2>/dev/null | base64 --decode
+  )"
+fi
+[[ -n "$API_MUTATION_TOKEN" ]] \
+  || die "API_MUTATION_TOKEN is unset and secret/tekton-dag-api-auth has no token"
+
 for arg in "$@"; do
   case "$arg" in
     --skip-integration) SKIP_INTEGRATION=true ;;
@@ -102,6 +111,7 @@ if [ "$RUN_ORCH" = "true" ]; then
   echo "=== Running Newman: Orchestrator Tests (M10.1) ==="
   newman run "$ORCH_COLLECTION" \
     --env-var "baseUrl=http://localhost:${LOCAL_PORT}" \
+    --env-var "apiMutationToken=$API_MUTATION_TOKEN" \
     --reporters cli \
     --color on || NEWMAN_FAILED=true
   echo ""
@@ -111,6 +121,7 @@ if [ "$RUN_GRAPH" = "true" ]; then
   echo "=== Running Newman: Graph / Test-Plan Tests (M9) ==="
   newman run "$GRAPH_COLLECTION" \
     --env-var "baseUrl=http://localhost:${LOCAL_PORT}" \
+    --env-var "apiMutationToken=$API_MUTATION_TOKEN" \
     --reporters cli \
     --color on || NEWMAN_FAILED=true
   echo ""

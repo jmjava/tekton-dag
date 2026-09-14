@@ -1,5 +1,6 @@
 """Shared utilities for tekton-dag orchestrator and management GUI."""
 
+from tekton_dag_common.api_auth import bearer_token_matches
 from tekton_dag_common.deploy_injection import (
     build_env_from,
     build_volume_mounts_and_volumes,
@@ -51,6 +52,7 @@ __all__ = [
     "TEKTON_VERSION",
     "apply_reliability",
     "base_pipelinerun",
+    "bearer_token_matches",
     "build_stackrun",
     "build_env_from",
     "build_volume_mounts_and_volumes",
