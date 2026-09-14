@@ -58,12 +58,15 @@ regression criteria in `docs/AGENT-REGRESSION.md` are satisfied.
   - Acceptance: StackRun→PipelineRun creation, status, approval, idempotency,
     continuation, and invalid Stack admission are exercised.
 
-- [ ] **M17.6 Add coverage gates**
+- [x] **M17.6 Add coverage gates**
   - Establish ratcheting thresholds for Python and Go production packages.
   - Initial floors must not exceed measured baselines:
     orchestrator 92%, GUI backend 91%, common 83%, baggage Python 88%,
     operator pipeline 80%, operator controller 32%.
   - Acceptance: CI fails when coverage drops below configured floors.
+  - Evidence: PR coverage measured 97.18%, 92.26%, 83.45%, and 88.14%
+    for the Python packages and 80.0%/32.6% for operator pipeline/controller;
+    local regression run `34909065149` and operator run `34909065137` passed.
 
 - [ ] **M17.7 Add static quality gates**
   - Python Ruff, Go lint/vet, ShellCheck, YAML/JSON parsing, frontend lint/build,
