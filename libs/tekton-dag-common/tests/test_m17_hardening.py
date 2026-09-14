@@ -129,6 +129,8 @@ def test_rbac_changes_trigger_strict_cluster_regression():
     assert '"scripts/bootstrap-namespace.sh"' in workflow
     assert '"scripts/run-cluster-ci.sh"' in workflow
     assert "Kind isolation-eval + Phase 2 + Newman" in workflow
+    assert 'github.event_name }}" == "pull_request"' in workflow
+    assert "extra+=(--skip-isolation)" in workflow
 
 
 def test_orchestrator_mutation_token_is_secret_backed_and_fail_closed():
