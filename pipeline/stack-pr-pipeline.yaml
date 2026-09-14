@@ -77,17 +77,17 @@ spec:
       description: "Max concurrent Kaniko pods for containerize. 0 = unlimited."
       default: "0"
     - name: pre-build-task
-      description: "Optional Tekton Task name to run after clone, before compile (e.g. code-gen, license-scan). Empty = skip."
-      default: ""
+      description: "Optional Tekton Task name to run after clone, before compile (e.g. code-gen, license-scan)."
+      default: "tekton-dag-hook-noop"
     - name: post-build-task
-      description: "Optional Tekton Task name to run after containerize, before deploy (e.g. image-scan, SBOM). Empty = skip."
-      default: ""
+      description: "Optional Tekton Task name to run after containerize, before deploy (e.g. image-scan, SBOM)."
+      default: "tekton-dag-hook-noop"
     - name: pre-test-task
-      description: "Optional Tekton Task name to run after deploy, before tests (e.g. seed-data). Empty = skip."
-      default: ""
+      description: "Optional Tekton Task name to run after deploy, before tests (e.g. seed-data)."
+      default: "tekton-dag-hook-noop"
     - name: post-test-task
-      description: "Optional Tekton Task name to run in finally block after tests (e.g. slack-notify). Empty = skip."
-      default: ""
+      description: "Optional Tekton Task name to run in finally block after tests (e.g. slack-notify)."
+      default: "tekton-dag-hook-noop"
     - name: max-retries
       description: >
         Preferred retry count for infrastructure-sensitive tasks (compile/containerize).
@@ -197,7 +197,7 @@ spec:
       when:
         - input: $(params.pre-build-task)
           operator: notin
-          values: [""]
+          values: ["tekton-dag-hook-noop"]
       taskRef:
         resolver: cluster
         params:
@@ -362,7 +362,7 @@ spec:
       when:
         - input: $(params.post-build-task)
           operator: notin
-          values: [""]
+          values: ["tekton-dag-hook-noop"]
       taskRef:
         resolver: cluster
         params:
@@ -483,7 +483,7 @@ spec:
       when:
         - input: $(params.pre-test-task)
           operator: notin
-          values: [""]
+          values: ["tekton-dag-hook-noop"]
       taskRef:
         resolver: cluster
         params:
@@ -550,7 +550,7 @@ spec:
       when:
         - input: $(params.post-test-task)
           operator: notin
-          values: [""]
+          values: ["tekton-dag-hook-noop"]
       taskRef:
         resolver: cluster
         params:

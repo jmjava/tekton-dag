@@ -1,0 +1,29 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: tekton-dag-hook-noop
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+    app.kubernetes.io/version: "1.0.0"
+spec:
+  description: >
+    Resolvable sentinel for optional remote hook references. Pipelines skip this
+    Task with a when expression; its contract keeps validation deterministic.
+  params:
+    - name: stack-json
+      default: ""
+    - name: build-apps
+      default: ""
+    - name: built-images
+      default: "{}"
+    - name: image-registry
+      default: ""
+  workspaces:
+    - name: source
+      optional: true
+  steps:
+    - name: noop
+      image: alpine:3.20
+      script: |
+        #!/bin/sh
+        echo "Optional hook not configured"
