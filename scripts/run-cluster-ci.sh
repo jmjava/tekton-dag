@@ -104,6 +104,24 @@ kubectl wait --for=condition=Ready pod -l app.kubernetes.io/part-of=tekton-trigg
 echo ""
 echo ">>> Namespace bootstrap (SA + RBAC)"
 bash "$SCRIPT_DIR/bootstrap-namespace.sh" "$NAMESPACE"
+pipeline_subject="system:serviceaccount:${NAMESPACE}:tekton-pr-sa"
+if [[ "$(kubectl auth can-i '*' '*' --as="$pipeline_subject" 2>/dev/null || true)" != "no" ]]; then
+  die "tekton-pr-sa unexpectedly has cluster-admin-equivalent access"
+fi
+for permission in \
+  "create deployments.apps" \
+  "create pods" \
+  "get secrets" \
+  "create pipelineruns.tekton.dev"; do
+  read -r verb resource <<<"$permission"
+  if [[ "$(kubectl auth can-i "$verb" "$resource" --as="$pipeline_subject" 2>/dev/null || true)" != "yes" ]]; then
+    die "tekton-pr-sa lacks required permission: $permission"
+  fi
+done
+if [[ "$(kubectl auth can-i create secrets --as="$pipeline_subject" 2>/dev/null || true)" != "no" ]]; then
+  die "tekton-pr-sa must not mutate Secrets"
+fi
+echo "  OK: tekton-pr-sa uses least-privilege pipeline RBAC"
 
 if [[ "$WITH_OPERATOR" == "true" ]]; then
   echo ""
@@ -113,6 +131,9 @@ if [[ "$WITH_OPERATOR" == "true" ]]; then
     sample_args+=(--with-sample-run)
   fi
   bash "$SCRIPT_DIR/install-operator-kind.sh" "${sample_args[@]}"
+  if [[ "$(kubectl auth can-i create stackruns.tektondag.io --as="$pipeline_subject" 2>/dev/null || true)" != "yes" ]]; then
+    die "tekton-pr-sa lacks required permission: create stackruns.tektondag.io"
+  fi
 fi
 
 if [[ "$SKIP_PHASE2" != "true" ]]; then

@@ -19,6 +19,23 @@ TEKTON_GIT_CLONE_URL="${TEKTON_GIT_CLONE_URL:-https://raw.githubusercontent.com/
 
 need kubectl
 
+apply_with_retry() {
+  local attempts=3
+  local attempt
+
+  for attempt in $(seq 1 "$attempts"); do
+    if kubectl apply "$@"; then
+      return 0
+    fi
+    if [ "$attempt" -lt "$attempts" ]; then
+      echo "  kubectl apply raced with a controller; retrying ($attempt/$attempts)..." >&2
+      sleep "$attempt"
+    fi
+  done
+
+  return 1
+}
+
 echo "=============================================="
 echo "  Install Tekton (Pipelines + git-clone + stack tasks/pipelines)"
 echo "  Pipelines: ${TEKTON_PIPELINE_VERSION}  Triggers: ${TEKTON_TRIGGERS_VERSION}"
@@ -30,20 +47,30 @@ kubectl get namespace "$NAMESPACE" &>/dev/null || kubectl create namespace "$NAM
 # 1. Tekton Pipelines (kubectl apply is idempotent)
 echo "  Installing Tekton Pipelines..."
 kubectl apply -f "$TEKTON_PIPELINE_URL"
+# Compile tasks bind the run-scoped source PVC and the persistent build-cache
+# PVC. Tekton's default "workspaces" coscheduling mode rejects any TaskRun
+# with more than one PVC before creating its Pod.
+echo "  Allowing TaskRuns to bind source and build-cache PVCs..."
+kubectl patch configmap feature-flags -n tekton-pipelines --type merge \
+  -p '{"data":{"coschedule":"disabled"}}'
 # Relax Pod Security for the target namespace (Kind enforces restricted; catalog/git-clone task pods need it)
 echo "  Configuring namespace $NAMESPACE for Pod Security (Kind/local clusters)..."
 kubectl label namespace "$NAMESPACE" pod-security.kubernetes.io/enforce=privileged --overwrite 2>/dev/null || true
 kubectl label namespace "$NAMESPACE" pod-security.kubernetes.io/audit=privileged --overwrite 2>/dev/null || true
 kubectl label namespace "$NAMESPACE" pod-security.kubernetes.io/warn=privileged --overwrite 2>/dev/null || true
 echo "  Waiting for Tekton Pipelines to be ready..."
-kubectl wait --for=condition=Ready pods -l app.kubernetes.io/part-of=tekton-pipelines -n "$NAMESPACE" --timeout=120s 2>/dev/null || true
+kubectl rollout status deployment/tekton-pipelines-controller -n tekton-pipelines --timeout=120s
+kubectl rollout status deployment/tekton-pipelines-webhook -n tekton-pipelines --timeout=120s
+kubectl rollout status deployment/tekton-pipelines-remote-resolvers -n tekton-pipelines-resolvers --timeout=120s
 
 # 2. Tekton Triggers (required for pipeline/triggers.yaml — EventListener, TriggerBinding, TriggerTemplate)
 echo "  Installing Tekton Triggers..."
 kubectl apply -f "$TEKTON_TRIGGERS_URL"
-kubectl apply -f "$TEKTON_TRIGGERS_INTERCEPTORS_URL"
 echo "  Waiting for Tekton Triggers to be ready..."
-kubectl wait --for=condition=Ready pods -l app.kubernetes.io/part-of=tekton-triggers -n "$NAMESPACE" --timeout=120s 2>/dev/null || true
+kubectl rollout status deployment/tekton-triggers-controller -n tekton-pipelines --timeout=120s
+kubectl rollout status deployment/tekton-triggers-webhook -n tekton-pipelines --timeout=120s
+apply_with_retry -f "$TEKTON_TRIGGERS_INTERCEPTORS_URL"
+kubectl rollout status deployment/tekton-triggers-core-interceptors -n tekton-pipelines --timeout=120s
 
 # 3. git-clone task (into target namespace so our pipelines can reference it)
 echo "  Installing git-clone task..."
@@ -52,8 +79,10 @@ kubectl apply -f "$TEKTON_GIT_CLONE_URL" -n "$NAMESPACE" 2>/dev/null || \
 
 # 4. This repo's tasks and pipelines (kubectl apply is idempotent; triggers apply now that Triggers is installed)
 echo "  Applying stack tasks and pipelines..."
-kubectl apply -f "$MILESTONE_DIR/tasks/" -n "$NAMESPACE"
-kubectl apply -f "$MILESTONE_DIR/pipeline/" -n "$NAMESPACE"
+apply_with_retry -f "$MILESTONE_DIR/tasks/" -n "$NAMESPACE"
+# EventListener reconciliation creates el-* Services. It can race the explicit
+# Service in triggers.yaml between kubectl's read and create operations.
+apply_with_retry -f "$MILESTONE_DIR/pipeline/" -n "$NAMESPACE"
 
 echo ""
 echo "  Done. For full PR pipeline (intercepts), also install the Traffic Manager:"

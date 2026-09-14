@@ -4,11 +4,13 @@ on:
   pull_request:
     paths:
       - "operator/**"
+      - "scripts/install-tekton.sh"
       - ".github/workflows/operator.yml"
   push:
     branches: [main]
     paths:
       - "operator/**"
+      - "scripts/install-tekton.sh"
       - ".github/workflows/operator.yml"
   workflow_dispatch:
 
@@ -29,10 +31,10 @@ jobs:
         working-directory: operator
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up Go
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: operator/go.mod
           cache-dependency-path: operator/go.sum
@@ -40,11 +42,67 @@ jobs:
       - name: Check formatting
         run: test -z "$(gofmt -l .)"
 
+      - name: Lint
+        env:
+          # golangci-lint v2.13.2 is built with Go 1.26; setup-go otherwise
+          # forces GOTOOLCHAIN=local at the module's Go 1.23 version.
+          GOTOOLCHAIN: auto
+        run: make lint
+
       - name: Unit tests
         run: go test ./internal/pipeline/ ./internal/controller/ ./api/... -race -coverprofile=unit-cover.out
 
-      - name: Envtest
+      - name: Envtest domain integration
         run: make test-envtest
 
       - name: Generated files are current
         run: git diff --exit-code
+
+  kind-domain:
+    name: Kind StackRun domain E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - name: Install pinned Kind
+        run: |
+          curl -fsSL -o /tmp/kind https://kind.sigs.k8s.io/dl/v0.27.0/kind-linux-amd64
+          echo "a6875aaea358acf0ac07786b1a6755d08fd640f4c79b7a2e46681cc13f49a04b  /tmp/kind" | sha256sum -c -
+          chmod +x /tmp/kind
+          sudo mv /tmp/kind /usr/local/bin/kind
+
+      - name: Reconcile sample StackRun in Kind
+        env:
+          CLUSTER_CI_GIT_REVISION: ${{ github.sha }}
+          CLUSTER_CI_GIT_URL: https://github.com/${{ github.repository }}.git
+        run: |
+          set -o pipefail
+          bash scripts/run-cluster-ci.sh \
+            --skip-isolation --skip-phase2 --skip-newman 2>&1 | tee operator-kind-e2e.log
+
+      - name: Collect operator failure diagnostics
+        if: failure()
+        run: |
+          kubectl get stack,stackrun,pipelinerun -A -o yaml > operator-resources.yaml 2>&1 || true
+          kubectl get pods,deployments -A -o wide > operator-workloads.txt 2>&1 || true
+          kubectl logs -n tekton-pipelines -l app=tekton-dag-operator \
+            --all-containers=true --prefix=true > operator-controller.log 2>&1 || true
+          kubectl get events -A --sort-by=.lastTimestamp > operator-events.txt 2>&1 || true
+
+      - name: Upload Kind E2E diagnostics
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: operator-kind-e2e-${{ github.sha }}
+          path: |
+            operator-kind-e2e.log
+            operator-resources.yaml
+            operator-workloads.txt
+            operator-controller.log
+            operator-events.txt
+          if-no-files-found: warn
+          retention-days: 14

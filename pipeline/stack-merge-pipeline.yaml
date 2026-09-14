@@ -37,25 +37,25 @@ spec:
       default: "{}"
     - name: compile-image-npm
       description: "Image for npm compile step"
-      default: ""
+      default: "ubuntu:22.04"
     - name: compile-image-maven
       description: "Image for Maven compile step"
-      default: ""
+      default: "ubuntu:22.04"
     - name: compile-image-gradle
       description: "Image for Gradle compile step"
-      default: ""
+      default: "ubuntu:22.04"
     - name: compile-image-pip
       description: "Image for pip compile step"
-      default: ""
+      default: "ubuntu:22.04"
     - name: compile-image-php
       description: "Image for Composer/PHP compile step"
-      default: ""
+      default: "ubuntu:22.04"
     - name: pre-build-task
-      description: "Optional Tekton Task to run after clone, before compile. Empty = skip."
-      default: ""
+      description: "Optional Tekton Task to run after clone, before compile."
+      default: "tekton-dag-hook-noop"
     - name: post-build-task
-      description: "Optional Tekton Task to run after containerize, before tag-release. Empty = skip."
-      default: ""
+      description: "Optional Tekton Task to run after containerize, before tag-release."
+      default: "tekton-dag-hook-noop"
 
   workspaces:
     - name: shared-workspace
@@ -156,7 +156,7 @@ spec:
       when:
         - input: $(params.pre-build-task)
           operator: notin
-          values: [""]
+          values: ["tekton-dag-hook-noop"]
       taskRef:
         resolver: cluster
         params:
@@ -308,7 +308,7 @@ spec:
       when:
         - input: $(params.post-build-task)
           operator: notin
-          values: [""]
+          values: ["tekton-dag-hook-noop"]
       taskRef:
         resolver: cluster
         params:

@@ -6,6 +6,12 @@
 name: cluster regression
 
 on:
+  pull_request:
+    paths:
+      - ".github/workflows/cluster-regression.yml"
+      - "helm/tekton-dag/**"
+      - "scripts/bootstrap-namespace.sh"
+      - "scripts/run-cluster-ci.sh"
   workflow_dispatch:
     inputs:
       isolation_repeats:
@@ -112,6 +118,11 @@ jobs:
           if [[ "${{ github.event.inputs.skip_newman || false }}" == "true" ]]; then
             extra+=(--skip-newman)
           fi
+          # RBAC/chart PRs need the deterministic Tekton Phase 2 + Newman gate.
+          # Isolation benchmarking remains part of nightly/manual/tag runs.
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            extra+=(--skip-isolation)
+          fi
           # Script defaults WITH_OPERATOR=true. Honor dispatch uncheck only.
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.with_operator }}" == "false" ]]; then
             extra+=(--skip-operator)
@@ -119,7 +130,18 @@ jobs:
           bash scripts/run-cluster-ci.sh --isolation-repeats "$ISOLATION_EVAL_REPEATS" \
             --out "$ISOLATION_EVAL_OUT" "${extra[@]}" 2>&1 | tee cluster-ci.log
 
-      - name: Upload cluster CI log and CSV
+      - name: Collect cluster failure diagnostics
+        if: failure()
+        run: |
+          kubectl logs deployment/tekton-dag-orchestrator -n tekton-pipelines \
+            --all-containers --tail=-1 > orchestrator.log 2>&1 || true
+          kubectl auth can-i --list \
+            --as=system:serviceaccount:tekton-pipelines:tekton-pr-sa \
+            > pipeline-rbac.log 2>&1 || true
+          kubectl get stackruns,pipelineruns -n tekton-pipelines -o yaml \
+            > execution-resources.yaml 2>&1 || true
+
+      - name: Upload cluster CI diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -127,5 +149,8 @@ jobs:
           path: |
             cluster-ci.log
             isolation-eval-measured.csv
+            orchestrator.log
+            pipeline-rbac.log
+            execution-resources.yaml
           if-no-files-found: warn
           retention-days: 30

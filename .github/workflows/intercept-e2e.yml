@@ -1,0 +1,133 @@
+name: intercept product E2E
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/intercept-e2e.yml"
+      - "helm/tekton-dag/**"
+      - "scripts/bootstrap-namespace.sh"
+      - "scripts/run-product-intercept-e2e.sh"
+  workflow_dispatch:
+  schedule:
+    # Weekly product-path evidence on the default branch.
+    - cron: "43 7 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: intercept-e2e-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  product-path:
+    name: ${{ matrix.backend }} trigger-to-traffic
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        backend: [telepresence, mirrord]
+    env:
+      E2E_ARTIFACT_DIR: ${{ github.workspace }}/artifacts/${{ matrix.backend }}
+      E2E_GIT_SSH_PRIVATE_KEY: ${{ secrets.E2E_GIT_SSH_PRIVATE_KEY }}
+      INTERCEPT_E2E_TIMEOUT: "2100"
+      KIND_VERSION: "v0.27.0"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+
+      - name: Install Kind and Newman
+        run: |
+          curl -fsSL -o /tmp/kind "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64"
+          echo "a6875aaea358acf0ac07786b1a6755d08fd640f4c79b7a2e46681cc13f49a04b  /tmp/kind" | sha256sum -c -
+          chmod +x /tmp/kind
+          sudo mv /tmp/kind /usr/local/bin/kind
+          npm install -g newman@6.2.1
+          ./scripts/bootstrap-regression-venv.sh
+
+      - name: Install cluster control plane
+        env:
+          CLUSTER_CI_GIT_REVISION: ${{ github.sha }}
+          CLUSTER_CI_GIT_URL: https://github.com/${{ github.repository }}.git
+        run: |
+          set -o pipefail
+          bash scripts/run-cluster-ci.sh --skip-isolation 2>&1 | tee cluster-setup.log
+
+      - name: Install application clone credential
+        run: |
+          kubectl create namespace staging --dry-run=client -o yaml | kubectl apply -f -
+          kubectl label namespace staging \
+            pod-security.kubernetes.io/enforce=privileged \
+            pod-security.kubernetes.io/audit=privileged \
+            pod-security.kubernetes.io/warn=privileged \
+            --overwrite
+          secret_args=()
+          if [[ -n "$E2E_GIT_SSH_PRIVATE_KEY" ]]; then
+            install -d -m 700 /tmp/e2e-ssh
+            printf '%s\n' "$E2E_GIT_SSH_PRIVATE_KEY" > /tmp/e2e-ssh/id_ed25519
+            chmod 600 /tmp/e2e-ssh/id_ed25519
+            secret_args+=(--from-file=id_ed25519=/tmp/e2e-ssh/id_ed25519)
+          else
+            echo "No E2E SSH key configured; public application repositories will use HTTPS."
+          fi
+          kubectl create secret generic ssh-key-secret \
+            -n tekton-pipelines \
+            "${secret_args[@]}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          rm -rf /tmp/e2e-ssh
+
+      - name: Build pipeline tool images
+        run: |
+          set -o pipefail
+          bash build-images/build-and-push.sh localhost:5000 latest 2>&1 | tee build-images.log
+
+      - name: Install Telepresence traffic manager
+        if: matrix.backend == 'telepresence'
+        run: ./scripts/install-telepresence-traffic-manager.sh
+
+      - name: Run authenticated product path
+        env:
+          PR_NUMBER: ${{ github.run_number }}
+        run: |
+          set -o pipefail
+          bash scripts/run-product-intercept-e2e.sh \
+            --intercept-backend "${{ matrix.backend }}" \
+            --pr "$PR_NUMBER" 2>&1 | tee "intercept-${{ matrix.backend }}.log"
+
+      - name: Collect failure diagnostics
+        if: failure()
+        run: |
+          mkdir -p "$E2E_ARTIFACT_DIR"
+          kubectl get stackrun,pipelinerun,taskrun -A -o yaml \
+            > "$E2E_ARTIFACT_DIR/all-tekton-resources.yaml" 2>&1 || true
+          kubectl get pods,deployments,services -A -o wide \
+            > "$E2E_ARTIFACT_DIR/all-workloads.txt" 2>&1 || true
+          kubectl logs -n tekton-pipelines -l app=tekton-dag-operator \
+            --all-containers=true --prefix=true \
+            > "$E2E_ARTIFACT_DIR/operator.log" 2>&1 || true
+
+      - name: Upload product-path evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: intercept-e2e-${{ matrix.backend }}-${{ github.sha }}
+          path: |
+            artifacts/${{ matrix.backend }}/
+            cluster-setup.log
+            build-images.log
+            intercept-${{ matrix.backend }}.log
+          if-no-files-found: warn
+          retention-days: 30

@@ -30,7 +30,7 @@ regression criteria in `docs/AGENT-REGRESSION.md` are satisfied.
   - Acceptance: `helm template` assertions cover both defaults and opt-in
     cluster-admin; Phase 2, Newman, and intercept E2E pass with least privilege.
 
-- [ ] **M17.2 Authenticate mutation APIs**
+- [x] **M17.2 Authenticate mutation APIs**
   - Protect orchestrator `/api/run`, `/api/bootstrap`, `/api/reload`, and graph
     ingestion, plus Management GUI trigger/approval routes.
   - Health/readiness and read-only APIs remain independently configurable.
@@ -52,7 +52,7 @@ regression criteria in `docs/AGENT-REGRESSION.md` are satisfied.
 
 ## P1 — CI gates and operator assurance
 
-- [ ] **M17.5 Activate operator CI from root `.github/workflows/`**
+- [x] **M17.5 Activate operator CI from root `.github/workflows/`**
   - Run formatting/lint, unit tests, controller envtest, and domain E2E.
   - Pin Kind and action dependencies.
   - Acceptance: StackRun→PipelineRun creation, status, approval, idempotency,
@@ -158,4 +158,8 @@ regression criteria in `docs/AGENT-REGRESSION.md` are satisfied.
 |------|-------|----------|--------|
 | 2026-09-14 | Audit baseline | Local regression; Playwright; Go test/vet; coverage; latest cluster CI | Recorded |
 | 2026-09-14 | M17.2 mutation API authentication | Shared constant-time bearer check; 108 orchestrator, 68 GUI backend, and 61 common tests; frontend build; local regression exit 0 | Local green; Helm rendering and live-cluster Newman pending because this runner has no Helm or kubectl |
+| 2026-09-14 | M17.3 intercept product automation | Weekly/manual Telepresence + mirrord matrix; authenticated trigger-to-StackRun runner; retained traffic diagnostics; 3 static acceptance tests; local regression exit 0 | Automation green locally; first live matrix run and SSH repository secret still required |
+| 2026-09-14 | M17.4 strict Results automation | Weekly/manual pinned Results v0.20.0 + ephemeral Postgres workflow; fail-closed installers; failure diagnostics; 2 static acceptance tests; local regression exit 0 | Automation green locally; first live strict workflow run still required |
+| 2026-09-14 | M17.2 mutation authentication acceptance | Strict Kind run 34874792600; least-privilege RBAC; Phase 2 passed; Newman missing/invalid/valid bearer paths; 38 assertions | Passed, zero Newman failures |
+| 2026-09-14 | M17.5 operator CI acceptance | Root operator workflow; lint, unit, envtest, generated-file checks; Kind StackRun domain E2E | Passed in PR #42 |
 

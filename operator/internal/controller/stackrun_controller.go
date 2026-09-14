@@ -41,7 +41,8 @@ import (
 const (
 	// Label marking PipelineRuns created for a StackRun. OwnerReference is not
 	// set (orphan on StackRun delete) so Tekton Results history survives.
-	labelStackRun = "tektondag.io/stackrun"
+	labelStackRun  = "tektondag.io/stackrun"
+	conditionReady = "Ready"
 
 	pipelineStatusRetry = 15 * time.Second
 )
@@ -126,7 +127,7 @@ func (r *StackRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		latest.Status.ObservedGeneration = latest.Generation
 		latest.Status.Phase = "Pending"
 		meta.SetStatusCondition(&latest.Status.Conditions, metav1.Condition{
-			Type:               "Ready",
+			Type:               conditionReady,
 			Status:             metav1.ConditionFalse,
 			Reason:             "PipelineRunCreated",
 			Message:            fmt.Sprintf("Created PipelineRun %s", prName),
@@ -149,7 +150,7 @@ func (r *StackRunReconciler) pendingApproval(ctx context.Context, run *tektondag
 		latest.Status.ObservedGeneration = latest.Generation
 		latest.Status.Phase = "PendingApproval"
 		meta.SetStatusCondition(&latest.Status.Conditions, metav1.Condition{
-			Type:               "Ready",
+			Type:               conditionReady,
 			Status:             metav1.ConditionFalse,
 			Reason:             "PendingApproval",
 			Message:            "requireApproval is set; patch spec.approvedBy to create the PipelineRun",
@@ -189,7 +190,7 @@ func (r *StackRunReconciler) syncPipelineStatus(ctx context.Context, run *tekton
 			ready = metav1.ConditionTrue
 		}
 		meta.SetStatusCondition(&latest.Status.Conditions, metav1.Condition{
-			Type:               "Ready",
+			Type:               conditionReady,
 			Status:             ready,
 			Reason:             reason,
 			Message:            msg,
@@ -209,7 +210,7 @@ func (r *StackRunReconciler) fail(ctx context.Context, run *tektondagv1alpha1.St
 		latest.Status.ObservedGeneration = latest.Generation
 		latest.Status.Phase = "Error"
 		meta.SetStatusCondition(&latest.Status.Conditions, metav1.Condition{
-			Type:               "Ready",
+			Type:               conditionReady,
 			Status:             metav1.ConditionFalse,
 			Reason:             reason,
 			Message:            msg,

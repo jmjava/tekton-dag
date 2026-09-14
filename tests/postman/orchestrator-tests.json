@@ -42,15 +42,19 @@
       "item": [
         {
           "name": "POST /api/run rejects missing bearer token",
-          "auth": {
-            "type": "noauth"
-          },
           "request": {
+            "auth": {
+              "type": "noauth"
+            },
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": ""
               }
             ],
             "body": {
@@ -72,22 +76,19 @@
         },
         {
           "name": "POST /api/run rejects invalid bearer token",
-          "auth": {
-            "type": "bearer",
-            "bearer": [
-              {
-                "key": "token",
-                "value": "invalid-token",
-                "type": "string"
-              }
-            ]
-          },
           "request": {
+            "auth": {
+              "type": "noauth"
+            },
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer invalid-token"
               }
             ],
             "body": {

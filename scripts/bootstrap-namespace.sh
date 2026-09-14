@@ -17,6 +17,7 @@ shift 2>/dev/null || true
 SSH_KEY_PATH="${SSH_KEY_PATH:-$HOME/.ssh/id_ed25519}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 WEBHOOK_SECRET="${WEBHOOK_SECRET:-}"
+PIPELINE_RBAC_CLUSTER_ADMIN="${PIPELINE_RBAC_CLUSTER_ADMIN:-false}"
 GIT_CLONE_URL="${TEKTON_GIT_CLONE_URL:-https://raw.githubusercontent.com/tektoncd/catalog/main/task/git-clone/0.9/git-clone.yaml}"
 
 while [[ $# -gt 0 ]]; do
@@ -24,9 +25,15 @@ while [[ $# -gt 0 ]]; do
     --ssh-key)        SSH_KEY_PATH="$2"; shift 2 ;;
     --github-token)   GITHUB_TOKEN="$2"; shift 2 ;;
     --webhook-secret) WEBHOOK_SECRET="$2"; shift 2 ;;
+    --cluster-admin)  PIPELINE_RBAC_CLUSTER_ADMIN=true; shift ;;
     *)                echo "Unknown option: $1" >&2; exit 1 ;;
   esac
 done
+
+case "$PIPELINE_RBAC_CLUSTER_ADMIN" in
+  true|false) ;;
+  *) die "PIPELINE_RBAC_CLUSTER_ADMIN must be true or false" ;;
+esac
 
 need kubectl
 
@@ -46,11 +53,73 @@ kubectl label namespace "$NAMESPACE" pod-security.kubernetes.io/warn=privileged 
 echo "  Creating ServiceAccount tekton-pr-sa..."
 kubectl create serviceaccount tekton-pr-sa -n "$NAMESPACE" 2>/dev/null || true
 
-# 3. RBAC — cluster-admin for the SA (pipeline needs to deploy to staging, create intercepts, etc.)
-echo "  Creating ClusterRoleBinding..."
-kubectl create clusterrolebinding "tekton-pr-sa-admin-${NAMESPACE}" \
-  --clusterrole=cluster-admin \
-  --serviceaccount="$NAMESPACE:tekton-pr-sa" 2>/dev/null || true
+# 3. RBAC — least privilege by default. Cluster-admin is an explicit escape
+# hatch for disposable local clusters only.
+if [[ "$PIPELINE_RBAC_CLUSTER_ADMIN" == "true" ]]; then
+  echo "  WARNING: granting cluster-admin to tekton-pr-sa (explicit escape hatch)"
+  kubectl create clusterrolebinding "tekton-pr-sa-admin-${NAMESPACE}" \
+    --clusterrole=cluster-admin \
+    --serviceaccount="$NAMESPACE:tekton-pr-sa" \
+    --dry-run=client -o yaml | kubectl apply -f -
+else
+  echo "  Applying least-privilege pipeline RBAC..."
+  # Remove the legacy default binding when upgrading an existing namespace.
+  kubectl delete clusterrolebinding "tekton-pr-sa-admin-${NAMESPACE}" \
+    --ignore-not-found
+  kubectl apply -f - <<EOF
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tekton-pr-sa-pipeline-${NAMESPACE}
+rules:
+  - apiGroups: [""]
+    resources:
+      - namespaces
+      - pods
+      - pods/log
+      - pods/exec
+      - pods/portforward
+      - services
+      - endpoints
+      - configmaps
+      - persistentvolumeclaims
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "deployments/scale", "replicasets", "statefulsets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses", "networkpolicies"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["tekton.dev"]
+    resources: ["pipelineruns", "taskruns"]
+    verbs: ["get", "list", "watch", "create", "patch", "delete"]
+  - apiGroups: ["tektondag.io"]
+    resources: ["stackruns"]
+    verbs: ["get", "list", "watch", "create"]
+  - apiGroups: ["tektondag.io"]
+    resources: ["stacks", "teams"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tekton-pr-sa-pipeline-${NAMESPACE}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tekton-pr-sa-pipeline-${NAMESPACE}
+subjects:
+  - kind: ServiceAccount
+    name: tekton-pr-sa
+    namespace: ${NAMESPACE}
+EOF
+fi
 
 # 4. Secrets
 echo "  Creating secrets..."
