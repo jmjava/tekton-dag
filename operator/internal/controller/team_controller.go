@@ -53,7 +53,7 @@ func (r *TeamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	team.Status.ObservedGeneration = team.Generation
 	team.Status.Ready = ready
 	cond := metav1.Condition{
-		Type:               "Ready",
+		Type:               conditionReady,
 		Status:             metav1.ConditionTrue,
 		Reason:             "Valid",
 		Message:            "Team spec accepted",
