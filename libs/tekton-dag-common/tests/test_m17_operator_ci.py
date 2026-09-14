@@ -13,6 +13,7 @@ def test_operator_workflow_runs_pinned_quality_and_domain_jobs():
     assert "make lint" in workflow
     assert "GOTOOLCHAIN: auto" in workflow
     assert "make test-envtest" in workflow
+    assert workflow.count('"scripts/install-tekton.sh"') == 2
     assert "Kind StackRun domain E2E" in workflow
     assert "v0.27.0/kind-linux-amd64" in workflow
     assert "sha256sum -c -" in workflow
@@ -27,3 +28,10 @@ def test_operator_domain_integration_covers_m17_lifecycle_contracts():
     assert 't.Run("approval blocks then creates"' in test
     assert 't.Run("continuation carries results and pvc"' in test
     assert "TestInvalidStackRejectedByCRDSchema" in test
+
+
+def test_tekton_install_retries_controller_owned_resource_apply_races():
+    installer = (ROOT / "scripts/install-tekton.sh").read_text()
+
+    assert "apply_with_retry()" in installer
+    assert 'apply_with_retry -f "$MILESTONE_DIR/pipeline/"' in installer
