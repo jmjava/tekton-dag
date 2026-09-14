@@ -33,7 +33,7 @@ while [[ $# -gt 0 ]]; do
     --timeout) TIMEOUT="$2"; shift 2 ;;
     --keep-resources) KEEP_RESOURCES=true; shift ;;
     --help|-h)
-      sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,6p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *) die "Unknown option: $1" ;;
