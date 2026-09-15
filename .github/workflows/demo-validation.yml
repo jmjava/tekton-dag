@@ -1,0 +1,75 @@
+name: demo validation
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/demo-validation.yml"
+      - ".gitattributes"
+      - "docs/demos/docgen.yaml"
+      - "docs/demos/narration/**"
+      - "docs/demos/animations/**"
+      - "docs/demos/terminal/**"
+      - "docs/demos/recordings/**"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/demo-validation.yml"
+      - ".gitattributes"
+      - "docs/demos/docgen.yaml"
+      - "docs/demos/narration/**"
+      - "docs/demos/animations/**"
+      - "docs/demos/terminal/**"
+      - "docs/demos/recordings/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: demo-validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  validate:
+    name: A/V, narration, streams, and terminal OCR
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DOCGEN_GIT_REF: b880ba7a96c35fa32672f217e68c3e3592fb2be1
+    steps:
+      - name: Checkout recordings from Git LFS
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          lfs: true
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install media validation dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends ffmpeg tesseract-ocr
+          python -m pip install --upgrade pip
+          pip install "docgen @ git+https://github.com/jmjava/documentation-generator.git@${DOCGEN_GIT_REF}"
+
+      - name: Validate committed demo artifacts
+        working-directory: docs/demos
+        run: |
+          docgen validate --pre-push 2>&1 | tee "${RUNNER_TEMP}/docgen-validation.log"
+          if grep -E '^WARN \[[^]]+\] ocr_scan:' "${RUNNER_TEMP}/docgen-validation.log"; then
+            echo "Terminal error text or an unavailable OCR engine must fail CI." >&2
+            exit 1
+          fi
+
+      - name: Retain validation log
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: docgen-validation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/docgen-validation.log
+          if-no-files-found: error
+          retention-days: 14
