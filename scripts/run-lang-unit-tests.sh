@@ -48,6 +48,14 @@ if ((${#missing[@]})); then
   exit 0
 fi
 
+PHP_DOM_AVAILABLE=true
+if ! php -r 'exit(extension_loaded("dom") ? 0 : 1);'; then
+  PHP_DOM_AVAILABLE=false
+  if [[ "$MODE" == "require" ]]; then
+    die "PHPUnit needs the PHP dom extension (install php-xml or omit --require-lang-tests)"
+  fi
+fi
+
 echo ""
 echo ">>> Maven: libs/baggage-spring-boot-starter"
 (cd "$REPO_ROOT/libs/baggage-spring-boot-starter" && mvn -B -q test)
@@ -58,7 +66,11 @@ echo ">>> Maven: libs/baggage-servlet-filter"
 
 echo ""
 echo ">>> PHPUnit: libs/baggage-php"
-(cd "$REPO_ROOT/libs/baggage-php" && composer install --no-interaction --quiet && ./vendor/bin/phpunit)
+if [[ "$PHP_DOM_AVAILABLE" == "true" ]]; then
+  (cd "$REPO_ROOT/libs/baggage-php" && composer install --no-interaction --quiet && ./vendor/bin/phpunit)
+else
+  echo ">>> SKIP PHPUnit: PHP dom extension is unavailable"
+fi
 
 echo ""
 echo ">>> go test: operator coverage floors (no envtest / e2e)"
