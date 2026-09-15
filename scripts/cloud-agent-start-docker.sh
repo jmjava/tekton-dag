@@ -30,7 +30,7 @@ EOF
 fi
 
 if ! pgrep -x dockerd >/dev/null 2>&1; then
-  sudo dockerd >"$DOCKER_LOG" 2>&1 &
+  sudo sh -c 'exec dockerd >"$1" 2>&1' sh "$DOCKER_LOG" &
 fi
 
 for i in $(seq 1 40); do

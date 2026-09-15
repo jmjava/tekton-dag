@@ -81,8 +81,6 @@ fi
 # See https://docs.github.com/en/rest/repos/webhooks#create-a-repository-webhook
 create_or_update_hook() {
   local repo_slug="$1"
-  local owner="${repo_slug%%/*}"
-  local repo="${repo_slug#*/}"
   local existing_id
   existing_id=$(curl -sS -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github.v3+json" \
     "https://api.github.com/repos/$repo_slug/hooks" | jq -r --arg u "$WEBHOOK_URL" '.[] | select(.config.url == $u) | .id // empty')

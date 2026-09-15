@@ -9,8 +9,6 @@
 # Otherwise applies the local-path-provisioner and sets it as default.
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
 # Check for existing default StorageClass
 DEFAULT_SC=$(kubectl get storageclass -o json 2>/dev/null | jq -r '.items[] | select(.metadata.annotations["storageclass.kubernetes.io/is-default-class"]=="true") | .metadata.name' 2>/dev/null || true)
 if [[ -n "$DEFAULT_SC" ]]; then

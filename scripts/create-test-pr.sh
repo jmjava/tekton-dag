@@ -67,7 +67,6 @@ if [[ -z "$BRANCH_NAME" ]]; then
 fi
 
 git fetch origin 2>/dev/null || true
-DEFAULT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
 
 # Create branch from origin/main (or main) and make a trivial change
 git checkout -B "$BRANCH_NAME" origin/main 2>/dev/null || git checkout -B "$BRANCH_NAME" main 2>/dev/null || git checkout -b "$BRANCH_NAME"

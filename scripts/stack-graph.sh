@@ -13,8 +13,6 @@ set -euo pipefail
 #   ./stack-graph.sh <stack-file> --chain <app>     # propagation chain starting at <app>
 #   ./stack-graph.sh <stack-file> --validate        # validate graph (no cycles, all refs resolve)
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
 die()  { echo "ERROR: $*" >&2; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || die "$1 is required but not installed"; }
 
@@ -73,11 +71,10 @@ validate() {
   done
 
   # Cycle detection via topological sort attempt
-  local sorted
-  sorted=$(topo_sort 2>&1) || {
+  if ! topo_sort >/dev/null 2>&1; then
     echo "INVALID: graph contains a cycle" >&2
     errors=$((errors + 1))
-  }
+  fi
 
   if [[ $errors -eq 0 ]]; then
     echo "VALID"

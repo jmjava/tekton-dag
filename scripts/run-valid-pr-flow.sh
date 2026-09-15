@@ -77,10 +77,10 @@ fi
 
 echo "  APP=$APP  PR_NUMBER=$PR_NUMBER  BRANCH_NAME=$BRANCH_NAME"
 
-# Step 2: Start PR pipeline (use empty storage class for Kind so PVCs bind)
+# Step 2: Start PR pipeline (the default empty storage class lets Kind PVCs bind)
 echo ""
 echo "[2/4] Starting PR pipeline..."
-PIPE_OUT=$(cd "$TEKTON_DAG_ROOT" && set -a && source .env 2>/dev/null; set +a; unset STORAGE_CLASS 2>/dev/null; "$SCRIPT_DIR/generate-run.sh" --mode pr --stack "$STACK" --app "$APP" --pr "$PR_NUMBER" --app-revision "$APP:$BRANCH_NAME" --storage-class "" --apply 2>&1)
+PIPE_OUT=$(cd "$TEKTON_DAG_ROOT" && set -a && source .env 2>/dev/null; set +a; unset STORAGE_CLASS 2>/dev/null; "$SCRIPT_DIR/generate-run.sh" --mode pr --stack "$STACK" --app "$APP" --pr "$PR_NUMBER" --app-revision "$APP:$BRANCH_NAME" --storage-class "$STORAGE_CLASS" --apply 2>&1)
 RUN_NAME=$(echo "$PIPE_OUT" | grep -oE 'stack-pr-[0-9]+-[a-z0-9]+' | head -1)
 if [[ -z "$RUN_NAME" ]]; then
   echo "ERROR: Could not get PipelineRun name from generate-run output." >&2

@@ -45,7 +45,7 @@ cleanup() { kill $PF_PID 2>/dev/null || true; }
 trap cleanup EXIT
 
 # Wait for port-forward to be ready
-for i in {1..30}; do
+for _ in {1..30}; do
   curl -sS -o /dev/null -w "%{http_code}" "http://127.0.0.1:$PF_PORT/" 2>/dev/null | grep -q 200 && break
   sleep 0.5
 done
