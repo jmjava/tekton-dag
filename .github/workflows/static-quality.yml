@@ -47,6 +47,8 @@ jobs:
 
       - name: Go lint configuration
         working-directory: operator
+        env:
+          GOTOOLCHAIN: auto
         run: make lint-config
 
       - name: Go lint and vet
