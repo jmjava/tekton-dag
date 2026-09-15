@@ -4,86 +4,126 @@ updates:
     directory: /
     schedule:
       interval: weekly
-    groups:
-      github-actions:
-        patterns: ["*"]
+      day: monday
+      time: "06:00"
+      timezone: Etc/UTC
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: deps(actions)
 
   - package-ecosystem: gomod
     directory: /operator
     schedule:
       interval: weekly
+      day: tuesday
+      time: "06:00"
+      timezone: Etc/UTC
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 3
     groups:
-      operator-go:
-        patterns: ["*"]
+      kubernetes-stack-minor-patch:
+        patterns:
+          - k8s.io/*
+          - sigs.k8s.io/controller-runtime
+        update-types:
+          - minor
+          - patch
+    commit-message:
+      prefix: deps(go)
 
   - package-ecosystem: npm
-    directory: /management-gui/frontend
+    directories:
+      - /management-gui/frontend
+      - /reporting-gui/frontend
+      - /reporting-gui/backend
+      - /libs/baggage-node
+      - /docs/demos/slides
     schedule:
       interval: weekly
+      day: wednesday
+      time: "06:00"
+      timezone: Etc/UTC
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 5
     groups:
-      management-frontend:
-        patterns: ["*"]
-
-  - package-ecosystem: npm
-    directory: /libs/baggage-node
-    schedule:
-      interval: weekly
-    groups:
-      baggage-node:
-        patterns: ["*"]
-
-  - package-ecosystem: pip
-    directory: /orchestrator
-    schedule:
-      interval: weekly
-    groups:
-      orchestrator-python:
-        patterns: ["*"]
-
-  - package-ecosystem: pip
-    directory: /management-gui/backend
-    schedule:
-      interval: weekly
-    groups:
-      management-backend-python:
-        patterns: ["*"]
+      npm-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+    commit-message:
+      prefix: deps(npm)
 
   - package-ecosystem: pip
-    directory: /libs/tekton-dag-common
+    directories:
+      - /
+      - /orchestrator
+      - /management-gui/backend
+      - /libs/tekton-dag-common
+      - /libs/baggage-python
+      - /docs/demos
+      - /documentation-generator/video-framework
     schedule:
       interval: weekly
+      day: thursday
+      time: "06:00"
+      timezone: Etc/UTC
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 5
     groups:
-      common-python:
-        patterns: ["*"]
-
-  - package-ecosystem: pip
-    directory: /libs/baggage-python
-    schedule:
-      interval: weekly
-    groups:
-      baggage-python:
-        patterns: ["*"]
+      python-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+    commit-message:
+      prefix: deps(python)
 
   - package-ecosystem: maven
-    directory: /libs/baggage-spring-boot-starter
+    directories:
+      - /libs/baggage-spring-boot-starter
+      - /libs/baggage-servlet-filter
     schedule:
       interval: weekly
+      day: friday
+      time: "06:00"
+      timezone: Etc/UTC
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 3
     groups:
-      baggage-spring:
-        patterns: ["*"]
-
-  - package-ecosystem: maven
-    directory: /libs/baggage-servlet-filter
-    schedule:
-      interval: weekly
-    groups:
-      baggage-servlet:
-        patterns: ["*"]
+      maven-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+    commit-message:
+      prefix: deps(maven)
 
   - package-ecosystem: composer
     directory: /libs/baggage-php
     schedule:
       interval: weekly
+      day: friday
+      time: "08:00"
+      timezone: Etc/UTC
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 3
     groups:
-      baggage-php:
-        patterns: ["*"]
+      composer-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+    commit-message:
+      prefix: deps(composer)
