@@ -446,3 +446,65 @@ def test_list_repos(client):
     assert resp.status_code == 200
     data = resp.get_json()
     assert "items" in data
+
+
+@pytest.mark.parametrize(
+    ("endpoint", "client_function"),
+    [
+        ("/api/repos/acme/service/branches", "github_client.list_branches"),
+        ("/api/repos/acme/service/tags", "github_client.list_tags"),
+        ("/api/repos/acme/service/commits", "github_client.list_commits"),
+        ("/api/repos/acme/service/prs", "github_client.list_prs"),
+    ],
+)
+def test_repo_routes_report_github_errors(client, endpoint, client_function):
+    with patch(client_function, side_effect=RuntimeError("GitHub unavailable")):
+        resp = client.get(endpoint)
+
+    assert resp.status_code == 500
+    assert resp.get_json() == {"error": "GitHub unavailable"}
+
+
+@patch("github_client.list_prs")
+def test_repo_prs_invalid_state_defaults_to_open(mock_prs, client):
+    mock_prs.return_value = []
+
+    resp = client.get("/api/repos/acme/service/prs?state=invalid")
+
+    assert resp.status_code == 200
+    mock_prs.assert_called_once_with("acme", "service", state="open")
+
+
+@patch("github_client.list_prs_all_repos")
+def test_all_prs_invalid_state_defaults_to_open(mock_all_prs, client):
+    mock_all_prs.return_value = ([], [], [])
+
+    resp = client.get("/api/prs?state=invalid")
+
+    assert resp.status_code == 200
+    mock_all_prs.assert_called_once()
+    assert mock_all_prs.call_args.kwargs["state"] == "open"
+
+
+@patch("github_client.list_prs_all_repos")
+def test_all_prs_reports_github_errors(mock_all_prs, client):
+    mock_all_prs.side_effect = RuntimeError("rate limited")
+
+    resp = client.get("/api/prs")
+
+    assert resp.status_code == 500
+    assert resp.get_json() == {"error": "rate limited"}
+
+
+@patch("k8s_client.get_pipelinerun")
+def test_get_pipelinerun_without_conditions_uses_unknown_status(mock_get, client):
+    mock_get.return_value = {
+        "metadata": {"name": "run-empty", "namespace": "tekton-pipelines"},
+        "spec": {},
+        "status": {},
+    }
+
+    resp = client.get("/api/teams/default/pipelineruns/run-empty")
+
+    assert resp.status_code == 200
+    assert resp.get_json()["status"] == "Unknown"

@@ -136,10 +136,16 @@ run_pytest_dir() {
   (cd "$REPO_ROOT/$dir" && python3 -m pytest "$@" -v --tb=short)
 }
 
-run_pytest_dir "orchestrator" "orchestrator" tests/
-run_pytest_dir "tekton-dag-common" "libs/tekton-dag-common" tests/
-run_pytest_dir "management-gui backend" "management-gui/backend" tests/
-run_pytest_dir "baggage-python" "libs/baggage-python" tests/
+run_pytest_dir "orchestrator" "orchestrator" tests/ \
+  --cov=. --cov-config="$REPO_ROOT/orchestrator/.coveragerc" \
+  --cov-report=term-missing --cov-fail-under=92
+run_pytest_dir "tekton-dag-common" "libs/tekton-dag-common" tests/ \
+  --cov=tekton_dag_common --cov-report=term-missing --cov-fail-under=83
+run_pytest_dir "management-gui backend" "management-gui/backend" tests/ \
+  --cov=. --cov-config="$REPO_ROOT/management-gui/backend/.coveragerc" \
+  --cov-report=term-missing --cov-fail-under=91
+run_pytest_dir "baggage-python" "libs/baggage-python" tests/ \
+  --cov=tekton_dag_baggage --cov-report=term-missing --cov-fail-under=88
 
 echo ""
 echo ">>> vitest: libs/baggage-node"
