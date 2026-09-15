@@ -96,11 +96,14 @@ regression criteria in `docs/AGENT-REGRESSION.md` are satisfied.
 
 ## P2 — Test-depth gaps
 
-- [ ] **M17.10 Make Newman integration assertions authoritative**
+- [x] **M17.10 Make Newman integration assertions authoritative**
   - Remove the nightly `--skip-integration` default or replace the warning-only
     wait with explicit success criteria.
   - Acceptance: CI fails if the expected StackRun/PipelineRun path does not
     reconcile and reach the declared checkpoint.
+  - Evidence: cluster-regression run `34989095946` passed the current-run
+    StackRun reconciliation gate and required bootstrap `fetch-source`
+    execution checkpoint.
 
 - [ ] **M17.11 Exercise optional graph and GUI API suites**
   - Run Neo4j graph Newman on a scheduled cadence and GUI Newman against a live

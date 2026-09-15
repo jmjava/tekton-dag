@@ -179,7 +179,11 @@ if [[ "$SKIP_NEWMAN" != "true" ]]; then
     -p '{"spec":{"template":{"spec":{"containers":[{"name":"orchestrator","imagePullPolicy":"IfNotPresent"}]}}}}'
   kubectl rollout status deployment/tekton-dag-orchestrator -n "$NAMESPACE" --timeout=180s
 
-  newman_args=(--skip-integration)
+  newman_args=()
+  if [[ "$WITH_OPERATOR" != "true" ]]; then
+    echo ">>> Newman integration checkpoint disabled because operator installation was explicitly skipped"
+    newman_args+=(--skip-integration)
+  fi
   if [[ "$WITH_GRAPH" == "true" ]]; then
     echo ""
     echo ">>> Neo4j (graph Newman collection)"
