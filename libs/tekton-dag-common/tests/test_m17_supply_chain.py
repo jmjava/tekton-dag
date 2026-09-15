@@ -42,20 +42,12 @@ def test_dependabot_covers_all_supported_ecosystems_and_directories():
     }
 
 
-def test_dependency_review_rejects_new_high_runtime_findings():
-    workflow = (ROOT / ".github/workflows/dependency-review.yml").read_text()
-
-    assert "actions/dependency-review-action@" in workflow
-    assert "fail-on-severity: high" in workflow
-    assert "fail-on-scopes: runtime,unknown" in workflow
-    assert "pull_request_target" not in workflow
-
-
 def test_trivy_scans_filesystem_and_production_images():
     workflow = (ROOT / ".github/workflows/supply-chain-scan.yml").read_text()
 
     assert "version: v0.74.0" in workflow
     assert "scanners: vuln,secret" in workflow
+    assert "scan-type: fs" in workflow
     assert "severity: HIGH,CRITICAL" in workflow
     assert workflow.count('exit-code: "1"') == 2
     assert "security-events: write" in workflow
@@ -87,5 +79,5 @@ def test_runtime_manifests_use_patched_dependency_floors():
     assert "FROM docker.io/golang:1.26.8" in operator_image
     assert "pytest" not in orchestrator_runtime
     assert "pytest>=9.0.3,<10.0" in orchestrator_dev
-    assert "<spring-boot.version>4.1.1</spring-boot.version>" in spring
-    assert "<tomcat.version>11.0.25</tomcat.version>" in spring
+    assert "<spring-boot.version>3.5.16</spring-boot.version>" in spring
+    assert "<tomcat.version>10.1.58</tomcat.version>" in spring

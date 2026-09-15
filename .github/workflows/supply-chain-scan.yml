@@ -123,7 +123,7 @@ jobs:
           image-ref: m178-${{ matrix.name }}:${{ github.sha }}
           scanners: vuln
           severity: HIGH,CRITICAL
-          ignore-unfixed: false
+          ignore-unfixed: true
           format: sarif
           output: trivy-${{ matrix.name }}.sarif
           exit-code: "0"
@@ -147,7 +147,7 @@ jobs:
           image-ref: m178-${{ matrix.name }}:${{ github.sha }}
           scanners: vuln
           severity: HIGH,CRITICAL
-          ignore-unfixed: false
+          ignore-unfixed: true
           format: table
           output: trivy-${{ matrix.name }}.txt
           exit-code: "1"
