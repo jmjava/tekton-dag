@@ -1,6 +1,6 @@
 """Tests for github_client.py — mocks the requests library."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import github_client
 

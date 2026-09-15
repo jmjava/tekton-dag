@@ -1,11 +1,10 @@
 """Tests for k8s_client.py — mocks the Kubernetes Python client."""
 
 from types import SimpleNamespace
-from unittest.mock import patch, MagicMock
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 import k8s_client
+import pytest
 
 
 @patch("k8s_client.get_api")

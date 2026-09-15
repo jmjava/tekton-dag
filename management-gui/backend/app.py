@@ -13,13 +13,12 @@ import logging
 import os
 from pathlib import Path
 
+import k8s_client
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from tekton_dag_common.api_auth import bearer_token_matches
-
-import k8s_client
 from stack_resolver import StackResolver
 from team_registry import TeamRegistry
+from tekton_dag_common.api_auth import bearer_token_matches
 
 logging.basicConfig(
     level=logging.INFO,

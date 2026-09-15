@@ -3,7 +3,6 @@
 import textwrap
 
 import pytest
-
 from stack_resolver import StackResolver
 
 

@@ -1,6 +1,10 @@
 """Team YAML ↔ CR conversion."""
 
-from tekton_dag_common.team_cr import cr_to_team_config, overlay_team_configs, team_yaml_to_cr
+from tekton_dag_common.team_cr import (
+    cr_to_team_config,
+    overlay_team_configs,
+    team_yaml_to_cr,
+)
 
 
 def test_round_trip_overlay():

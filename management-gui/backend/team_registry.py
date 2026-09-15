@@ -7,8 +7,8 @@ Each team.yaml defines:
   cacheRepo, interceptBackend, maxConcurrentRuns, maxParallelBuilds, stacks
 """
 
-import os
 import logging
+import os
 
 import yaml
 

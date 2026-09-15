@@ -5,8 +5,8 @@ All functions accept an optional token parameter; if not provided,
 they fall back to the GITHUB_TOKEN environment variable.
 """
 
-import os
 import logging
+import os
 
 import requests
 

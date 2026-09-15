@@ -2,9 +2,8 @@
 
 from unittest.mock import patch
 
-import pytest
-
 import pipelinerun_builder as pb
+import pytest
 
 
 @pytest.fixture

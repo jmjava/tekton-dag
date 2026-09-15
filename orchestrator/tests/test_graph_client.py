@@ -3,9 +3,8 @@
 import json
 from unittest.mock import MagicMock, call
 
-import pytest
-
 import graph_client
+import pytest
 
 
 @pytest.fixture(autouse=True)

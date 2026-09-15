@@ -91,7 +91,6 @@ def ingest_traces(traces):
             prev_service = None
             for span in spans:
                 svc = span["service"]
-                resource = span.get("resource", "")
 
                 session.run("MERGE (s:Service {name: $name})", name=svc)
 

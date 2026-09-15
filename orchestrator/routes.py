@@ -15,13 +15,12 @@ Endpoints:
 import json
 import logging
 
-from flask import Flask, request, jsonify, current_app
-
-import k8s_client
-import stackrun_builder
 import graph_client
-import webhook_auth
+import k8s_client
 import registry_resolver
+import stackrun_builder
+import webhook_auth
+from flask import Flask, current_app, jsonify, request
 
 logger = logging.getLogger("orchestrator.routes")
 
@@ -154,7 +153,6 @@ def register_routes(app: Flask):
         data = request.get_json(force=True)
         mode = data.get("mode", "pr")
         cfg = current_app.config
-        resolver = cfg["RESOLVER"]
         rel = _reliability_kwargs(cfg, data)
 
         stack_file = data.get("stack_file", cfg["STACK_FILE"])

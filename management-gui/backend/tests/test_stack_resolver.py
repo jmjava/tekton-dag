@@ -4,7 +4,6 @@ import os
 import tempfile
 
 import pytest
-
 from stack_resolver import StackResolver
 
 STACK_ONE_YAML = """\

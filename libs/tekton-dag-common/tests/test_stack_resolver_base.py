@@ -3,7 +3,6 @@
 from pathlib import Path
 
 import yaml
-
 from tekton_dag_common.stack_resolver_base import (
     extract_repo_map,
     get_build_apps,

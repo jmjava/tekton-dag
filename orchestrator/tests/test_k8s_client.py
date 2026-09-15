@@ -1,9 +1,8 @@
 """Kubernetes client wrapper tests with mocked kubernetes.client and config."""
 
+import k8s_client
 import pytest
 from kubernetes.client.rest import ApiException
-
-import k8s_client
 
 
 @pytest.fixture(autouse=True)

@@ -1,5 +1,5 @@
-from protocol import estimate_pod_count
 from cluster import clone_manifests, intercept_manifests
+from protocol import estimate_pod_count
 
 
 def test_manifests_include_width_and_entry():
