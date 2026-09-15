@@ -14,7 +14,6 @@ from yaml.constructor import ConstructorError
 from yaml.nodes import MappingNode
 from yaml.resolver import BaseResolver
 
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 HELM_TEMPLATE_PREFIX = Path("helm/tekton-dag/templates")
 STRUCTURED_SUFFIXES = {".json", ".yaml", ".yml"}

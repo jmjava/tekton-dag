@@ -194,16 +194,6 @@ function selectRepo(r) {
   prs.value = [];
 }
 
-async function loadPipelineRuns() {
-  try {
-    const r = await fetch(`${api}/api/pipelineruns?limit=100`);
-    const data = r.ok ? await r.json() : { items: [] };
-    pipelineRuns.value = (data.items || []).filter((run) => run.prNumber != null || run.changedApp != null);
-  } catch {
-    pipelineRuns.value = [];
-  }
-}
-
 function runForPr(apps, prNumber) {
   const prNum = String(prNumber);
   const run = pipelineRuns.value.find(

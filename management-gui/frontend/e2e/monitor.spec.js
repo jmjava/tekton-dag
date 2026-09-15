@@ -27,9 +27,9 @@ test.describe('Monitor view', () => {
   })
 
   test('status badges render for each run', async ({ page }) => {
-    const badges = page.locator('.data-table .status-badge, .data-table span')
-    const firstRow = page.locator('.data-table tbody tr').first()
-    await expect(firstRow).toContainText('Succeeded')
+    const badges = page.locator('.data-table .status-badge')
+    await expect(badges).toHaveCount(STACK_RUNS.items.length)
+    await expect(badges.first()).toContainText('Succeeded')
   })
 
   test('clicking a run name navigates to run detail', async ({ page }) => {
