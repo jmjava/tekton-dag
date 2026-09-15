@@ -86,7 +86,7 @@ jobs:
           tar -xJf "/tmp/${shellcheck_archive}" -C /tmp
           sudo install "/tmp/shellcheck-${SHELLCHECK_VERSION}/shellcheck" /usr/local/bin/shellcheck
 
-          actionlint_archive="actionlint_${ACTIONLINT_VERSION}_linux_x86_64.tar.gz"
+          actionlint_archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
           curl -fsSLo "/tmp/${actionlint_archive}" \
             "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/${actionlint_archive}"
           echo "${ACTIONLINT_SHA256}  /tmp/${actionlint_archive}" | sha256sum -c -
