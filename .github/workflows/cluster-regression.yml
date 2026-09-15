@@ -12,6 +12,8 @@ on:
       - "helm/tekton-dag/**"
       - "scripts/bootstrap-namespace.sh"
       - "scripts/run-cluster-ci.sh"
+      - "scripts/run-orchestrator-tests.sh"
+      - "tests/postman/orchestrator-tests.json"
   workflow_dispatch:
     inputs:
       isolation_repeats:
@@ -104,7 +106,7 @@ jobs:
         run: ./scripts/bootstrap-regression-venv.sh
 
       - name: Install Newman
-        run: npm install -g newman
+        run: npm install -g newman@6.2.1
 
       - name: Cluster CI
         env:

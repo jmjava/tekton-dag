@@ -30,6 +30,8 @@ SKIP_INTEGRATION=false
 RUN_ORCH=false
 RUN_GRAPH=false
 
+need jq
+
 if [[ -z "${API_MUTATION_TOKEN:-}" ]]; then
   API_MUTATION_TOKEN="$(
     kubectl get secret tekton-dag-api-auth -n "$NS" \
@@ -52,6 +54,18 @@ if [ "$RUN_GRAPH" = "false" ] && [ "$RUN_ORCH" = "false" ]; then
   RUN_ORCH=true
 fi
 
+delete_test_resources() {
+  if kubectl get crd stackruns.tektondag.io >/dev/null 2>&1; then
+    echo "  Deleting test StackRuns..."
+    kubectl delete stackrun -n "$NS" -l app.kubernetes.io/part-of=tekton-job-standardization \
+      2>/dev/null || true
+  fi
+  echo "  Deleting test PipelineRuns..."
+  kubectl delete pipelinerun -n "$NS" -l app.kubernetes.io/part-of=tekton-job-standardization \
+    --field-selector='metadata.name!=stack-bootstrap-2h86t,metadata.name!=stack-pr-1-dnljs,metadata.name!=stack-pr-1-n99kc' \
+    2>/dev/null || true
+}
+
 cleanup() {
   echo ""
   echo "=== Cleanup ==="
@@ -59,16 +73,7 @@ cleanup() {
     kill "$PF_PID" 2>/dev/null || true
     echo "  Stopped port-forward (PID $PF_PID)"
   fi
-
-  echo "  Deleting test PipelineRuns created by orchestrator tests..."
-  kubectl delete pipelinerun -n "$NS" -l app.kubernetes.io/part-of=tekton-job-standardization \
-    --field-selector='metadata.name!=stack-bootstrap-2h86t,metadata.name!=stack-pr-1-dnljs,metadata.name!=stack-pr-1-n99kc' \
-    2>/dev/null || true
-  if kubectl get crd stackruns.tektondag.io >/dev/null 2>&1; then
-    echo "  Deleting test StackRuns..."
-    kubectl delete stackrun -n "$NS" -l app.kubernetes.io/part-of=tekton-job-standardization \
-      2>/dev/null || true
-  fi
+  delete_test_resources
   echo "  Done."
 }
 trap cleanup EXIT
@@ -103,6 +108,10 @@ else
   echo "  healthz: FAILED ($HEALTH)"
   exit 1
 fi
+echo ""
+
+echo "=== Removing stale Newman execution resources ==="
+delete_test_resources
 echo ""
 
 NEWMAN_FAILED=false
@@ -198,38 +207,68 @@ fi
 echo ""
 echo "=== Integration validation: checking PipelineRuns created by tests ==="
 
-BOOTSTRAP_RUN=$(kubectl get pipelinerun -n "$NS" -l tekton.dev/pipeline=stack-bootstrap \
-  --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1].metadata.name}' 2>/dev/null || echo "")
+BOOTSTRAP_RUN="$(
+  kubectl get stackrun -n "$NS" \
+    -l app.kubernetes.io/part-of=tekton-job-standardization -o json |
+    jq -r '
+      [.items[]
+       | select(.spec.mode == "bootstrap")
+       | select((.status.pipelineRunName // "") != "")]
+      | sort_by(.metadata.creationTimestamp)
+      | last
+      | .status.pipelineRunName // empty
+    '
+)"
 
 if [ -z "$BOOTSTRAP_RUN" ]; then
-  echo "  WARNING: No bootstrap PipelineRun found — skipping integration check"
-else
-  echo "  Latest bootstrap PipelineRun: $BOOTSTRAP_RUN"
-  echo "  Waiting for fetch-source task to start (up to 120s)..."
-  TIMEOUT=120
-  ELAPSED=0
-  while [ "$ELAPSED" -lt "$TIMEOUT" ]; do
-    FETCH_STATUS=$(kubectl get taskrun -n "$NS" \
-      -l tekton.dev/pipelineRun="$BOOTSTRAP_RUN" \
-      -o jsonpath='{range .items[*]}{.metadata.labels.tekton\.dev/pipelineTask}{" "}{.status.conditions[0].reason}{"\n"}{end}' 2>/dev/null \
-      | grep "^fetch-source " | awk '{print $2}' || echo "")
+  die "Newman bootstrap StackRun did not reconcile to a PipelineRun"
+fi
 
-    if [ "$FETCH_STATUS" = "Succeeded" ]; then
-      echo "  fetch-source: Succeeded (PipelineRun is executing)"
+echo "  Bootstrap PipelineRun: $BOOTSTRAP_RUN"
+echo "  Waiting for fetch-source to succeed (up to 120s)..."
+TIMEOUT=120
+ELAPSED=0
+while [ "$ELAPSED" -lt "$TIMEOUT" ]; do
+  FETCH_CONDITION="$(
+    kubectl get taskrun -n "$NS" \
+      -l tekton.dev/pipelineRun="$BOOTSTRAP_RUN" -o json 2>/dev/null |
+      jq -r '
+        [.items[]
+         | select(.metadata.labels["tekton.dev/pipelineTask"] == "fetch-source")
+         | .status.conditions[0]]
+        | last
+        | if . == null then "" else "\(.status) \(.reason)" end
+      '
+  )"
+
+  case "$FETCH_CONDITION" in
+    "True Succeeded")
+      echo "  fetch-source: Succeeded (authoritative execution checkpoint)"
       break
-    elif [ "$FETCH_STATUS" = "Failed" ]; then
-      echo "  fetch-source: Failed"
-      break
-    fi
+      ;;
+    "False "*)
+      die "fetch-source failed for $BOOTSTRAP_RUN: ${FETCH_CONDITION#False }"
+      ;;
+  esac
 
-    sleep 10
-    ELAPSED=$((ELAPSED + 10))
-    echo "    ${ELAPSED}s..."
-  done
-
-  if [ "$ELAPSED" -ge "$TIMEOUT" ] && [ "$FETCH_STATUS" != "Succeeded" ]; then
-    echo "  WARNING: Timed out waiting for fetch-source on $BOOTSTRAP_RUN"
+  PIPELINE_CONDITION="$(
+    kubectl get pipelinerun "$BOOTSTRAP_RUN" -n "$NS" \
+      -o jsonpath='{.status.conditions[0].status} {.status.conditions[0].reason}' \
+      2>/dev/null || true
+  )"
+  if [[ "$PIPELINE_CONDITION" == "False "* ]]; then
+    die "bootstrap PipelineRun $BOOTSTRAP_RUN failed: ${PIPELINE_CONDITION#False }"
   fi
+
+  sleep 5
+  ELAPSED=$((ELAPSED + 5))
+  echo "    ${ELAPSED}s..."
+done
+
+if [ "$FETCH_CONDITION" != "True Succeeded" ]; then
+  kubectl get stackrun,pipelinerun,taskrun -n "$NS" \
+    -l app.kubernetes.io/part-of=tekton-job-standardization || true
+  die "timed out waiting for fetch-source on $BOOTSTRAP_RUN"
 fi
 
 echo ""
