@@ -28,7 +28,9 @@ def test_demo_validation_installs_authoritative_media_checks():
 
     assert "ffmpeg tesseract-ocr" in workflow
     assert "A/V, narration, streams, and terminal OCR" in workflow
-    assert "DOCGEN_GIT_REF: cb9f145efc7db49b2b72e7269fd25e4eba85730b" in workflow
+    assert "DOCGEN_GIT_REF: b880ba7a96c35fa32672f217e68c3e3592fb2be1" in workflow
+    assert r"grep -E '^WARN \[[^]]+\] ocr_scan:'" in workflow
+    assert "unavailable OCR engine must fail CI" in workflow
     assert "if-no-files-found: error" in workflow
 
 
