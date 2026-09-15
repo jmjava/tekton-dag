@@ -1,6 +1,6 @@
 # Milestone 17 — End-to-end quality and production-readiness closure
 
-**Status:** In progress
+**Status:** Paused after M17.10; resume with M17.4 live acceptance, then M17.11
 
 This milestone converts the September 2026 end-to-end audit into an executable
 backlog. Work is ordered by production risk, not by subsystem. A checkbox is
@@ -21,6 +21,37 @@ For each slice:
 
 The milestone is complete only when every P0–P3 item is checked and the final
 regression criteria in `docs/AGENT-REGRESSION.md` are satisfied.
+
+## Resume checkpoint — 2026-09-15
+
+Work is intentionally paused to preserve the remaining implementation budget.
+
+- Completed with recorded acceptance: M17.1–M17.3 and M17.5–M17.10.
+- Still open: M17.4 and M17.11–M17.21.
+- M17.10 landed through
+  [PR #60](https://github.com/jmjava/tekton-dag/pull/60); its final revision
+  passed all 17 reported checks, including Kind Phase 2, authoritative Newman,
+  both intercept backends, static quality, regression, and supply-chain scans.
+- The first resume action is operational, not an implementation slice: make
+  `.github/workflows/results-regression.yml` available on the default branch
+  (GitHub cannot dispatch or schedule a workflow that exists only on the
+  aggregate feature branch), then manually dispatch it against the M17
+  revision. Mark M17.4 complete only if strict Results/Postgres verification
+  exits zero; otherwise fix that failure first.
+- After M17.4, continue in numeric order from M17.11. Do not skip directly to
+  maintainability work because M17.11–M17.14 establish the test evidence needed
+  to refactor safely.
+- Before resuming, fetch the latest `cursor/close-e2e-audit-gaps-fc5f` and
+  create a fresh `cursor/<slice>-fc5f` branch. Do not reuse merged slice
+  branches.
+
+| Resume order | Work | Terminal condition |
+|---|---|---|
+| 1 | M17.4 Results live acceptance | Scheduled/manual strict workflow green and evidence recorded |
+| 2 | M17.11–M17.14 test depth | Optional suites, representation sync, runner branches, and compatibility matrix enforced |
+| 3 | M17.15–M17.19 maintainability | Duplication, ownership, legacy surface, errors, and config contracts consolidated behind green tests |
+| 4 | M17.20–M17.21 docs/release | Canonical docs, governance, and reproducible release automation complete |
+| 5 | Final verification | Full prescribed regression satisfies `docs/AGENT-REGRESSION.md` |
 
 ## P0 — Security and execution truth
 
@@ -176,4 +207,10 @@ regression criteria in `docs/AGENT-REGRESSION.md` are satisfied.
 | 2026-09-14 | M17.2 mutation authentication acceptance | Strict Kind run 34874792600; least-privilege RBAC; Phase 2 passed; Newman missing/invalid/valid bearer paths; 38 assertions | Passed, zero Newman failures |
 | 2026-09-14 | M17.5 operator CI acceptance | Root operator workflow; lint, unit, envtest, generated-file checks; Kind StackRun domain E2E | Passed in PR #42 |
 | 2026-09-14 | M17.1 least-privilege RBAC acceptance | Helm default/opt-in assertions; strict Kind run 34883804213 passed Phase 2 and Newman; intercept run 34890630726 passed Telepresence and mirrord | Passed without pipeline `cluster-admin` |
+| 2026-09-15 | M17.6 coverage gates | Python and Go ratcheting floors; focused production-package tests | Local regression and operator CI passed at recorded baselines |
+| 2026-09-15 | M17.7 static quality | Ruff, Go lint/vet, ShellCheck, actionlint, structured data, frontend, and Helm gates | Run 34915661601 passed |
+| 2026-09-15 | M17.8 supply chain | Dependabot coverage; filesystem, secret, and production image scanning; dependency remediation | Run 34974127479 passed all production scan gates |
+| 2026-09-15 | M17.9 demo validation | Git LFS recordings; stream, A/V drift, narration, and OCR checks | Run 34975666059 passed |
+| 2026-09-15 | M17.10 Newman execution truth | Current-run StackRun reconciliation and bootstrap fetch-source checkpoint | Run 34989095946 passed; final PR revision passed all checks |
+| 2026-09-15 | Pause checkpoint | Completed M17.1–M17.3 and M17.5–M17.10; open M17.4 and M17.11–M17.21 | Resume instructions recorded above |
 
