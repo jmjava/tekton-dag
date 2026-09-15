@@ -55,8 +55,7 @@ MIRRORD_PIDS=()
 start_session() {
   local config=$1 port=$2 body=$3
   MIRRORD_M6_RESPONSE="$body" PORT="$port" "$MIRRORD_BIN" exec -f "$config" -- python3 "${POC}/local_server.py" &>/dev/null &
-  MIRRORD_PIDS+=($!)
-  echo $!
+  MIRRORD_PIDS+=("$!")
 }
 wait_agents() { echo "  Waiting ${AGENT_WAIT}s for mirrord agents..."; sleep "$AGENT_WAIT"; }
 kill_pids() { for p in "$@"; do kill "$p" 2>/dev/null || true; done; wait "$@" 2>/dev/null || true; }
@@ -92,9 +91,9 @@ run_scenario_3() {
   echo "=== Scenario 3: Two concurrent intercepts (BFF + API, different services) ==="
   kubectl get deployment release-lifecycle-demo -n "$NAMESPACE" &>/dev/null || { echo "BFF not found"; return 1; }
   kubectl get deployment demo-api -n "$NAMESPACE" &>/dev/null || { echo "demo-api not found"; return 1; }
-  local bff_pid api_pid err=0
-  bff_pid=$(start_session "$CONFIG_PR1_BFF" 8080 "LOCAL-PR-1-BFF")
-  api_pid=$(start_session "$CONFIG_PR2_API" 8080 "LOCAL-PR-2-API")
+  local err=0
+  start_session "$CONFIG_PR1_BFF" 8080 "LOCAL-PR-1-BFF"
+  start_session "$CONFIG_PR2_API" 8080 "LOCAL-PR-2-API"
   wait_agents
   assert_request "BFF no header -> original"           "$BFF_SVC/" "" "tekton-dag-spring-boot"        || err=1
   assert_request "BFF x-dev-session: pr-1 -> local"    "$BFF_SVC/" "pr-1" "LOCAL-PR-1-BFF"            || err=1
@@ -110,8 +109,8 @@ run_scenario_3() {
 run_scenario_4() {
   echo "=== Scenario 4: Normal traffic during intercept (20-request burst, no header) ==="
   kubectl get deployment release-lifecycle-demo -n "$NAMESPACE" &>/dev/null || { echo "Deployment not found"; return 1; }
-  local pr1_pid err=0 fail=0
-  pr1_pid=$(start_session "$CONFIG_PR1_BFF" 8080 "LOCAL-PR-1")
+  local err=0 fail=0
+  start_session "$CONFIG_PR1_BFF" 8080 "LOCAL-PR-1"
   wait_agents
   for i in $(seq 1 20); do
     resp=$(in_cluster_curl "$BFF_SVC/")
@@ -134,9 +133,9 @@ run_scenario_5() {
   echo "=== Scenario 5: Combined (2 intercepts on different services + normal traffic) ==="
   kubectl get deployment release-lifecycle-demo -n "$NAMESPACE" &>/dev/null || { echo "BFF not found"; return 1; }
   kubectl get deployment demo-api -n "$NAMESPACE" &>/dev/null || { echo "demo-api not found"; return 1; }
-  local bff_pid api_pid err=0
-  bff_pid=$(start_session "$CONFIG_PR1_BFF" 8080 "LOCAL-PR-1-BFF")
-  api_pid=$(start_session "$CONFIG_PR2_API" 8080 "LOCAL-PR-2-API")
+  local err=0
+  start_session "$CONFIG_PR1_BFF" 8080 "LOCAL-PR-1-BFF"
+  start_session "$CONFIG_PR2_API" 8080 "LOCAL-PR-2-API"
   wait_agents
   for i in $(seq 1 5); do
     assert_request "round $i: BFF no header -> original"  "$BFF_SVC/" "" "tekton-dag-spring-boot"        || err=1

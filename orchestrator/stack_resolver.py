@@ -5,8 +5,8 @@ Replaces the hardcoded CEL overlays in triggers.yaml and the static
 stacks/registry.yaml with a dynamic, in-memory registry.
 """
 
-import os
 import logging
+import os
 
 import yaml
 

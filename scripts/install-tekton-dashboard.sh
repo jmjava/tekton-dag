@@ -15,7 +15,6 @@
 # Uninstall: ./scripts/uninstall-tekton-dashboard.sh
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NAMESPACE="${TEKTON_NAMESPACE:-tekton-pipelines}"
 READ_WRITE=false
 RELEASE_URL="https://infra.tekton.dev/tekton-releases/dashboard/latest/release.yaml"

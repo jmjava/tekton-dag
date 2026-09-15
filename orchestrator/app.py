@@ -10,10 +10,9 @@ import logging
 import os
 
 from flask import Flask, jsonify, request
-from tekton_dag_common.api_auth import bearer_token_matches
-
 from routes import register_routes
 from stack_resolver import StackResolver
+from tekton_dag_common.api_auth import bearer_token_matches
 
 logging.basicConfig(
     level=logging.INFO,

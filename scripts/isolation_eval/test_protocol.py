@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import pytest
-
 from protocol import (
     ProbeOutcome,
     estimate_pod_count,

@@ -13,7 +13,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 STACKS_DIR="$REPO_ROOT/stacks"
-TESTS_DIR="$REPO_ROOT/tests/artillery"
 STACK_FILE="$STACKS_DIR/stack-one.yaml"
 PR_NUMBER="1"
 ENTRY_URL=""
@@ -41,7 +40,6 @@ STACK_JSON=$(yq -o=json "$STACK_FILE")
 ENTRY_APP=$(echo "$STACK_JSON" | jq -r '
   (.apps | map(.downstream) | flatten) as $deps |
   .apps[] | select(.name as $n | ($deps | index($n)) | not) | .name')
-DEFAULT_NS=$(echo "$STACK_JSON" | jq -r '.defaults.namespace // "staging"')
 ENTRY_NS=$(echo "$STACK_JSON" | jq -r --arg a "$ENTRY_APP" \
   '(.defaults.namespace // "staging") as $dn | .apps[]|select(.name==$a)|.namespace // $dn')
 ENTRY_SPORT=$(echo "$STACK_JSON" | jq -r --arg a "$ENTRY_APP" \

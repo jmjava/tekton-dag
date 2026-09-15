@@ -68,11 +68,14 @@ regression criteria in `docs/AGENT-REGRESSION.md` are satisfied.
     for the Python packages and 80.0%/32.6% for operator pipeline/controller;
     local regression run `34909065149` and operator run `34909065137` passed.
 
-- [ ] **M17.7 Add static quality gates**
+- [x] **M17.7 Add static quality gates**
   - Python Ruff, Go lint/vet, ShellCheck, YAML/JSON parsing, frontend lint/build,
     and Helm package/template validation.
   - Resolve existing findings before making a gate required.
   - Acceptance: all gates run on relevant PR path changes and pass.
+  - Evidence: static-quality run `34915661601` passed Ruff, Go lint/vet,
+    ShellCheck, actionlint, strict YAML/JSON parsing, both frontend lint/build
+    matrices, and staged/package Helm renders.
 
 - [ ] **M17.8 Add supply-chain automation**
   - Dependabot/Renovate-equivalent updates for actions, npm, Go, Python, Maven,

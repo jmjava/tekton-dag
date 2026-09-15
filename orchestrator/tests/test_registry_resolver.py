@@ -2,9 +2,8 @@
 
 from pathlib import Path
 
-import yaml
-
 import registry_resolver as rr
+import yaml
 
 
 def test_load_registries_from_repo_file():

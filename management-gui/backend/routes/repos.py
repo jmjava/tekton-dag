@@ -1,6 +1,5 @@
-from flask import Blueprint, current_app, jsonify, request
-
 import github_client
+from flask import Blueprint, current_app, jsonify, request
 
 bp = Blueprint("repos", __name__)
 

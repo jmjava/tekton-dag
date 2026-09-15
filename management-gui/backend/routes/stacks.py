@@ -1,9 +1,8 @@
 import sys
 from pathlib import Path
 
-from flask import Blueprint, current_app, jsonify, request
-
 import k8s_client
+from flask import Blueprint, current_app, jsonify, request
 
 bp = Blueprint("stacks", __name__)
 

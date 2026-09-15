@@ -5,7 +5,6 @@
 # Example: ./install-telepresence-traffic-manager.sh --version 2.20.0
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TELEPRESENCE_VERSION="${TELEPRESENCE_VERSION:-2.20.0}"
 NAMESPACE="${TELEPRESENCE_NAMESPACE:-ambassador}"
 CHART_OCI="oci://ghcr.io/telepresenceio/telepresence-oss"
@@ -29,7 +28,7 @@ export HELM_CACHE_HOME="${HELM_RUN_DIR}/cache"
 export HELM_CONFIG_HOME="${HELM_RUN_DIR}/config"
 export XDG_CACHE_HOME="${HELM_RUN_DIR}/xdg-cache"
 export XDG_CONFIG_HOME="${HELM_RUN_DIR}/xdg-config"
-trap "rm -rf '$HELM_RUN_DIR'" EXIT
+trap 'rm -rf "$HELM_RUN_DIR"' EXIT
 
 echo "=============================================="
 echo "  Install Telepresence Traffic Manager"

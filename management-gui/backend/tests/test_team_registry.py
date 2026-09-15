@@ -4,7 +4,6 @@ import os
 import tempfile
 
 import pytest
-
 from team_registry import TeamRegistry
 
 TEAM_DEFAULT_YAML = """\

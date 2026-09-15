@@ -39,7 +39,7 @@ else
   echo "  Creating secret tekton-results-postgres..."
   kubectl create secret generic tekton-results-postgres --namespace="$NAMESPACE" \
     --from-literal=POSTGRES_USER=postgres \
-    --from-literal=POSTGRES_PASSWORD=$(openssl rand -base64 24)
+    --from-literal=POSTGRES_PASSWORD="$(openssl rand -base64 24)"
   echo "  Secret created."
 fi
 

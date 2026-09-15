@@ -101,10 +101,8 @@ GIT_REV="${GIT_REV:-$GIT_REVISION}"
 # Defensive: strip stray trailing '}' (e.g. from env or template copy-paste) so Kaniko destination is valid
 while [[ "${IMAGE_REGISTRY: -1}" == "}" ]]; do IMAGE_REGISTRY="${IMAGE_REGISTRY%?}"; done
 # Containerd certs.d maps localhost:5000 -> kind-registry:5000 internally; use localhost:5000 for all image refs
-COMPILE_IMAGE_REGISTRY="${IMAGE_REGISTRY}"
 PIPELINE_IMAGE_REGISTRY="${IMAGE_REGISTRY}"
 if [[ "$IMAGE_REGISTRY" == "localhost:5001" ]]; then
-  COMPILE_IMAGE_REGISTRY="localhost:5000"
   PIPELINE_IMAGE_REGISTRY="localhost:5000"
 fi
 
@@ -167,15 +165,25 @@ fi
 if [[ "$APPLY" == "true" ]]; then
   echo "---"
   echo "# Applying StackRun..."
-  "$0" --mode "$MODE" --stack "$STACK" --app "$APP" \
-    ${PR:+--pr "$PR"} \
-    --intercept-backend "$INTERCEPT_BACKEND" \
-    --app-revisions-json "$APP_REVISIONS" \
-    --version-overrides "$VERSION_OVERRIDES" \
-    --git-url "$GIT_URL" --git-revision "$GIT_REV" \
-    --registry "$IMAGE_REGISTRY" \
-    --namespace "$NAMESPACE" \
-    --ssh-secret "$GIT_SSH_SECRET_NAME" \
-    $([ "$BUILD_IMAGES" = "true" ] && echo "--build-images ") \
-    --storage-class "$STORAGE_CLASS" | kubectl create -f -
+  apply_args=(
+    --mode "$MODE"
+    --stack "$STACK"
+    --app "$APP"
+    --intercept-backend "$INTERCEPT_BACKEND"
+    --app-revisions-json "$APP_REVISIONS"
+    --version-overrides "$VERSION_OVERRIDES"
+    --git-url "$GIT_URL"
+    --git-revision "$GIT_REV"
+    --registry "$IMAGE_REGISTRY"
+    --namespace "$NAMESPACE"
+    --ssh-secret "$GIT_SSH_SECRET_NAME"
+    --storage-class "$STORAGE_CLASS"
+  )
+  if [[ -n "$PR" ]]; then
+    apply_args+=(--pr "$PR")
+  fi
+  if [[ "$BUILD_IMAGES" == "true" ]]; then
+    apply_args+=(--build-images)
+  fi
+  "$0" "${apply_args[@]}" | kubectl create -f -
 fi

@@ -5,8 +5,8 @@ repo-to-stack mapping, and DAG extraction for visualization.
 Adapted from orchestrator/stack_resolver.py with added get_dag().
 """
 
-import os
 import logging
+import os
 
 import yaml
 

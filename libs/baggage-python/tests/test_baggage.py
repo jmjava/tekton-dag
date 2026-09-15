@@ -1,11 +1,8 @@
 import os
-from unittest.mock import patch, MagicMock
-
-import pytest
-from flask import Flask, g
+from unittest.mock import MagicMock, patch
 
 import tekton_dag_baggage as baggage
-
+from flask import Flask, g
 
 # ---------------------------------------------------------------------------
 # W3C Baggage codec

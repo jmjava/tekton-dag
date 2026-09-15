@@ -17,11 +17,15 @@ cd "$REPO_ROOT"
 run_step() {
   local step_name="$1"
   shift
-  if ! "$@"; then
+  local status
+  if "$@"; then
+    return 0
+  else
+    status=$?
     echo "" >&2
-    echo "FAILED: $step_name (exit code $?)" >&2
+    echo "FAILED: $step_name (exit code $status)" >&2
     echo "Fix the error above before re-running." >&2
-    exit 1
+    exit "$status"
   fi
 }
 

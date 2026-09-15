@@ -10,8 +10,9 @@ Production safety: no-op unless BAGGAGE_ENABLED=true is set in the environment.
 """
 
 import os
-from flask import g, request
+
 import requests as _requests
+from flask import g, request
 
 
 def _env(key, default=""):
