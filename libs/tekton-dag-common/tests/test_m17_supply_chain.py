@@ -80,4 +80,4 @@ def test_runtime_manifests_use_patched_dependency_floors():
     assert "pytest" not in orchestrator_runtime
     assert "pytest>=9.0.3,<10.0" in orchestrator_dev
     assert "<spring-boot.version>3.5.16</spring-boot.version>" in spring
-    assert "<tomcat.version>10.1.58</tomcat.version>" in spring
+    assert "<tomcat.version>10.1.60</tomcat.version>" in spring
