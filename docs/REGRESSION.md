@@ -55,11 +55,11 @@ traffic artifact as verification.
 - **Python 3.10+** with pytest and package deps.
   - **One shot:** `./scripts/bootstrap-regression-venv.sh`
   - `run-regression.sh` prepends **`./.venv/bin`** to `PATH` automatically if the default `python3` has no pytest (you do not have to `activate` first).
-  - Manual: `python3 -m venv .venv && . .venv/bin/activate` then `pip install -r orchestrator/requirements.txt -r management-gui/backend/requirements-dev.txt` and `pip install -e 'libs/tekton-dag-common[test]' -e 'libs/baggage-python[test]'`
+  - Manual: `python3 -m venv .venv && . .venv/bin/activate` then `pip install -r orchestrator/requirements-dev.txt -r management-gui/backend/requirements-dev.txt` and `pip install -e 'libs/tekton-dag-common[test]' -e 'libs/baggage-python[test]'`
 
 - **`yq`** (Mike Farah YAML processor) on `PATH` — required for Phase 1.
 - **Node.js + npm** for baggage-node and Playwright.
-- **Optional local / required in GitHub Actions:** `mvn` (Java 21), PHP 8.3 + Composer, Go 1.23 — see `--require-lang-tests`.
+- **Optional local / required in GitHub Actions:** `mvn` (Java 21), PHP 8.3 + Composer, Go 1.26 — see `--require-lang-tests`.
 | **Cluster:** `kubectl`, Tekton `Pipeline/stack-dag-verify` + tasks for **Tier C**, orchestrator **Service** for Newman, optional Tekton Results for **Tier E**. Kind on Cloud Agent VMs: start Docker with [`cloud-agent-start-docker.sh`](../scripts/cloud-agent-start-docker.sh) (fuse-overlayfs). `kind-with-registry.sh` uses kube-proxy **nftables** (iptables mode needs `xt_statistic`, which these VMs lack).
 
 ## Common commands

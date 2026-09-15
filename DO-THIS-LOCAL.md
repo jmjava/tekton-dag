@@ -12,7 +12,7 @@ Cloud agents for this PR ran **`--local-only`** (no `kubectl` / Docker / Kind). 
 
 ```bash
 python3 -m venv .venv && . .venv/bin/activate
-pip install -r orchestrator/requirements.txt -r management-gui/backend/requirements-dev.txt
+pip install -r orchestrator/requirements-dev.txt -r management-gui/backend/requirements-dev.txt
 pip install -e 'libs/tekton-dag-common[test]' -e 'libs/baggage-python[test]'
 # optional, for schema fixture tests:
 pip install 'jsonschema>=4.0'
