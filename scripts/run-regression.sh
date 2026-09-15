@@ -115,7 +115,7 @@ if ! python3 -c "import pytest" 2>/dev/null; then
   echo "    ./scripts/bootstrap-regression-venv.sh" >&2
   echo "  Or manually:" >&2
   echo "    python3 -m venv .venv && . .venv/bin/activate" >&2
-  echo "    pip install -r orchestrator/requirements.txt \\" >&2
+  echo "    pip install -r orchestrator/requirements-dev.txt \\" >&2
   echo "      -r management-gui/backend/requirements-dev.txt" >&2
   echo "    pip install -e 'libs/tekton-dag-common[test]' -e 'libs/baggage-python[test]'" >&2
   exit 1

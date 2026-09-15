@@ -11,7 +11,7 @@ python3 -m venv "$REPO_ROOT/.venv"
 # shellcheck disable=SC1091
 source "$REPO_ROOT/.venv/bin/activate"
 pip install -U pip -q
-pip install -q -r orchestrator/requirements.txt -r management-gui/backend/requirements-dev.txt
+pip install -q -r orchestrator/requirements-dev.txt -r management-gui/backend/requirements-dev.txt
 pip install -q -e 'libs/tekton-dag-common[test]' -e 'libs/baggage-python[test]'
 # jsonschema is pulled via tekton-dag-common[test] for stacks/schema.json fixture validation
 echo "OK: run regression with: bash scripts/run-regression-agent.sh"

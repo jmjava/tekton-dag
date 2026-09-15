@@ -46,8 +46,7 @@ jobs:
 
       - name: Lint
         env:
-          # golangci-lint v2.13.2 is built with Go 1.26; setup-go otherwise
-          # forces GOTOOLCHAIN=local at the module's Go 1.23 version.
+          # Permit patch-level toolchain acquisition for pinned Go tools.
           GOTOOLCHAIN: auto
         run: make lint
 

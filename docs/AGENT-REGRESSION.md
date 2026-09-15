@@ -20,7 +20,7 @@ Bootstrap Python once if needed:
 
 ```bash
 python3 -m venv .venv && . .venv/bin/activate
-pip install -r orchestrator/requirements.txt -r management-gui/backend/requirements-dev.txt
+pip install -r orchestrator/requirements-dev.txt -r management-gui/backend/requirements-dev.txt
 pip install -e 'libs/tekton-dag-common[test]' -e 'libs/baggage-python[test]'
 ```
 

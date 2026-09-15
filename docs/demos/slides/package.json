@@ -7,7 +7,10 @@
     "export": "slidev export slides.md --output ../recordings/slide-deck.pdf"
   },
   "dependencies": {
-    "@slidev/cli": "^51.0.0",
-    "@slidev/theme-default": "latest"
+    "@slidev/cli": "^52.19.2",
+    "@slidev/theme-default": "^0.25.0"
+  },
+  "overrides": {
+    "image-size": "^2.0.4"
   }
 }
