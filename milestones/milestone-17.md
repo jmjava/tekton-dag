@@ -77,18 +77,22 @@ regression criteria in `docs/AGENT-REGRESSION.md` are satisfied.
     ShellCheck, actionlint, strict YAML/JSON parsing, both frontend lint/build
     matrices, and staged/package Helm renders.
 
-- [ ] **M17.8 Add supply-chain automation**
+- [x] **M17.8 Add supply-chain automation**
   - Dependabot/Renovate-equivalent updates for actions, npm, Go, Python, Maven,
     and Composer.
   - Add dependency and container scanning; remove known production dependency
     findings; pin CI tools and runtime images by version/digest where practical.
   - Acceptance: no unresolved critical/high production findings without an
     expiring, documented exception.
+  - Evidence: supply-chain run `34974127479` passed filesystem/secret scanning
+    and all three production image gates after the M17.8 hotfix.
 
-- [ ] **M17.9 Enforce demo validation**
+- [x] **M17.9 Enforce demo validation**
   - Run `docgen validate --pre-push` in CI for demo-source changes.
   - Acceptance: A/V drift, narration lint, missing streams, and broken terminal
     recordings fail CI.
+  - Evidence: demo-validation run `34975666059` fetched committed Git LFS
+    recordings and passed stream, A/V drift, narration, and OCR validation.
 
 ## P2 — Test-depth gaps
 
