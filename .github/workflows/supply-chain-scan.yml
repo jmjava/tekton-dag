@@ -1,0 +1,164 @@
+name: supply-chain scan
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "31 8 * * 4"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: supply-chain-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  filesystem:
+    name: Filesystem vulnerabilities and secrets
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Generate filesystem SARIF
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.74.0
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          format: sarif
+          output: trivy-filesystem.sarif
+          exit-code: "0"
+          limit-severities-for-sarif: true
+
+      - name: Upload filesystem SARIF
+        if: always() && hashFiles('trivy-filesystem.sarif') != ''
+        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
+        with:
+          sarif_file: trivy-filesystem.sarif
+          category: trivy-filesystem
+
+      - name: Enforce filesystem findings
+        if: always()
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.74.0
+          skip-setup-trivy: true
+          cache: false
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          format: table
+          output: trivy-filesystem.txt
+          exit-code: "1"
+
+      - name: Retain filesystem reports
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: trivy-filesystem-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            trivy-filesystem.sarif
+            trivy-filesystem.txt
+          if-no-files-found: warn
+          retention-days: 30
+
+  images:
+    name: Image scan (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: operator
+            context: operator
+            common_stage: ""
+          - name: orchestrator
+            context: orchestrator
+            common_stage: orchestrator/tekton_dag_common_pkg
+          - name: management-backend
+            context: management-gui/backend
+            common_stage: management-gui/backend/tekton_dag_common_pkg
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Build image
+        env:
+          COMMON_STAGE: ${{ matrix.common_stage }}
+          CONTEXT: ${{ matrix.context }}
+          IMAGE: m178-${{ matrix.name }}:${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [[ -n "${COMMON_STAGE}" ]]; then
+            rm -rf "${COMMON_STAGE}"
+            mkdir -p "${COMMON_STAGE}"
+            cp -a libs/tekton-dag-common/. "${COMMON_STAGE}/"
+          fi
+          docker build --pull --tag "${IMAGE}" "${CONTEXT}"
+
+      - name: Generate image SARIF
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.74.0
+          scan-type: image
+          image-ref: m178-${{ matrix.name }}:${{ github.sha }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          format: sarif
+          output: trivy-${{ matrix.name }}.sarif
+          exit-code: "0"
+          limit-severities-for-sarif: true
+
+      - name: Upload image SARIF
+        if: always() && hashFiles(format('trivy-{0}.sarif', matrix.name)) != ''
+        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
+        with:
+          sarif_file: trivy-${{ matrix.name }}.sarif
+          category: trivy-image-${{ matrix.name }}
+
+      - name: Enforce image findings
+        if: always()
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.74.0
+          skip-setup-trivy: true
+          cache: false
+          scan-type: image
+          image-ref: m178-${{ matrix.name }}:${{ github.sha }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          format: table
+          output: trivy-${{ matrix.name }}.txt
+          exit-code: "1"
+
+      - name: Retain image reports
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: trivy-${{ matrix.name }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            trivy-${{ matrix.name }}.sarif
+            trivy-${{ matrix.name }}.txt
+          if-no-files-found: warn
+          retention-days: 30
