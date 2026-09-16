@@ -9,6 +9,8 @@ def test_intercept_workflow_has_explicit_backend_cadence_and_evidence():
     workflow = (ROOT / ".github/workflows/intercept-e2e.yml").read_text()
 
     assert "pull_request:" in workflow
+    assert "push:" in workflow
+    assert "branches: [main]" in workflow
     assert '".github/workflows/intercept-e2e.yml"' in workflow
     assert '"helm/tekton-dag/**"' in workflow
     assert '"scripts/bootstrap-namespace.sh"' in workflow

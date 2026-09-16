@@ -11,6 +11,8 @@ def test_results_workflow_is_scheduled_strict_and_retains_diagnostics():
     assert "workflow_dispatch:" in workflow
     assert "schedule:" in workflow
     assert "pull_request:" in workflow
+    assert "push:" in workflow
+    assert "branches: [main]" in workflow
     assert '".github/workflows/results-regression.yml"' in workflow
     assert "run-regression-agent-full.sh" in workflow
     assert "install-postgres-kind.sh --ephemeral" in workflow
