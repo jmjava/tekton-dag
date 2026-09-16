@@ -122,6 +122,10 @@ if ! python3 -c "import pytest" 2>/dev/null; then
 fi
 
 echo ""
+echo ">>> CI policy: Dependabot ignores + operator Go pin — scripts/check-ci-policy.py"
+python3 "$SCRIPT_DIR/check-ci-policy.py"
+
+echo ""
 echo ">>> Phase 1: DAG verification (no cluster) — scripts/verify-dag-phase1.sh"
 ensure_mikefarah_yq
 need yq
