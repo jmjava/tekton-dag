@@ -1,6 +1,13 @@
 name: Tekton Results regression
 
 on:
+  pull_request:
+    paths:
+      - ".github/workflows/results-regression.yml"
+      - "scripts/install-postgres-kind.sh"
+      - "scripts/install-tekton-results.sh"
+      - "scripts/run-regression-agent-full.sh"
+      - "scripts/run-lang-unit-tests.sh"
   workflow_dispatch:
   schedule:
     # Weekly strict Results/Postgres evidence on the default branch.
