@@ -121,6 +121,12 @@ def test_get_dag(client):
     assert "apps" in data or "nodes" in data or "name" in data
 
 
+def test_get_dag_unknown_stack_returns_404(client):
+    resp = client.get("/api/teams/default/stacks/stacks/nonexistent.yaml/dag")
+    assert resp.status_code == 404
+    assert "error" in resp.get_json()
+
+
 @patch("k8s_client.list_configmap_names")
 @patch("k8s_client.list_secret_names")
 def test_injection_status(mock_secrets, mock_cms, client):
