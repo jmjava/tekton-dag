@@ -1,0 +1,31 @@
+# Canonical tested support matrix. check-support-matrix.py fails when GitHub
+# Actions jobs drift from these versions. Do not list a version here unless a
+# job actually runs it.
+primary:
+  python: "3.12"
+  node: "22"
+  java: "21"
+  php: "8.3"
+  go: "1.26.8"
+
+languages:
+  python:
+    - "3.11"
+    - "3.12"
+  node:
+    - "20"
+    - "22"
+  java:
+    - "21"
+  php:
+    - "8.3"
+
+cluster:
+  kind: "v0.27.0"
+  tekton_pipelines: "v1.6.0"
+  tekton_triggers: "v0.34.0"
+  tekton_results: "v0.20.0"
+
+go_module: "1.26.0"
+cadence: "weekly"
+workflow: ".github/workflows/compatibility.yml"
