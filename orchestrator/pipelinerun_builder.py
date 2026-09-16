@@ -102,7 +102,7 @@ def build_pr_pipelinerun(
                 },
                 {
                     "name": "build-cache",
-                    "persistentVolumeClaim": {"claimName": "build-cache-pvc"},
+                    "persistentVolumeClaim": {"claimName": "build-cache"},
                 },
             ],
             "taskRunTemplate": {
@@ -177,7 +177,7 @@ def build_bootstrap_pipelinerun(
                 },
                 {
                     "name": "build-cache",
-                    "persistentVolumeClaim": {"claimName": "build-cache-pvc"},
+                    "persistentVolumeClaim": {"claimName": "build-cache"},
                 },
             ],
             "taskRunTemplate": {
@@ -233,7 +233,6 @@ def build_merge_pipelinerun(
                 {"name": "stack-file", "value": stack_file},
                 {"name": "changed-app", "value": changed_app},
                 {"name": "image-registry", "value": image_registry},
-                {"name": "cache-repo", "value": cache_repo},
             ],
             "workspaces": [
                 {
@@ -251,7 +250,7 @@ def build_merge_pipelinerun(
                 },
                 {
                     "name": "build-cache",
-                    "persistentVolumeClaim": {"claimName": "build-cache-pvc"},
+                    "persistentVolumeClaim": {"claimName": "build-cache"},
                 },
             ],
             "taskRunTemplate": {
