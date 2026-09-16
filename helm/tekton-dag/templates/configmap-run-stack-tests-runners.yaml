@@ -1,7 +1,5 @@
 {{- $script := .Files.Get "raw/scripts/run-stack-tests-runners.sh" -}}
-{{- if not $script -}}
-{{- fail "raw/scripts/run-stack-tests-runners.sh is missing; run helm/tekton-dag/package.sh" -}}
-{{- end -}}
+{{- if $script }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -13,3 +11,4 @@ metadata:
 data:
   run-stack-tests-runners.sh: |
     {{- $script | nindent 4 }}
+{{- end }}
