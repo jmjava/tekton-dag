@@ -10,7 +10,6 @@ import sys
 from pathlib import Path
 
 import yaml
-
 from tekton_dag_common.stack_cr import iter_stack_files, stack_yaml_to_cr
 from tekton_dag_common.team_cr import iter_team_files, team_yaml_to_cr
 
