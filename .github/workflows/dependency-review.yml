@@ -1,0 +1,47 @@
+name: dependency review
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: dependency-review-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dependency-review:
+    name: Runtime dependency review
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Reject new high-risk runtime dependencies
+        id: review
+        continue-on-error: true
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          fail-on-scopes: runtime,unknown
+          license-check: false
+          show-patched-versions: true
+
+      - name: Skip when Dependency graph is unavailable
+        if: steps.review.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          gh api \
+            "repos/${GITHUB_REPOSITORY}/dependency-graph/compare/${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}" \
+            >/tmp/dep-graph.json
+          code=$?
+          set -e
+          if [ "$code" -eq 0 ]; then
+            echo "Dependency graph is available; dependency-review findings must be fixed."
+            exit 1
+          fi
+          echo "Dependency graph is not enabled on this repository; skipping review."
