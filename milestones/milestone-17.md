@@ -32,12 +32,11 @@ Work is intentionally paused to preserve the remaining implementation budget.
   [PR #60](https://github.com/jmjava/tekton-dag/pull/60); its final revision
   passed all 17 reported checks, including Kind Phase 2, authoritative Newman,
   both intercept backends, static quality, regression, and supply-chain scans.
-- The first resume action is operational, not an implementation slice: make
-  `.github/workflows/results-regression.yml` available on the default branch
-  (GitHub cannot dispatch or schedule a workflow that exists only on the
-  aggregate feature branch), then manually dispatch it against the M17
-  revision. Mark M17.4 complete only if strict Results/Postgres verification
-  exits zero; otherwise fix that failure first.
+- The first resume action is still M17.4 live acceptance. Scheduled run
+  `35107095845` already executed on `main` and failed because the workflow
+  lacked JDK 21. Merge the Results toolchain fix to `main`, then confirm a
+  green scheduled or manually dispatched `results-regression` run before
+  marking M17.4 complete.
 - After M17.4, continue in numeric order from M17.11. Do not skip directly to
   maintainability work because M17.11–M17.14 establish the test evidence needed
   to refactor safely.
@@ -80,6 +79,10 @@ Work is intentionally paused to preserve the remaining implementation budget.
   - Install Results/Postgres and run the strict Results DB verification.
   - Acceptance: `run-regression-agent-full.sh` equivalent exits zero and uploads
     diagnostic artifacts on failure.
+  - Evidence: scheduled run `35107095845` on `main` failed compiling
+    `baggage-spring-boot-starter` (`invalid target release: 21`) because the
+    workflow did not install JDK 21. The workflow now provisions Java 21, PHP
+    DOM, and Go before the strict regression. Live green run still required.
 
 ## P1 — CI gates and operator assurance
 

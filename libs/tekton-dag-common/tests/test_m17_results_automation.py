@@ -10,6 +10,8 @@ def test_results_workflow_is_scheduled_strict_and_retains_diagnostics():
 
     assert "workflow_dispatch:" in workflow
     assert "schedule:" in workflow
+    assert "pull_request:" in workflow
+    assert '".github/workflows/results-regression.yml"' in workflow
     assert "run-regression-agent-full.sh" in workflow
     assert "install-postgres-kind.sh --ephemeral" in workflow
     assert "install-tekton-results.sh" in workflow
@@ -19,6 +21,10 @@ def test_results_workflow_is_scheduled_strict_and_retains_diagnostics():
     assert "postgres.log" in workflow
     assert "if: always()" in workflow
     assert "actions/upload-artifact@" in workflow
+    assert 'java-version: "21"' in workflow
+    assert 'php-version: "8.3"' in workflow
+    assert "extensions: dom" in workflow
+    assert "cache-dependency-path: operator/go.sum" in workflow
 
 
 def test_results_installers_are_pinned_and_fail_closed():

@@ -1,6 +1,13 @@
 name: Tekton Results regression
 
 on:
+  pull_request:
+    paths:
+      - ".github/workflows/results-regression.yml"
+      - "scripts/install-postgres-kind.sh"
+      - "scripts/install-tekton-results.sh"
+      - "scripts/run-regression-agent-full.sh"
+      - "scripts/run-lang-unit-tests.sh"
   workflow_dispatch:
   schedule:
     # Weekly strict Results/Postgres evidence on the default branch.
@@ -39,6 +46,30 @@ jobs:
           node-version: "22"
           cache: npm
           cache-dependency-path: management-gui/frontend/package-lock.json
+
+      - name: Set up Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          cache-dependency-path: |
+            libs/baggage-spring-boot-starter/pom.xml
+            libs/baggage-servlet-filter/pom.xml
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@bf6b4fbd49ca58e4608c9c89fba0b8d90bd2a39f # 2.35.5
+        with:
+          php-version: "8.3"
+          extensions: dom
+          tools: composer
+          coverage: none
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version: "1.26.8"
+          cache-dependency-path: operator/go.sum
 
       - name: Install Kind and Newman
         run: |
