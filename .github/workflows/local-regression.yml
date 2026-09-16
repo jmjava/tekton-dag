@@ -1,5 +1,6 @@
 name: local regression
 
+# Default gate: every PR and every push to main. Fast, no Kind cluster.
 on:
   pull_request:
   push:

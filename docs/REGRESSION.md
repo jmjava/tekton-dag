@@ -11,9 +11,24 @@ Do **not** confuse these:
 | Scope | What runs | Typical trigger |
 |-------|-----------|-----------------|
 | **Application PR** (`stack-pr-test` on an **app** repo) | Stack-defined tests only — e.g. that app’s Newman/Playwright/Artillery as declared in `stacks/*.yaml`, against the intercept build. | Every PR on the **application** repository (when webhooks/Tekton are wired). |
-| **Platform regression** (`scripts/run-regression*.sh` on **this** repo) | **System / integration** tiers: Phase 1 + orchestrator + shared libs + GUI pytest, Playwright for **management-gui**, real **`stack-dag-verify`** PipelineRun, Newman against **orchestrator** API, optional Tekton Results, optional Kind E2E. | **PRs / `main`:** [`.github/workflows/local-regression.yml`](../.github/workflows/local-regression.yml) runs **`--local-only --require-lang-tests`**. **Nightly / dispatch / `v*` tags:** [`.github/workflows/cluster-regression.yml`](../.github/workflows/cluster-regression.yml) runs Playwright + Kind. **Weekly / dispatch:** [`intercept-e2e.yml`](../.github/workflows/intercept-e2e.yml) runs both intercept backends and [`results-regression.yml`](../.github/workflows/results-regression.yml) runs strict Results/Postgres verification. |
+| **Platform regression** (`scripts/run-regression*.sh` on **this** repo) | **System / integration** tiers: Phase 1 + orchestrator + shared libs + GUI pytest, Playwright for **management-gui**, real **`stack-dag-verify`** PipelineRun, Newman against **orchestrator** API, optional Tekton Results, optional Kind E2E. | See the trigger table below. |
 
-So: **not all tests run on every PR.** `--local-only` (including Java/PHP/operator) is PR-gated. Playwright, Newman, Phase 2, and Kind isolation measurements run on **cluster-regression** (nightly / `workflow_dispatch` / version tags), not on pull requests. The slower Telepresence and mirrord product paths run weekly and on dispatch. App PRs run a narrower, stack-scoped test stage.
+**GitHub Actions — what runs when (Kind is not every PR):**
+
+| Workflow | Every PR / every `main` push | Also runs |
+|----------|------------------------------|-----------|
+| **local regression** | Yes (`--local-only --require-lang-tests`) | dispatch |
+| **docgen demo-function** | Yes (cheap smoke) | |
+| **dependency review** | PRs only | |
+| **operator** | Only if `operator/**` (or install-tekton) changed | dispatch |
+| **cluster regression** | No | Nightly cron, `v*` tags, dispatch, or PRs that touch Helm / cluster-ci scripts |
+| **intercept product E2E** | No | Weekly cron, dispatch, or PRs that touch `run-product-intercept-e2e.sh` |
+| **Tekton Results** | No | Weekly cron, dispatch, or PRs that touch Results installers |
+| **Pages** | No | `main` pushes that touch `docs/**` |
+
+The Actions sidebar can still list **deleted** workflow names (compatibility matrix, demo validation, Graph/GUI Newman, static quality, supply-chain scan). Those files are gone; disable them in the repo **Actions → workflow → … → Disable** so they stop cluttering the list. **Dependabot Updates** is GitHub-managed, not a repo workflow.
+
+So: **not all tests run on every PR.** `--local-only` (including Java/PHP/Go) is the default gate. Playwright + Kind Phase 2 + Newman are **nightly**. Telepresence/mirrord and Results/Postgres are **weekly**. App PRs run a narrower, stack-scoped test stage.
 
 The existence of the intercept workflow is not proof that either backend is
 currently healthy. Treat only a recent successful matrix job and its retained

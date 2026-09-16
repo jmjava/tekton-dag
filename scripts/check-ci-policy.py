@@ -66,9 +66,49 @@ def check_operator_go_pin() -> None:
         _fail("operator workflow must check Dockerfile Go against go.mod")
 
 
+def _workflow_on(path: Path) -> dict:
+    data = yaml.safe_load(path.read_text())
+    # PyYAML 1.1 treats the key `on` as boolean True.
+    return data.get("on") or data.get(True) or {}
+
+
+def check_kind_workflows_are_not_every_pr() -> None:
+    """Kind jobs must stay path-filtered / scheduled, not fire on every tasks change."""
+    on = _workflow_on(ROOT / ".github/workflows/intercept-e2e.yml")
+    forbidden = {
+        "helm/tekton-dag/**",
+        "libs/tekton-dag-common/**",
+        "operator/**",
+        "orchestrator/**",
+        "pipeline/**",
+        "stacks/**",
+        "tasks/**",
+        "scripts/bootstrap-namespace.sh",
+        "scripts/install-tekton.sh",
+        "scripts/run-cluster-ci.sh",
+    }
+    for event in ("pull_request", "push"):
+        paths = set((on.get(event) or {}).get("paths") or [])
+        overlap = paths & forbidden
+        if overlap:
+            _fail(f"intercept {event} paths are too broad (Kind on every product PR): {sorted(overlap)}")
+    if "schedule" not in on or "workflow_dispatch" not in on:
+        _fail("intercept-e2e.yml must keep schedule + workflow_dispatch")
+
+    results_on = _workflow_on(ROOT / ".github/workflows/results-regression.yml")
+    results_push = set((results_on.get("push") or {}).get("paths") or [])
+    if ".github/workflows/results-regression.yml" in results_push:
+        _fail("results push.paths must not include the workflow file (avoids re-running Kind on merge)")
+
+    intercept_push = set((on.get("push") or {}).get("paths") or [])
+    if ".github/workflows/intercept-e2e.yml" in intercept_push:
+        _fail("intercept push.paths must not include the workflow file (avoids re-running Kind on merge)")
+
+
 def main() -> None:
     check_dependabot()
     check_operator_go_pin()
+    check_kind_workflows_are_not_every_pr()
     print("CI policy checks passed")
 
 
