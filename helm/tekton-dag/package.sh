@@ -10,10 +10,12 @@ echo "  Repo root: $REPO_ROOT"
 
 rm -rf "$CHART_DIR/raw"
 mkdir -p "$CHART_DIR/raw/tasks" "$CHART_DIR/raw/pipelines" "$CHART_DIR/raw/stacks" \
-  "$CHART_DIR/raw/stack-crs" "$CHART_DIR/raw/team-crs"
+  "$CHART_DIR/raw/stack-crs" "$CHART_DIR/raw/team-crs" "$CHART_DIR/raw/scripts"
 
 echo "  Copying tasks..."
 cp "$REPO_ROOT"/tasks/*.yaml "$CHART_DIR/raw/tasks/"
+cp "$REPO_ROOT/scripts/run-stack-tests-runners.sh" \
+  "$CHART_DIR/raw/scripts/run-stack-tests-runners.sh"
 
 echo "  Copying pipelines and triggers..."
 cp "$REPO_ROOT"/pipeline/*.yaml "$CHART_DIR/raw/pipelines/"

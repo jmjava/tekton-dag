@@ -39,5 +39,16 @@ for filename in sys.argv[1:]:
     documents = [document for document in yaml.safe_load_all(path.read_text()) if document]
     if not documents:
         raise SystemExit(f"{path}: rendered no resources")
+    runners = [
+        document
+        for document in documents
+        if document.get("kind") == "ConfigMap"
+        and document.get("metadata", {}).get("name") == "run-stack-tests-runners"
+    ]
+    if not runners:
+        raise SystemExit(f"{path}: missing ConfigMap run-stack-tests-runners")
+    script = runners[0].get("data", {}).get("run-stack-tests-runners.sh", "")
+    if "run_newman" not in script:
+        raise SystemExit(f"{path}: runner ConfigMap is missing run_newman")
     print(f"{path.name}: parsed {len(documents)} resource(s)")
 PY
