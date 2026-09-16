@@ -12,6 +12,13 @@ updates:
     open-pull-requests-limit: 3
     commit-message:
       prefix: deps(actions)
+    groups:
+      github-actions-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
 
   - package-ecosystem: gomod
     directory: /operator
