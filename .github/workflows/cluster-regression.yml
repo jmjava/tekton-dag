@@ -27,7 +27,9 @@ on:
         type: boolean
         default: true
   schedule:
-    # GitHub only fires this on the default branch after merge.
+    # Daily Kind + Phase 2 + Newman on the default branch (cron does not run on PRs).
+    # Changing this workflow file on a PR runs the same Kind job; isolation-eval is
+    # skipped on pull_request and remains part of nightly / dispatch / tags.
     - cron: "17 6 * * *"
   push:
     tags:

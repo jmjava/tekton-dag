@@ -19,6 +19,7 @@ on:
   workflow_dispatch:
   schedule:
     # Weekly strict Results/Postgres evidence on the default branch.
+    # Changing this workflow file on a PR runs the same Kind + Results job as the cron.
     - cron: "19 9 * * 3"
 
 permissions:
