@@ -39,6 +39,13 @@ def test_list_pipelineruns_api_error(mock_get_api):
 
 
 @patch("k8s_client.get_api")
+def test_list_pipelineruns_returns_empty_when_client_setup_fails(mock_get_api):
+    mock_get_api.side_effect = k8s_client.config.ConfigException("no kubeconfig")
+
+    assert k8s_client.list_pipelineruns("ctx", "ns") == []
+
+
+@patch("k8s_client.get_api")
 def test_get_pipelinerun(mock_get_api):
     mock_api = MagicMock()
     mock_api.get_namespaced_custom_object.return_value = {
@@ -258,6 +265,13 @@ def test_create_stackrun_reraises_api_error(mock_get_api):
         k8s_client.create_stackrun("ctx", "apps", {})
 
     assert exc_info.value is error
+
+
+@patch("k8s_client.get_api")
+def test_list_stackruns_returns_empty_when_client_setup_fails(mock_get_api):
+    mock_get_api.side_effect = RuntimeError("client setup failed")
+
+    assert k8s_client.list_stackruns("ctx", "apps") == []
 
 
 @patch("k8s_client.get_api")

@@ -82,7 +82,6 @@ fi
 if [[ "$LOCAL_ONLY" == "true" ]]; then
   SKIP_CLUSTER=true
   SKIP_PLAYWRIGHT=true
-  RUN_GUI_NEWMAN=false
   RUN_KIND_E2E=false
   RESULTS_VERIFY_MODE=skip
   DAG_VERIFY_MODE=skip

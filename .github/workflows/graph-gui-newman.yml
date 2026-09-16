@@ -1,0 +1,127 @@
+name: Graph and GUI Newman
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/graph-gui-newman.yml"
+      - "scripts/run-gui-newman.sh"
+      - "scripts/run-cluster-ci.sh"
+      - "scripts/install-neo4j-kind.sh"
+      - "scripts/run-orchestrator-tests.sh"
+      - "tests/postman/graph-tests.json"
+      - "tests/postman/management-gui-tests.json"
+      - "management-gui/backend/**"
+      - "orchestrator/**"
+  workflow_dispatch:
+  schedule:
+    # Weekly graph + GUI API evidence on the default branch.
+    - cron: "11 8 * * 4"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: graph-gui-newman-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  gui-api:
+    name: GUI Newman vs live backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "22"
+
+      - name: Bootstrap Python venv
+        run: ./scripts/bootstrap-regression-venv.sh
+
+      - name: Install Newman
+        run: npm install -g newman@6.2.1
+
+      - name: Run GUI Newman
+        run: |
+          set -o pipefail
+          bash scripts/run-gui-newman.sh 2>&1 | tee gui-newman.log
+
+      - name: Upload GUI Newman evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: gui-newman-${{ github.sha }}
+          path: gui-newman.log
+          if-no-files-found: warn
+          retention-days: 30
+
+  graph-api:
+    name: Graph Newman vs Neo4j
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      KIND_VERSION: v0.27.0
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "22"
+
+      - name: Install Kind and Newman
+        run: |
+          curl -fsSL -o /tmp/kind "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64"
+          echo "a6875aaea358acf0ac07786b1a6755d08fd640f4c79b7a2e46681cc13f49a04b  /tmp/kind" | sha256sum -c -
+          chmod +x /tmp/kind
+          sudo mv /tmp/kind /usr/local/bin/kind
+          npm install -g newman@6.2.1
+          ./scripts/bootstrap-regression-venv.sh
+
+      - name: Run graph Newman
+        env:
+          CLUSTER_CI_GIT_REVISION: ${{ github.sha }}
+          CLUSTER_CI_GIT_URL: https://github.com/${{ github.repository }}.git
+        run: |
+          set -o pipefail
+          bash scripts/run-cluster-ci.sh --skip-isolation --with-graph 2>&1 | tee graph-newman.log
+
+      - name: Collect graph failure diagnostics
+        if: failure()
+        run: |
+          kubectl logs deployment/tekton-dag-orchestrator -n tekton-pipelines \
+            --all-containers --tail=-1 > orchestrator.log 2>&1 || true
+          kubectl get pods,svc -n tekton-pipelines -l app=graph-db -o yaml \
+            > graph-db.yaml 2>&1 || true
+          kubectl logs -n tekton-pipelines -l app=graph-db \
+            --all-containers=true --prefix=true \
+            > graph-db.log 2>&1 || true
+
+      - name: Upload graph Newman evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: graph-newman-${{ github.sha }}
+          path: |
+            graph-newman.log
+            orchestrator.log
+            graph-db.yaml
+            graph-db.log
+          if-no-files-found: warn
+          retention-days: 30
