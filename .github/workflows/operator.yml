@@ -39,6 +39,26 @@ jobs:
           go-version-file: operator/go.mod
           cache-dependency-path: operator/go.sum
 
+      - name: Builder Go matches go.mod
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          dockerfile = Path("operator/Dockerfile").read_text()
+          gomod = Path("operator/go.mod").read_text()
+          image = re.search(r"FROM docker.io/golang:([0-9]+\.[0-9]+)", dockerfile)
+          module = re.search(r"^go ([0-9]+\.[0-9]+)", gomod, re.M)
+          if not image or not module:
+              raise SystemExit("could not parse operator Dockerfile / go.mod Go versions")
+          if image.group(1) != module.group(1):
+              raise SystemExit(
+                  f"operator Dockerfile golang:{image.group(1)} != go.mod {module.group(1)}"
+              )
+          print(f"operator builder Go {image.group(1)} matches go.mod")
+          PY
+
       - name: Check formatting
         run: test -z "$(gofmt -l .)"
 

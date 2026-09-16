@@ -1,126 +1,167 @@
+# Group update-types only control what is batched. Ungrouped majors (and
+# gomod minors) still open individual PRs unless ignore: "*" is set.
 version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    rebase-strategy: disabled
     groups:
       github-actions:
         patterns: ["*"]
         update-types:
           - minor
           - patch
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: gomod
     directory: /operator
     schedule:
       interval: weekly
+    rebase-strategy: disabled
     groups:
       operator-go:
         patterns: ["*"]
         update-types:
           - patch
     ignore:
-      - dependency-name: "k8s.io/*"
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
-      - dependency-name: "sigs.k8s.io/controller-runtime"
+      - dependency-name: "*"
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
 
   - package-ecosystem: npm
     directory: /management-gui/frontend
     schedule:
       interval: weekly
+    rebase-strategy: disabled
     groups:
       management-frontend:
         patterns: ["*"]
         update-types:
           - minor
           - patch
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: npm
     directory: /libs/baggage-node
     schedule:
       interval: weekly
+    rebase-strategy: disabled
     groups:
       baggage-node:
         patterns: ["*"]
         update-types:
           - minor
           - patch
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: pip
     directory: /orchestrator
     schedule:
       interval: weekly
+    rebase-strategy: disabled
     groups:
       orchestrator-python:
         patterns: ["*"]
         update-types:
           - minor
           - patch
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: pip
     directory: /management-gui/backend
     schedule:
       interval: weekly
+    rebase-strategy: disabled
     groups:
       management-backend-python:
         patterns: ["*"]
         update-types:
           - minor
           - patch
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: pip
     directory: /libs/tekton-dag-common
     schedule:
       interval: weekly
+    rebase-strategy: disabled
     groups:
       common-python:
         patterns: ["*"]
         update-types:
           - minor
           - patch
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: pip
     directory: /libs/baggage-python
     schedule:
       interval: weekly
+    rebase-strategy: disabled
     groups:
       baggage-python:
         patterns: ["*"]
         update-types:
           - minor
           - patch
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: maven
     directory: /libs/baggage-spring-boot-starter
     schedule:
       interval: weekly
+    rebase-strategy: disabled
     groups:
       baggage-spring:
         patterns: ["*"]
         update-types:
           - minor
           - patch
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: maven
     directory: /libs/baggage-servlet-filter
     schedule:
       interval: weekly
+    rebase-strategy: disabled
     groups:
       baggage-servlet:
         patterns: ["*"]
         update-types:
           - minor
           - patch
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: composer
     directory: /libs/baggage-php
     schedule:
       interval: weekly
+    rebase-strategy: disabled
     groups:
       baggage-php:
         patterns: ["*"]
         update-types:
           - minor
           - patch
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
