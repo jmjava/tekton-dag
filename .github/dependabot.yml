@@ -18,6 +18,13 @@ updates:
     groups:
       operator-go:
         patterns: ["*"]
+        update-types:
+          - patch
+    ignore:
+      - dependency-name: "k8s.io/*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "sigs.k8s.io/controller-runtime"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
 
   - package-ecosystem: npm
     directory: /management-gui/frontend
@@ -26,6 +33,9 @@ updates:
     groups:
       management-frontend:
         patterns: ["*"]
+        update-types:
+          - minor
+          - patch
 
   - package-ecosystem: npm
     directory: /libs/baggage-node
@@ -34,6 +44,9 @@ updates:
     groups:
       baggage-node:
         patterns: ["*"]
+        update-types:
+          - minor
+          - patch
 
   - package-ecosystem: pip
     directory: /orchestrator
@@ -42,6 +55,9 @@ updates:
     groups:
       orchestrator-python:
         patterns: ["*"]
+        update-types:
+          - minor
+          - patch
 
   - package-ecosystem: pip
     directory: /management-gui/backend
@@ -50,6 +66,9 @@ updates:
     groups:
       management-backend-python:
         patterns: ["*"]
+        update-types:
+          - minor
+          - patch
 
   - package-ecosystem: pip
     directory: /libs/tekton-dag-common
@@ -58,6 +77,9 @@ updates:
     groups:
       common-python:
         patterns: ["*"]
+        update-types:
+          - minor
+          - patch
 
   - package-ecosystem: pip
     directory: /libs/baggage-python
@@ -66,6 +88,9 @@ updates:
     groups:
       baggage-python:
         patterns: ["*"]
+        update-types:
+          - minor
+          - patch
 
   - package-ecosystem: maven
     directory: /libs/baggage-spring-boot-starter
@@ -74,6 +99,9 @@ updates:
     groups:
       baggage-spring:
         patterns: ["*"]
+        update-types:
+          - minor
+          - patch
 
   - package-ecosystem: maven
     directory: /libs/baggage-servlet-filter
@@ -82,6 +110,9 @@ updates:
     groups:
       baggage-servlet:
         patterns: ["*"]
+        update-types:
+          - minor
+          - patch
 
   - package-ecosystem: composer
     directory: /libs/baggage-php
@@ -90,3 +121,6 @@ updates:
     groups:
       baggage-php:
         patterns: ["*"]
+        update-types:
+          - minor
+          - patch
