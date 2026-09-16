@@ -32,7 +32,8 @@ on:
       - "scripts/run-product-intercept-e2e.sh"
   workflow_dispatch:
   schedule:
-    # Weekly product-path evidence on the default branch.
+    # Weekly product-path evidence on the default branch (Monday).
+    # Changing this workflow file on a PR runs the same telepresence + mirrord jobs as the cron.
     - cron: "43 7 * * 1"
 
 permissions:
