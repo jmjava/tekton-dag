@@ -47,6 +47,12 @@ kubectl get namespace "$NAMESPACE" &>/dev/null || kubectl create namespace "$NAM
 # 1. Tekton Pipelines (kubectl apply is idempotent)
 echo "  Installing Tekton Pipelines..."
 kubectl apply -f "$TEKTON_PIPELINE_URL"
+# Compile tasks bind the run-scoped source PVC and the persistent build-cache
+# PVC. Tekton's default "workspaces" coscheduling mode rejects any TaskRun
+# with more than one PVC before creating its Pod.
+echo "  Allowing TaskRuns to bind source and build-cache PVCs..."
+kubectl patch configmap feature-flags -n tekton-pipelines --type merge \
+  -p '{"data":{"coschedule":"disabled"}}'
 # Relax Pod Security for the target namespace (Kind enforces restricted; catalog/git-clone task pods need it)
 echo "  Configuring namespace $NAMESPACE for Pod Security (Kind/local clusters)..."
 kubectl label namespace "$NAMESPACE" pod-security.kubernetes.io/enforce=privileged --overwrite 2>/dev/null || true

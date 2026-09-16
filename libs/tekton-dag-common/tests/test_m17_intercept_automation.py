@@ -12,6 +12,7 @@ def test_intercept_workflow_has_explicit_backend_cadence_and_evidence():
     assert '".github/workflows/intercept-e2e.yml"' in workflow
     assert '"helm/tekton-dag/**"' in workflow
     assert '"scripts/bootstrap-namespace.sh"' in workflow
+    assert '"scripts/install-tekton.sh"' in workflow
     assert "workflow_dispatch:" in workflow
     assert "schedule:" in workflow
     assert "backend: [telepresence, mirrord]" in workflow
@@ -61,3 +62,10 @@ def test_app_clone_supports_public_https_without_ssh_key():
     assert 'URL="https://github.com/${REPO}.git"' in task
     assert 'URL="git@github.com:${REPO}.git"' in task
     assert "ssh-key workspace must contain" not in task
+
+
+def test_tekton_install_allows_source_and_build_cache_pvcs():
+    install = (ROOT / "scripts/install-tekton.sh").read_text()
+
+    assert "kubectl patch configmap feature-flags -n tekton-pipelines" in install
+    assert '''-p '{"data":{"coschedule":"disabled"}}' '''.strip() in install
