@@ -41,6 +41,14 @@ def test_dependabot_covers_all_supported_ecosystems_and_directories():
         "/libs/baggage-servlet-filter",
     }
 
+    actions = next(
+        entry for entry in updates if entry["package-ecosystem"] == "github-actions"
+    )
+    assert {
+        tuple(group.get("update-types") or [])
+        for group in actions["groups"].values()
+    } == {("minor", "patch")}
+
 
 def test_trivy_scans_filesystem_and_production_images():
     workflow = (ROOT / ".github/workflows/supply-chain-scan.yml").read_text()

@@ -2,6 +2,11 @@
 
 from pathlib import Path
 
+try:
+    from .workflow_pins import assert_actions_sha_pinned
+except ImportError:
+    from workflow_pins import assert_actions_sha_pinned
+
 ROOT = Path(__file__).resolve().parents[3]
 
 
@@ -25,10 +30,13 @@ def test_static_quality_workflow_covers_required_domains():
 def test_quality_tool_downloads_and_actions_are_immutable():
     workflow = (ROOT / ".github/workflows/static-quality.yml").read_text()
 
-    assert "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" in workflow
-    assert "actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97" in workflow
-    assert "actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e" in workflow
-    assert "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020" in workflow
+    assert_actions_sha_pinned(
+        workflow,
+        "actions/checkout",
+        "actions/setup-python",
+        "actions/setup-go",
+        "actions/setup-node",
+    )
     assert "SHELLCHECK_VERSION: v0.11.0" in workflow
     assert "ACTIONLINT_VERSION: 1.7.12" in workflow
     assert workflow.count("sha256sum -c -") == 3
