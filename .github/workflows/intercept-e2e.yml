@@ -5,16 +5,30 @@ on:
     paths:
       - ".github/workflows/intercept-e2e.yml"
       - "helm/tekton-dag/**"
+      - "libs/tekton-dag-common/**"
+      - "operator/**"
+      - "orchestrator/**"
+      - "pipeline/**"
+      - "stacks/**"
+      - "tasks/**"
       - "scripts/bootstrap-namespace.sh"
       - "scripts/install-tekton.sh"
+      - "scripts/run-cluster-ci.sh"
       - "scripts/run-product-intercept-e2e.sh"
   push:
     branches: [main]
     paths:
       - ".github/workflows/intercept-e2e.yml"
       - "helm/tekton-dag/**"
+      - "libs/tekton-dag-common/**"
+      - "operator/**"
+      - "orchestrator/**"
+      - "pipeline/**"
+      - "stacks/**"
+      - "tasks/**"
       - "scripts/bootstrap-namespace.sh"
       - "scripts/install-tekton.sh"
+      - "scripts/run-cluster-ci.sh"
       - "scripts/run-product-intercept-e2e.sh"
   workflow_dispatch:
   schedule:

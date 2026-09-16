@@ -48,6 +48,8 @@ need kubectl
 need curl
 need jq
 mkdir -p "$ARTIFACT_DIR"
+kubectl get pvc build-cache -n "$NAMESPACE" >/dev/null 2>&1 \
+  || die "required PVC $NAMESPACE/build-cache is missing"
 
 resolve_api_token() {
   if [[ -n "${API_MUTATION_TOKEN:-}" ]]; then

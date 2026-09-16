@@ -22,6 +22,10 @@ spec:
       Artillery) with the intercept header attached. For intercepted
       apps this validates the PR build directly. For non-intercepted
       apps this validates they still work with the header present.
+
+    Runner logic lives in scripts/run-stack-tests-runners.sh and is
+    mounted from ConfigMap run-stack-tests-runners so the Task does
+    not depend on the cloned platform git-revision.
   params:
     - name: stack-json
       type: string
@@ -65,6 +69,9 @@ spec:
     - name: run-tests
       image: node:22-alpine
       workingDir: $(workspaces.test-source.path)
+      volumeMounts:
+        - name: runners-script
+          mountPath: /opt/tekton-dag
       script: |
         #!/bin/sh
         set -e
@@ -79,338 +86,23 @@ spec:
         BUILD_APPS="$(params.build-apps)"
         INTERCEPT="$(params.intercept-header-value)"
         DEFAULT_NS="$(params.default-namespace)"
-
-        HEADER_NAME=""
-        HEADER_VAL=""
-        BAGGAGE_KEY=$(echo "$STACK_JSON" | jq -r '.propagation."baggage-key" // "dev-session"')
-        if [ -n "$INTERCEPT" ]; then
-          HEADER_NAME=$(echo "$INTERCEPT" | cut -d: -f1)
-          HEADER_VAL=$(echo "$INTERCEPT" | cut -d: -f2-)
-        fi
-
         TESTS_TO_RUN="$(params.tests-to-run)"
         UNMAPPED_AREA="$(params.unmapped-area)"
         APPS_TO_TEST="$(params.apps-to-test)"
+        TEST_SOURCE="$(workspaces.test-source.path)"
+        TEST_SUMMARY_PATH="$(results.test-summary.path)"
+        export STACK_JSON APP_LIST ENTRY_APP CHAIN BUILD_APPS INTERCEPT \
+          DEFAULT_NS TESTS_TO_RUN UNMAPPED_AREA APPS_TO_TEST \
+          TEST_SOURCE TEST_SUMMARY_PATH
 
-        echo '{}' > /tmp/test-summary.json
-        OVERALL_PASS=true
-
-        if [ -n "$UNMAPPED_AREA" ] && [ -z "$TESTS_TO_RUN" ]; then
-          echo ""
-          echo "####################################################"
-          echo "  NO MAPPED REGRESSION for area: $UNMAPPED_AREA"
-          echo "  This area needs regression tests to be built."
-          echo "####################################################"
-          echo ""
-          jq --arg area "$UNMAPPED_AREA" \
-            '. + {"unmapped-area": $area, "message": "No mapped regression; area needs tests"}' \
-            /tmp/test-summary.json > /tmp/test-summary-tmp.json
-          mv /tmp/test-summary-tmp.json /tmp/test-summary.json
-          cat /tmp/test-summary.json | tee $(results.test-summary.path)
-          exit 0
-        fi
-
-        FILTERED=false
-        HAS_E2E=false
-        if [ -n "$TESTS_TO_RUN" ]; then
-          FILTERED=true
-          echo ""
-          echo "####################################################"
-          echo "  FILTERED TEST RUN (from test-plan graph)"
-          echo "  Tests: $TESTS_TO_RUN"
-          echo "  Apps:  $APPS_TO_TEST"
-          echo "####################################################"
-          echo ""
-          if echo "$TESTS_TO_RUN" | grep -q "e2e/"; then
-            HAS_E2E=true
-          fi
-        fi
-
-        app_in_test_plan() {
-          [ "$FILTERED" = "false" ] && return 0
-          [ -z "$APPS_TO_TEST" ] && return 0
-          echo ",$APPS_TO_TEST," | grep -q ",$1,"
-        }
-
-        # ===========================================================
-        # Phase 1: E2E through entry point
-        # ===========================================================
-        if [ "$FILTERED" = "true" ] && [ "$HAS_E2E" = "false" ]; then
-          echo ""
-          echo "####################################################"
-          echo "  PHASE 1: SKIPPED (no e2e tests in test plan)"
-          echo "####################################################"
-          jq '. + {"e2e-entry-point": "skipped (no e2e in plan)"}' \
-            /tmp/test-summary.json > /tmp/test-summary-tmp.json
-          mv /tmp/test-summary-tmp.json /tmp/test-summary.json
-        else
-        echo ""
-        echo "####################################################"
-        echo "  PHASE 1: E2E test through entry point ($ENTRY_APP)"
-        echo "####################################################"
-        echo ""
-        echo "  Chain:           $CHAIN"
-        echo "  Intercepted:     $BUILD_APPS"
-        echo "  Header:          $HEADER_NAME=$HEADER_VAL"
-        echo ""
-
-        ENTRY_NS=$(echo "$STACK_JSON" | jq -r --arg a "$ENTRY_APP" --arg d "$DEFAULT_NS" \
-          '(.defaults.namespace // $d) as $dn | .apps[]|select(.name==$a)|.namespace // $dn')
-        ENTRY_SPORT=$(echo "$STACK_JSON" | jq -r --arg a "$ENTRY_APP" \
-          '(.defaults."service-port" // "80") as $dp | .apps[]|select(.name==$a)|."service-port" // $dp')
-        ENTRY_URL="http://${ENTRY_APP}.${ENTRY_NS}.svc.cluster.local:${ENTRY_SPORT}"
-
-        echo "  Entry URL: $ENTRY_URL"
-        echo ""
-
-        # Send request through the full chain with the intercept header
-        E2E_PASS=true
-        E2E_RESULT=$(curl -s \
-          -H "${HEADER_NAME}: ${HEADER_VAL}" \
-          -H "baggage: ${BAGGAGE_KEY}=${HEADER_VAL}" \
-          --connect-timeout 15 --max-time 60 \
-          "$ENTRY_URL" 2>/dev/null || echo '{"error":"unreachable"}')
-
-        echo "  Response:"
-        echo "$E2E_RESULT" | jq '.' 2>/dev/null || echo "  $E2E_RESULT"
-        echo ""
-
-        # Verify each hop in the chain was reached
-        HOP=0
-        for APP in $CHAIN; do
-          HOP=$((HOP + 1))
-          IS_INTERCEPTED=false
-          for BA in $BUILD_APPS; do
-            [ "$BA" = "$APP" ] && IS_INTERCEPTED=true
-          done
-
-          MARKER=""
-          $IS_INTERCEPTED && MARKER=" [INTERCEPTED → PR build]"
-
-          if echo "$E2E_RESULT" | grep -qi "$APP"; then
-            echo "  HOP $HOP ($APP)${MARKER}: REACHED"
-          else
-            echo "  HOP $HOP ($APP)${MARKER}: NOT CONFIRMED"
-          fi
-        done
-
-        # Verify the intercept header propagated
-        if echo "$E2E_RESULT" | grep -qi "$HEADER_VAL"; then
-          echo ""
-          echo "  Header value '$HEADER_VAL' found in response"
-        fi
-
-        echo ""
-        if [ "$E2E_PASS" = "true" ]; then
-          echo "  E2E: PASS"
-        else
-          echo "  E2E: FAIL"
-          OVERALL_PASS=false
-        fi
-
-        jq --arg s "$([ "$E2E_PASS" = "true" ] && echo pass || echo fail)" \
-          '. + {"e2e-entry-point": $s}' \
-          /tmp/test-summary.json > /tmp/test-summary-tmp.json
-        mv /tmp/test-summary-tmp.json /tmp/test-summary.json
-
-        # Also run entry app's Postman/Playwright tests through the full chain
-        ENTRY_POSTMAN=$(echo "$STACK_JSON" | jq -r --arg a "$ENTRY_APP" \
-          '.apps[]|select(.name==$a)|.tests.postman // ""')
-        ENTRY_PLAYWRIGHT=$(echo "$STACK_JSON" | jq -r --arg a "$ENTRY_APP" \
-          '.apps[]|select(.name==$a)|.tests.playwright // ""')
-
-        if [ -n "$ENTRY_POSTMAN" ] && [ -f "$ENTRY_POSTMAN" ]; then
-          echo ""
-          echo "  [e2e/postman] Running entry-point collection: $ENTRY_POSTMAN"
-          NEWMAN_ARGS="newman run $ENTRY_POSTMAN --env-var baseUrl=$ENTRY_URL --reporters cli,json"
-          if [ -n "$HEADER_NAME" ]; then
-            NEWMAN_ARGS="$NEWMAN_ARGS --global-var ${HEADER_NAME}=${HEADER_VAL}"
-          fi
-          if eval $NEWMAN_ARGS; then
-            echo "  [e2e/postman] PASS"
-          else
-            echo "  [e2e/postman] FAIL"
-            OVERALL_PASS=false
-          fi
-        fi
-
-        if [ -n "$ENTRY_PLAYWRIGHT" ] && [ -d "$ENTRY_PLAYWRIGHT" ]; then
-          echo ""
-          echo "  [e2e/playwright] Running entry-point e2e tests: $ENTRY_PLAYWRIGHT"
-          PACKAGE_DIR=$(dirname "$ENTRY_PLAYWRIGHT")
-          if [ -f "${PACKAGE_DIR}/package.json" ]; then
-            cd "$PACKAGE_DIR"
-            npm install --legacy-peer-deps 2>/dev/null || true
-            export BASE_URL="$ENTRY_URL"
-            if [ -n "$HEADER_NAME" ]; then
-              export INTERCEPT_HEADER_NAME="$HEADER_NAME"
-              export INTERCEPT_HEADER_VALUE="$HEADER_VAL"
-            fi
-            REL_PATH=$(echo "$ENTRY_PLAYWRIGHT" | sed "s|^${PACKAGE_DIR}/||")
-            if npx playwright test "$REL_PATH" --reporter=list 2>/dev/null; then
-              echo "  [e2e/playwright] PASS"
-            else
-              echo "  [e2e/playwright] FAIL"
-              OVERALL_PASS=false
-            fi
-            cd "$(workspaces.test-source.path)"
-          fi
-        fi
-
-        fi
-
-        # ===========================================================
-        # Phase 2: Per-app tests
-        # ===========================================================
-        echo ""
-        echo "####################################################"
-        echo "  PHASE 2: Per-app tests"
-        echo "####################################################"
-
-        for APP in $APP_LIST; do
-          if [ "$APP" = "$ENTRY_APP" ]; then
-            echo ""
-            echo "  Skipping $APP (already tested in e2e phase)"
-            continue
-          fi
-
-          if ! app_in_test_plan "$APP"; then
-            echo ""
-            echo "  Skipping $APP (not in test plan)"
-            jq --arg a "$APP" '. + {($a): "skipped (not in plan)"}' \
-              /tmp/test-summary.json > /tmp/test-summary-tmp.json
-            mv /tmp/test-summary-tmp.json /tmp/test-summary.json
-            continue
-          fi
-
-          echo ""
-          echo "========================================="
-          echo "  Testing: $APP"
-
-          IS_INTERCEPTED=false
-          for BA in $BUILD_APPS; do
-            [ "$BA" = "$APP" ] && IS_INTERCEPTED=true
-          done
-          $IS_INTERCEPTED && echo "  (INTERCEPTED — hitting PR build via Telepresence)"
-          $IS_INTERCEPTED || echo "  (normal cluster deployment)"
-
-          echo "========================================="
-
-          NS=$(echo "$STACK_JSON" | jq -r --arg a "$APP" --arg d "$DEFAULT_NS" \
-            '(.defaults.namespace // $d) as $dn | .apps[]|select(.name==$a)|.namespace // $dn')
-          SPORT=$(echo "$STACK_JSON" | jq -r --arg a "$APP" \
-            '(.defaults."service-port" // "80") as $dp | .apps[]|select(.name==$a)|."service-port" // $dp')
-          SERVICE_URL="http://${APP}.${NS}.svc.cluster.local:${SPORT}"
-
-          POSTMAN=$(echo "$STACK_JSON" | jq -r --arg a "$APP" \
-            '.apps[]|select(.name==$a)|.tests.postman // ""')
-          PLAYWRIGHT=$(echo "$STACK_JSON" | jq -r --arg a "$APP" \
-            '.apps[]|select(.name==$a)|.tests.playwright // ""')
-          ARTILLERY=$(echo "$STACK_JSON" | jq -r --arg a "$APP" \
-            '.apps[]|select(.name==$a)|.tests.artillery // ""')
-
-          APP_PASS=true
-
-          # --- Postman / Newman ---
-          if [ -n "$POSTMAN" ] && [ -f "$POSTMAN" ]; then
-            echo "  [postman] Running: $POSTMAN"
-            NEWMAN_ARGS="newman run $POSTMAN --env-var baseUrl=$SERVICE_URL --reporters cli,json"
-            if [ -n "$HEADER_NAME" ]; then
-              NEWMAN_ARGS="$NEWMAN_ARGS --global-var ${HEADER_NAME}=${HEADER_VAL}"
-            fi
-            if eval $NEWMAN_ARGS; then
-              echo "  [postman] PASS"
-            else
-              echo "  [postman] FAIL"
-              APP_PASS=false
-            fi
-          elif [ -n "$POSTMAN" ]; then
-            echo "  [postman] Collection not found: $POSTMAN (skipping)"
-          fi
-
-          # --- Playwright ---
-          if [ -n "$PLAYWRIGHT" ] && [ -d "$PLAYWRIGHT" ]; then
-            echo "  [playwright] Running: $PLAYWRIGHT"
-            PACKAGE_DIR=$(dirname "$PLAYWRIGHT")
-            if [ -f "${PACKAGE_DIR}/package.json" ]; then
-              cd "$PACKAGE_DIR"
-              npm install --legacy-peer-deps 2>/dev/null || true
-              export BASE_URL="$SERVICE_URL"
-              if [ -n "$HEADER_NAME" ]; then
-                export INTERCEPT_HEADER_NAME="$HEADER_NAME"
-                export INTERCEPT_HEADER_VALUE="$HEADER_VAL"
-              fi
-              REL_PATH=$(echo "$PLAYWRIGHT" | sed "s|^${PACKAGE_DIR}/||")
-              if npx playwright test "$REL_PATH" --reporter=list 2>/dev/null; then
-                echo "  [playwright] PASS"
-              else
-                echo "  [playwright] FAIL"
-                APP_PASS=false
-              fi
-              cd "$(workspaces.test-source.path)"
-            else
-              echo "  [playwright] No package.json found (skipping)"
-            fi
-          elif [ -n "$PLAYWRIGHT" ]; then
-            echo "  [playwright] Test dir not found: $PLAYWRIGHT (skipping)"
-          fi
-
-          # --- Artillery ---
-          if [ -n "$ARTILLERY" ] && [ -f "$ARTILLERY" ]; then
-            echo "  [artillery] Running: $ARTILLERY"
-            ARTILLERY_ARGS=""
-            if [ -n "$HEADER_NAME" ]; then
-              cat > /tmp/artillery-override.yml <<ARTYEOF
-        config:
-          target: $SERVICE_URL
-          phases:
-            - duration: 30
-              arrivalRate: 5
-          defaults:
-            headers:
-              ${HEADER_NAME}: ${HEADER_VAL}
-        scenarios:
-          - flow:
-              - get:
-                  url: "/"
-        ARTYEOF
-              ARTILLERY_ARGS="/tmp/artillery-override.yml"
-            else
-              ARTILLERY_ARGS="$ARTILLERY --target $SERVICE_URL"
-            fi
-            if artillery run $ARTILLERY_ARGS; then
-              echo "  [artillery] PASS"
-            else
-              echo "  [artillery] FAIL"
-              APP_PASS=false
-            fi
-          elif [ -n "$ARTILLERY" ]; then
-            echo "  [artillery] Script not found: $ARTILLERY (skipping)"
-          fi
-
-          STATUS="pass"
-          if [ "$APP_PASS" = "false" ]; then
-            STATUS="fail"
-            OVERALL_PASS=false
-          fi
-
-          jq --arg a "$APP" --arg s "$STATUS" '. + {($a): $s}' \
-            /tmp/test-summary.json > /tmp/test-summary-tmp.json
-          mv /tmp/test-summary-tmp.json /tmp/test-summary.json
-        done
-
-        # ===========================================================
-        # Summary
-        # ===========================================================
-        echo ""
-        echo "========================================="
-        echo "  Test Summary"
-        echo "========================================="
-        cat /tmp/test-summary.json | jq '.'
-        cat /tmp/test-summary.json | tee $(results.test-summary.path)
-
-        if [ "$OVERALL_PASS" = "false" ]; then
-          echo ""
-          echo "FAILED: One or more test phases failed."
+        RUNNERS="/opt/tekton-dag/run-stack-tests-runners.sh"
+        if [ ! -f "$RUNNERS" ]; then
+          echo "ERROR: run-stack-tests runners ConfigMap missing: $RUNNERS" >&2
           exit 1
         fi
+        # shellcheck disable=SC1090
+        . "$RUNNERS"
+  volumes:
+    - name: runners-script
+      configMap:
+        name: run-stack-tests-runners

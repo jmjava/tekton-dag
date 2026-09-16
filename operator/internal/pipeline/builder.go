@@ -145,7 +145,7 @@ func defaultWorkspaces(storage string) []any {
 		map[string]any{
 			"name": "build-cache",
 			"persistentVolumeClaim": map[string]any{
-				"claimName": "build-cache-pvc",
+				"claimName": "build-cache",
 			},
 		},
 	}
@@ -288,7 +288,6 @@ func BuildMerge(opt Options) (*unstructured.Unstructured, error) {
 		param("stack-file", opt.StackFile),
 		param("changed-app", opt.ChangedApp),
 		param("image-registry", opt.ImageRegistry),
-		param("cache-repo", opt.CacheRepo),
 	}
 	obj := map[string]any{
 		"apiVersion": TektonAPIVersion,

@@ -13,8 +13,12 @@ def test_intercept_workflow_has_explicit_backend_cadence_and_evidence():
     assert "branches: [main]" in workflow
     assert '".github/workflows/intercept-e2e.yml"' in workflow
     assert '"helm/tekton-dag/**"' in workflow
-    assert '"scripts/bootstrap-namespace.sh"' in workflow
+    assert '"operator/**"' in workflow
+    assert '"orchestrator/**"' in workflow
+    assert '"pipeline/**"' in workflow
+    assert '"tasks/**"' in workflow
     assert '"scripts/install-tekton.sh"' in workflow
+    assert '"scripts/bootstrap-namespace.sh"' in workflow
     assert "workflow_dispatch:" in workflow
     assert "schedule:" in workflow
     assert "backend: [telepresence, mirrord]" in workflow
@@ -41,6 +45,7 @@ def test_product_script_covers_trigger_stackrun_tests_and_cleanup():
     assert "pipeline-results.json" in script
     assert "tekton.dev/pipelineTask=run-tests" in script
     assert 'pipeline_status" == "False"' in script
+    assert "kubectl get pvc build-cache" in script
     assert "pr-traffic-evidence.log" in script
     assert "kubectl delete pipelinerun" in script
     assert "kubectl delete stackrun" in script
@@ -71,6 +76,13 @@ def test_tekton_install_allows_source_and_build_cache_pvcs():
 
     assert "kubectl patch configmap feature-flags -n tekton-pipelines" in install
     assert '''-p '{"data":{"coschedule":"disabled"}}' '''.strip() in install
+    assert "rollout status deployment/tekton-pipelines-webhook" in install
+    assert "rollout status deployment/tekton-triggers-webhook" in install
+    assert (
+        install.index("rollout status deployment/tekton-triggers-webhook")
+        < install.index('apply_with_retry -f "$TEKTON_TRIGGERS_INTERCEPTORS_URL"')
+    )
+    assert 'apply_with_retry -f "$MILESTONE_DIR/tasks/"' in install
 
 
 def test_compile_pipeline_defaults_are_valid_container_images():
@@ -84,3 +96,22 @@ def test_compile_pipeline_defaults_are_valid_container_images():
             marker = f"- name: compile-image-{image_param}"
             default = pipeline.split(marker, 1)[1].split("- name:", 1)[0]
             assert 'default: "ubuntu:22.04"' in default
+
+
+def test_pipelinerun_builders_use_installed_build_cache_claim():
+    go_builder = (ROOT / "operator/internal/pipeline/builder.go").read_text()
+    python_builder = (ROOT / "orchestrator/pipelinerun_builder.py").read_text()
+
+    assert '"claimName": "build-cache"' in go_builder
+    assert '"claimName": "build-cache-pvc"' not in go_builder
+    assert '"claimName": "build-cache"' in python_builder
+    assert '"claimName": "build-cache-pvc"' not in python_builder
+
+
+def test_pr_comment_token_is_optional_when_commenting_is_not_configured():
+    task = (ROOT / "tasks/post-pr-comment.yaml").read_text()
+
+    token_ref = task.split("secretKeyRef:", 1)[1].split("- name: GIT_URL", 1)[0]
+    assert "key: token" in token_ref
+    assert "optional: true" in token_ref
+    assert 'if [ -z "$GITHUB_TOKEN" ]' in task
