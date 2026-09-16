@@ -143,6 +143,8 @@ Work is intentionally paused to preserve the remaining implementation budget.
   - Run Neo4j graph Newman on a scheduled cadence and GUI Newman against a live
     backend.
   - Acceptance: both collections report zero failed assertions in CI.
+  - Evidence: `graph-gui-newman.yml` now schedules GUI Flask Newman and Kind
+    `--with-graph` Newman. Live green jobs still required.
 
 - [ ] **M17.12 Test Helm and representation synchronization**
   - Test chart packaging/rendering, CRD copies, Stack YAML→CR conversion, and
@@ -216,4 +218,5 @@ Work is intentionally paused to preserve the remaining implementation budget.
 | 2026-09-15 | M17.9 demo validation | Git LFS recordings; stream, A/V drift, narration, and OCR checks | Run 34975666059 passed |
 | 2026-09-15 | M17.10 Newman execution truth | Current-run StackRun reconciliation and bootstrap fetch-source checkpoint | Run 34989095946 passed; final PR revision passed all checks |
 | 2026-09-15 | Pause checkpoint | Completed M17.1–M17.3 and M17.5–M17.10; open M17.4 and M17.11–M17.21 | Resume instructions recorded above |
+| 2026-09-16 | M17.11 graph and GUI Newman automation | Scheduled/manual/PR-path workflow; live Flask GUI runner; cluster `--with-graph`; list endpoints tolerate missing kubeconfig | Automation added; first live graph + GUI Newman run still required |
 

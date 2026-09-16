@@ -60,8 +60,8 @@ def list_configmap_names(context, namespace):
 
 def list_pipelineruns(context, namespace, limit=50, label_selector=""):
     """List recent PipelineRuns in a namespace."""
-    api = get_api(context)
     try:
+        api = get_api(context)
         result = api.list_namespaced_custom_object(
             group="tekton.dev",
             version="v1",
@@ -73,6 +73,9 @@ def list_pipelineruns(context, namespace, limit=50, label_selector=""):
         return result.get("items", [])
     except ApiException as e:
         logger.error("Failed to list PipelineRuns: %s", e.reason)
+        return []
+    except Exception as e:
+        logger.debug("list_pipelineruns: %s", e)
         return []
 
 
@@ -134,8 +137,8 @@ def create_stackrun(context, namespace, manifest):
 
 def list_stackruns(context, namespace, limit=50, label_selector=""):
     """List recent StackRuns in a namespace."""
-    api = get_api(context)
     try:
+        api = get_api(context)
         result = api.list_namespaced_custom_object(
             group="tektondag.io",
             version="v1alpha1",
@@ -147,6 +150,9 @@ def list_stackruns(context, namespace, limit=50, label_selector=""):
         return result.get("items", [])
     except ApiException as e:
         logger.error("Failed to list StackRuns: %s", e.reason)
+        return []
+    except Exception as e:
+        logger.debug("list_stackruns: %s", e)
         return []
 
 

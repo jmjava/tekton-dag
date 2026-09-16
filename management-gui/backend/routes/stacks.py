@@ -41,10 +41,10 @@ def get_dag(team, stack_file):
         return jsonify({"error": f"Unknown team: {team}"}), 404
 
     allowed = team_cfg.get("stacks", [])
-    if allowed and stack_file not in allowed:
-        return jsonify({"error": f"Stack {stack_file} not allowed for team {team}"}), 403
-
     resolver = current_app.config["STACK_RESOLVER"]
+    if allowed and stack_file not in allowed:
+        return jsonify({"error": f"Stack not found: {stack_file}"}), 404
+
     dag = resolver.get_dag(stack_file)
     if dag is None:
         return jsonify({"error": f"Stack not found: {stack_file}"}), 404

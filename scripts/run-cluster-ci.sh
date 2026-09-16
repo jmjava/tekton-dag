@@ -10,6 +10,7 @@
 # Usage:
 #   ./scripts/run-cluster-ci.sh
 #   ./scripts/run-cluster-ci.sh --skip-newman
+#   ./scripts/run-cluster-ci.sh --skip-isolation --with-graph
 #   ./scripts/run-cluster-ci.sh --with-operator
 #   ./scripts/run-cluster-ci.sh --skip-operator
 #   ./scripts/run-cluster-ci.sh --isolation-repeats 3
