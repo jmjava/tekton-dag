@@ -171,3 +171,6 @@ jobs:
 
       - name: Package and render chart
         run: bash scripts/check-helm-chart.sh
+
+      - name: Check representation sync
+        run: bash scripts/check-representation-sync.sh

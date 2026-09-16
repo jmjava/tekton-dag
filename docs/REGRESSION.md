@@ -48,6 +48,7 @@ traffic artifact as verification.
 | **E — Results + DB** | [run-full-test-and-verify-results.sh](../scripts/run-full-test-and-verify-results.sh) | **Auto** if `tekton-results-api` exists; **forced** with `--with-results-verify`; **off** with `--skip-results-verify`; strict weekly/dispatch automation uses `run-regression-agent-full.sh` |
 | **F — GUI Postman** | [management-gui-tests.json](../tests/postman/management-gui-tests.json) vs a live Flask backend | `--gui-newman` or `scripts/run-gui-newman.sh`; weekly/dispatch in `graph-gui-newman.yml` |
 | **F — Graph Postman** | [graph-tests.json](../tests/postman/graph-tests.json) vs orchestrator + Neo4j | `run-cluster-ci.sh --with-graph`; weekly/dispatch in `graph-gui-newman.yml` |
+| **F — Representation sync** | Helm CRD copies, Stack/Team conversion, and PipelineRun params | `scripts/check-representation-sync.sh` in `static-quality.yml` |
 | **G — Full Kind E2E** | [run-all-setup-and-test.sh](../scripts/run-all-setup-and-test.sh) | `--kind-e2e` |
 | **H — Intercept product E2E** | [run-product-intercept-e2e.sh](../scripts/run-product-intercept-e2e.sh) via authenticated orchestrator API | Weekly/dispatch matrix in `intercept-e2e.yml`; requires repository secret `E2E_GIT_SSH_PRIVATE_KEY` with read access to application repos |
 

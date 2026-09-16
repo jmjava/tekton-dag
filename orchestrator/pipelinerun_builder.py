@@ -233,7 +233,6 @@ def build_merge_pipelinerun(
                 {"name": "stack-file", "value": stack_file},
                 {"name": "changed-app", "value": changed_app},
                 {"name": "image-registry", "value": image_registry},
-                {"name": "cache-repo", "value": cache_repo},
             ],
             "workspaces": [
                 {

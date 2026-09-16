@@ -126,6 +126,10 @@ ensure_mikefarah_yq
 need yq
 bash "$SCRIPT_DIR/verify-dag-phase1.sh"
 
+echo ""
+echo ">>> Representation sync — scripts/check-representation-sync.sh"
+bash "$SCRIPT_DIR/check-representation-sync.sh"
+
 run_pytest_dir() {
   local name="$1"
   local dir="$2"
