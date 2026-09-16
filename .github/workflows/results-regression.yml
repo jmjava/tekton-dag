@@ -1,5 +1,8 @@
 name: Tekton Results regression
 
+# Expensive Kind + Postgres + Results. Not an every-PR job.
+# Everyday coverage is local-regression.yml. This workflow is weekly, manual,
+# and PRs that change Results installers / the strict runner.
 on:
   pull_request:
     paths:
@@ -11,7 +14,6 @@ on:
   push:
     branches: [main]
     paths:
-      - ".github/workflows/results-regression.yml"
       - "scripts/install-postgres-kind.sh"
       - "scripts/install-tekton-results.sh"
       - "scripts/run-regression-agent-full.sh"
@@ -19,7 +21,6 @@ on:
   workflow_dispatch:
   schedule:
     # Weekly strict Results/Postgres evidence on the default branch.
-    # Changing this workflow file on a PR runs the same Kind + Results job as the cron.
     - cron: "19 9 * * 3"
 
 permissions:

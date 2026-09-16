@@ -1,8 +1,6 @@
-# Cluster-backed regression (S33). Not on pull requests — Kind/Tekton is too
-# slow and too easy to confuse with the PR-gated --local-only job.
-#
-# Runs: Playwright (no cluster) + Kind (isolation-eval --cluster, Phase 2
-# stack-dag-verify, Newman vs orchestrator).
+# Cluster-backed regression (S33). Expensive Kind + Tekton.
+# Everyday PRs use local-regression.yml. This job is nightly, version tags,
+# manual dispatch, and PRs that change cluster install / Helm / this workflow.
 name: cluster regression
 
 on:
@@ -27,9 +25,8 @@ on:
         type: boolean
         default: true
   schedule:
-    # Daily Kind + Phase 2 + Newman on the default branch (cron does not run on PRs).
-    # Changing this workflow file on a PR runs the same Kind job; isolation-eval is
-    # skipped on pull_request and remains part of nightly / dispatch / tags.
+    # Daily Kind + Phase 2 + Newman on the default branch.
+    # Isolation-eval is skipped on pull_request and remains part of nightly / dispatch / tags.
     - cron: "17 6 * * *"
   push:
     tags:

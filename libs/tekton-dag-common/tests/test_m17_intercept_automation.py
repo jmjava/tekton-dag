@@ -12,13 +12,20 @@ def test_intercept_workflow_has_explicit_backend_cadence_and_evidence():
     assert "push:" in workflow
     assert "branches: [main]" in workflow
     assert '".github/workflows/intercept-e2e.yml"' in workflow
-    assert '"helm/tekton-dag/**"' in workflow
-    assert '"operator/**"' in workflow
-    assert '"orchestrator/**"' in workflow
-    assert '"pipeline/**"' in workflow
-    assert '"tasks/**"' in workflow
-    assert '"scripts/install-tekton.sh"' in workflow
-    assert '"scripts/bootstrap-namespace.sh"' in workflow
+    assert '"scripts/run-product-intercept-e2e.sh"' in workflow
+    # Kind intercept is weekly/manual, not every product PR.
+    for everyday in (
+        '"helm/tekton-dag/**"',
+        '"operator/**"',
+        '"orchestrator/**"',
+        '"pipeline/**"',
+        '"stacks/**"',
+        '"tasks/**"',
+        '"scripts/install-tekton.sh"',
+        '"scripts/bootstrap-namespace.sh"',
+        '"scripts/run-cluster-ci.sh"',
+    ):
+        assert everyday not in workflow.split("jobs:", 1)[0]
     assert "workflow_dispatch:" in workflow
     assert "schedule:" in workflow
     assert "backend: [telepresence, mirrord]" in workflow
