@@ -8,6 +8,14 @@ on:
       - "scripts/bootstrap-namespace.sh"
       - "scripts/install-tekton.sh"
       - "scripts/run-product-intercept-e2e.sh"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/intercept-e2e.yml"
+      - "helm/tekton-dag/**"
+      - "scripts/bootstrap-namespace.sh"
+      - "scripts/install-tekton.sh"
+      - "scripts/run-product-intercept-e2e.sh"
   workflow_dispatch:
   schedule:
     # Weekly product-path evidence on the default branch.
