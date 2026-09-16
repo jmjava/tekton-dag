@@ -61,3 +61,10 @@ def test_app_clone_supports_public_https_without_ssh_key():
     assert 'URL="https://github.com/${REPO}.git"' in task
     assert 'URL="git@github.com:${REPO}.git"' in task
     assert "ssh-key workspace must contain" not in task
+
+
+def test_tekton_install_allows_source_and_build_cache_pvcs():
+    install = (ROOT / "scripts/install-tekton.sh").read_text()
+
+    assert "kubectl patch configmap feature-flags -n tekton-pipelines" in install
+    assert '''-p '{"data":{"coschedule":"disabled"}}' '''.strip() in install
