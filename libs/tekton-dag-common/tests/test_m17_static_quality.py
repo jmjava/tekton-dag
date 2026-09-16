@@ -19,6 +19,7 @@ def test_static_quality_workflow_covers_required_domains():
     assert "npm run build" in workflow
     assert "bash scripts/check-helm-chart.sh" in workflow
     assert "bash scripts/check-representation-sync.sh" in workflow
+    assert "bash scripts/check-support-matrix.sh" in workflow
 
 
 def test_quality_tool_downloads_and_actions_are_immutable():

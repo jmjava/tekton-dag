@@ -130,6 +130,10 @@ echo ""
 echo ">>> Representation sync — scripts/check-representation-sync.sh"
 bash "$SCRIPT_DIR/check-representation-sync.sh"
 
+echo ""
+echo ">>> Support matrix — scripts/check-support-matrix.sh"
+bash "$SCRIPT_DIR/check-support-matrix.sh"
+
 run_pytest_dir() {
   local name="$1"
   local dir="$2"

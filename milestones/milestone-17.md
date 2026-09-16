@@ -1,6 +1,6 @@
 # Milestone 17 — End-to-end quality and production-readiness closure
 
-**Status:** In progress after M17.12; next is M17.13 stack test runners
+**Status:** In progress after M17.13; next is M17.14 compatibility matrix
 
 This milestone converts the September 2026 end-to-end audit into an executable
 backlog. Work is ordered by production risk, not by subsystem. A checkbox is
@@ -24,13 +24,14 @@ regression criteria in `docs/AGENT-REGRESSION.md` are satisfied.
 
 ## Resume checkpoint — 2026-09-16
 
-- Completed with recorded acceptance: M17.1–M17.12.
-- Still open: M17.13–M17.21.
+- Completed with recorded acceptance: M17.1–M17.13.
+- Still open: M17.14–M17.21.
 - M17.4 live Results run `35108434664` on [PR #63](https://github.com/jmjava/tekton-dag/pull/63) exited 0 after the Java 21 toolchain fix.
 - M17.11 live graph + GUI Newman run `35109309784` on [PR #65](https://github.com/jmjava/tekton-dag/pull/65) reported zero failed assertions.
 - M17.12 live static-quality run `35111800721` on [PR #67](https://github.com/jmjava/tekton-dag/pull/67) passed Ruff, Go lint/vet, ShellCheck, both frontend builds, Helm package/render, and representation sync.
-- Continue in numeric order from M17.13. Do not skip directly to
-  maintainability work because M17.13–M17.14 establish the test evidence needed
+- M17.13 live local-regression run `35112504007` on [PR #68](https://github.com/jmjava/tekton-dag/pull/68) passed Newman/Playwright/Artillery runner fixtures.
+- Continue in numeric order from M17.14. Do not skip directly to
+  maintainability work because M17.14 establishes the version evidence needed
   to refactor safely.
 - Before starting a slice, fetch the latest `cursor/close-e2e-audit-gaps-fc5f` and
   create a fresh `cursor/<slice>-fc5f` branch. Do not reuse merged slice
@@ -38,7 +39,7 @@ regression criteria in `docs/AGENT-REGRESSION.md` are satisfied.
 
 | Resume order | Work | Terminal condition |
 |---|---|---|
-| 1 | M17.13–M17.14 test depth | Runner branches and compatibility matrix enforced |
+| 1 | M17.14 test depth | Compatibility matrix enforced |
 | 2 | M17.15–M17.19 maintainability | Duplication, ownership, legacy surface, errors, and config contracts consolidated behind green tests |
 | 3 | M17.20–M17.21 docs/release | Canonical docs, governance, and reproducible release automation complete |
 | 4 | Final verification | Full prescribed regression satisfies `docs/AGENT-REGRESSION.md` |
@@ -142,10 +143,12 @@ regression criteria in `docs/AGENT-REGRESSION.md` are satisfied.
   - Evidence: run `35111800721` passed representation sync plus the rest of
     static-quality after the Ruff import-order hotfix.
 
-- [ ] **M17.13 Test embedded Task shell and stack test runners**
+- [x] **M17.13 Test embedded Task shell and stack test runners**
   - Add shell-level fixtures for malformed input and exercise Newman,
     Playwright, and Artillery branches of `run-stack-tests`.
   - Acceptance: each supported runner has success and failure-path coverage.
+  - Evidence: run `35112504007` passed local regression including malformed
+    stack-json and Newman, Playwright, and Artillery success/failure fixtures.
 
 - [ ] **M17.14 Expand compatibility coverage**
   - Test supported Python, Node, Java, PHP, and Kubernetes/Tekton versions at an
@@ -212,5 +215,6 @@ regression criteria in `docs/AGENT-REGRESSION.md` are satisfied.
 | 2026-09-16 | M17.4 Results live acceptance | Java 21 toolchain; Phase 2; Newman; Results DB | Run 35108434664 passed |
 | 2026-09-16 | M17.11 graph and GUI Newman | Live Flask GUI collection; Kind Neo4j graph collection | Run 35109309784 passed, zero assertion failures |
 | 2026-09-16 | M17.12 representation sync acceptance | CRD copy, Stack/Team conversion, PipelineRun param drift, and static-quality | Run 35111800721 passed |
-| 2026-09-16 | M17.13 stack test runner fixtures | Extracted `run-stack-tests` Newman/Playwright/Artillery runners; malformed JSON plus success/failure fixtures | Automation added; first live local-regression run still required |
+| 2026-09-16 | M17.13 stack test runner fixtures | Extracted `run-stack-tests` Newman/Playwright/Artillery runners; malformed JSON plus success/failure fixtures | Run 35112504007 passed |
+| 2026-09-16 | M17.14 compatibility matrix automation | Documented language/Kind/Tekton matrix; weekly jobs; contract check | Automation added; first live compatibility run still required |
 
