@@ -32,10 +32,6 @@
         "value": "localhost:5000"
       },
       {
-        "name": "cache-repo",
-        "value": "localhost:5000/kaniko-cache"
-      },
-      {
         "name": "max-retries",
         "value": "2"
       }

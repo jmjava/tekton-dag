@@ -1,6 +1,6 @@
 # Milestone 17 — End-to-end quality and production-readiness closure
 
-**Status:** Paused after M17.10; resume with M17.4 live acceptance, then M17.11
+**Status:** In progress after M17.11; next is M17.12 representation sync
 
 This milestone converts the September 2026 end-to-end audit into an executable
 backlog. Work is ordered by production risk, not by subsystem. A checkbox is
@@ -22,35 +22,25 @@ For each slice:
 The milestone is complete only when every P0–P3 item is checked and the final
 regression criteria in `docs/AGENT-REGRESSION.md` are satisfied.
 
-## Resume checkpoint — 2026-09-15
+## Resume checkpoint — 2026-09-16
 
-Work is intentionally paused to preserve the remaining implementation budget.
-
-- Completed with recorded acceptance: M17.1–M17.3 and M17.5–M17.10.
-- Still open: M17.4 and M17.11–M17.21.
-- M17.10 landed through
-  [PR #60](https://github.com/jmjava/tekton-dag/pull/60); its final revision
-  passed all 17 reported checks, including Kind Phase 2, authoritative Newman,
-  both intercept backends, static quality, regression, and supply-chain scans.
-- The first resume action is still M17.4 live acceptance. Scheduled run
-  `35107095845` already executed on `main` and failed because the workflow
-  lacked JDK 21. Merge the Results toolchain fix to `main`, then confirm a
-  green scheduled or manually dispatched `results-regression` run before
-  marking M17.4 complete.
-- After M17.4, continue in numeric order from M17.11. Do not skip directly to
-  maintainability work because M17.11–M17.14 establish the test evidence needed
+- Completed with recorded acceptance: M17.1–M17.11.
+- Still open: M17.12–M17.21.
+- M17.4 live Results run `35108434664` on [PR #63](https://github.com/jmjava/tekton-dag/pull/63) exited 0 after the Java 21 toolchain fix.
+- M17.11 live graph + GUI Newman run `35109309784` on [PR #65](https://github.com/jmjava/tekton-dag/pull/65) reported zero failed assertions.
+- Continue in numeric order from M17.12. Do not skip directly to
+  maintainability work because M17.12–M17.14 establish the test evidence needed
   to refactor safely.
-- Before resuming, fetch the latest `cursor/close-e2e-audit-gaps-fc5f` and
+- Before starting a slice, fetch the latest `cursor/close-e2e-audit-gaps-fc5f` and
   create a fresh `cursor/<slice>-fc5f` branch. Do not reuse merged slice
   branches.
 
 | Resume order | Work | Terminal condition |
 |---|---|---|
-| 1 | M17.4 Results live acceptance | Scheduled/manual strict workflow green and evidence recorded |
-| 2 | M17.11–M17.14 test depth | Optional suites, representation sync, runner branches, and compatibility matrix enforced |
-| 3 | M17.15–M17.19 maintainability | Duplication, ownership, legacy surface, errors, and config contracts consolidated behind green tests |
-| 4 | M17.20–M17.21 docs/release | Canonical docs, governance, and reproducible release automation complete |
-| 5 | Final verification | Full prescribed regression satisfies `docs/AGENT-REGRESSION.md` |
+| 1 | M17.12–M17.14 test depth | Representation sync, runner branches, and compatibility matrix enforced |
+| 2 | M17.15–M17.19 maintainability | Duplication, ownership, legacy surface, errors, and config contracts consolidated behind green tests |
+| 3 | M17.20–M17.21 docs/release | Canonical docs, governance, and reproducible release automation complete |
+| 4 | Final verification | Full prescribed regression satisfies `docs/AGENT-REGRESSION.md` |
 
 ## P0 — Security and execution truth
 
@@ -75,14 +65,12 @@ Work is intentionally paused to preserve the remaining implementation budget.
     described as continuously verified without current evidence.
   - Acceptance: artifacts retain PipelineRun/TaskRun logs and traffic evidence.
 
-- [ ] **M17.4 Add scheduled Tekton Results verification**
+- [x] **M17.4 Add scheduled Tekton Results verification**
   - Install Results/Postgres and run the strict Results DB verification.
   - Acceptance: `run-regression-agent-full.sh` equivalent exits zero and uploads
     diagnostic artifacts on failure.
-  - Evidence: scheduled run `35107095845` on `main` failed compiling
-    `baggage-spring-boot-starter` (`invalid target release: 21`) because the
-    workflow did not install JDK 21. The workflow now provisions Java 21, PHP
-    DOM, and Go before the strict regression. Live green run still required.
+  - Evidence: run `35108434664` installed Java 21, compiled both Maven modules,
+    passed Phase 2 and Newman, verified Results, and exited 0.
 
 ## P1 — CI gates and operator assurance
 
@@ -139,17 +127,19 @@ Work is intentionally paused to preserve the remaining implementation budget.
     StackRun reconciliation gate and required bootstrap `fetch-source`
     execution checkpoint.
 
-- [ ] **M17.11 Exercise optional graph and GUI API suites**
+- [x] **M17.11 Exercise optional graph and GUI API suites**
   - Run Neo4j graph Newman on a scheduled cadence and GUI Newman against a live
     backend.
   - Acceptance: both collections report zero failed assertions in CI.
-  - Evidence: `graph-gui-newman.yml` now schedules GUI Flask Newman and Kind
-    `--with-graph` Newman. Live green jobs still required.
+  - Evidence: run `35109309784` passed GUI Newman (54 assertions) and graph
+    Newman (38 + 36 assertions) with zero failures.
 
 - [ ] **M17.12 Test Helm and representation synchronization**
   - Test chart packaging/rendering, CRD copies, Stack YAML→CR conversion, and
     parameter compatibility across StackRun, operator builders, and Pipelines.
   - Acceptance: drift in any duplicated representation fails PR CI.
+  - Evidence: `check-representation-sync` is wired into static-quality. Live
+    green static-quality run still required.
 
 - [ ] **M17.13 Test embedded Task shell and stack test runners**
   - Add shell-level fixtures for malformed input and exercise Newman,
@@ -218,5 +208,7 @@ Work is intentionally paused to preserve the remaining implementation budget.
 | 2026-09-15 | M17.9 demo validation | Git LFS recordings; stream, A/V drift, narration, and OCR checks | Run 34975666059 passed |
 | 2026-09-15 | M17.10 Newman execution truth | Current-run StackRun reconciliation and bootstrap fetch-source checkpoint | Run 34989095946 passed; final PR revision passed all checks |
 | 2026-09-15 | Pause checkpoint | Completed M17.1–M17.3 and M17.5–M17.10; open M17.4 and M17.11–M17.21 | Resume instructions recorded above |
-| 2026-09-16 | M17.11 graph and GUI Newman automation | Scheduled/manual/PR-path workflow; live Flask GUI runner; cluster `--with-graph`; list endpoints tolerate missing kubeconfig | Automation added; first live graph + GUI Newman run still required |
+| 2026-09-16 | M17.4 Results live acceptance | Java 21 toolchain; Phase 2; Newman; Results DB | Run 35108434664 passed |
+| 2026-09-16 | M17.11 graph and GUI Newman | Live Flask GUI collection; Kind Neo4j graph collection | Run 35109309784 passed, zero assertion failures |
+| 2026-09-16 | M17.12 representation sync automation | CRD copy, Stack/Team conversion, and PipelineRun param drift gate | Automation added; first live static-quality run still required |
 
