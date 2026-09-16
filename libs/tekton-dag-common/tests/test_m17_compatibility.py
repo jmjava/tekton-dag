@@ -17,6 +17,8 @@ def test_compatibility_workflow_covers_documented_runtimes():
     assert 'java: ["21"]' in workflow
     assert 'php: ["8.3"]' in workflow
     assert "bash scripts/check-support-matrix.sh" in workflow
+    assert "(cd libs/baggage-python && python -m pytest tests" in workflow
+    assert "(cd libs/tekton-dag-common && python -m pytest tests" in workflow
     assert 'workflow: ".github/workflows/compatibility.yml"' in matrix
 
 
