@@ -23,8 +23,9 @@ spec:
       apps this validates the PR build directly. For non-intercepted
       apps this validates they still work with the header present.
 
-    Runner logic lives in scripts/run-stack-tests-runners.sh in the
-    platform repo (cloned into the test-source workspace).
+    Runner logic lives in scripts/run-stack-tests-runners.sh and is
+    mounted from ConfigMap run-stack-tests-runners so the Task does
+    not depend on the cloned platform git-revision.
   params:
     - name: stack-json
       type: string
@@ -68,6 +69,9 @@ spec:
     - name: run-tests
       image: node:22-alpine
       workingDir: $(workspaces.test-source.path)
+      volumeMounts:
+        - name: runners-script
+          mountPath: /opt/tekton-dag
       script: |
         #!/bin/sh
         set -e
@@ -91,10 +95,14 @@ spec:
           DEFAULT_NS TESTS_TO_RUN UNMAPPED_AREA APPS_TO_TEST \
           TEST_SOURCE TEST_SUMMARY_PATH
 
-        RUNNERS="${TEST_SOURCE}/scripts/run-stack-tests-runners.sh"
+        RUNNERS="/opt/tekton-dag/run-stack-tests-runners.sh"
         if [ ! -f "$RUNNERS" ]; then
-          echo "ERROR: run-stack-tests runners script missing: $RUNNERS" >&2
+          echo "ERROR: run-stack-tests runners ConfigMap missing: $RUNNERS" >&2
           exit 1
         fi
         # shellcheck disable=SC1090
         . "$RUNNERS"
+  volumes:
+    - name: runners-script
+      configMap:
+        name: run-stack-tests-runners

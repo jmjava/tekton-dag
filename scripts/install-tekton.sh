@@ -79,6 +79,9 @@ kubectl apply -f "$TEKTON_GIT_CLONE_URL" -n "$NAMESPACE" 2>/dev/null || \
 
 # 4. This repo's tasks and pipelines (kubectl apply is idempotent; triggers apply now that Triggers is installed)
 echo "  Applying stack tasks and pipelines..."
+kubectl create configmap run-stack-tests-runners \
+  --from-file=run-stack-tests-runners.sh="$MILESTONE_DIR/scripts/run-stack-tests-runners.sh" \
+  -n "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 apply_with_retry -f "$MILESTONE_DIR/tasks/" -n "$NAMESPACE"
 # EventListener reconciliation creates el-* Services. It can race the explicit
 # Service in triggers.yaml between kubectl's read and create operations.

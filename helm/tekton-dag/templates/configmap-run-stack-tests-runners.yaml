@@ -1,0 +1,15 @@
+{{- $script := .Files.Get "raw/scripts/run-stack-tests-runners.sh" -}}
+{{- if not $script -}}
+{{- fail "raw/scripts/run-stack-tests-runners.sh is missing; run helm/tekton-dag/package.sh" -}}
+{{- end -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: run-stack-tests-runners
+  namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+    {{- include "tekton-dag.labels" . | nindent 4 }}
+data:
+  run-stack-tests-runners.sh: |
+    {{- $script | nindent 4 }}

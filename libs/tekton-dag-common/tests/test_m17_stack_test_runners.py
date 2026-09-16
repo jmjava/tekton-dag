@@ -7,11 +7,18 @@ ROOT = Path(__file__).resolve().parents[3]
 
 def test_task_sources_extracted_runner_script():
     task = (ROOT / "tasks/run-stack-tests.yaml").read_text()
+    installer = (ROOT / "scripts/install-tekton.sh").read_text()
+    chart = (ROOT / "helm/tekton-dag/templates/configmap-run-stack-tests-runners.yaml").read_text()
+    packager = (ROOT / "helm/tekton-dag/package.sh").read_text()
     script = (ROOT / "scripts/run-stack-tests-runners.sh").read_text()
 
-    assert "scripts/run-stack-tests-runners.sh" in task
-    assert "ERROR: run-stack-tests runners script missing" in task
+    assert "name: run-stack-tests-runners" in task
+    assert "mountPath: /opt/tekton-dag" in task
+    assert "ERROR: run-stack-tests runners ConfigMap missing" in task
     assert "PHASE 2: Per-app tests" not in task
+    assert "kubectl create configmap run-stack-tests-runners" in installer
+    assert "raw/scripts/run-stack-tests-runners.sh" in chart
+    assert "raw/scripts/run-stack-tests-runners.sh" in packager
     assert "run_newman" in script
     assert "run_playwright" in script
     assert "run_artillery" in script
