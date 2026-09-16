@@ -25,19 +25,19 @@ spec:
       default: "base-1"
     - name: compile-image-npm
       description: "Image for npm compile step"
-      default: ""
+      default: "ubuntu:22.04"
     - name: compile-image-maven
       description: "Image for Maven compile step"
-      default: ""
+      default: "ubuntu:22.04"
     - name: compile-image-gradle
       description: "Image for Gradle compile step"
-      default: ""
+      default: "ubuntu:22.04"
     - name: compile-image-pip
       description: "Image for pip compile step"
-      default: ""
+      default: "ubuntu:22.04"
     - name: compile-image-php
       description: "Image for Composer/PHP compile step"
-      default: ""
+      default: "ubuntu:22.04"
     - name: cache-repo
       description: "Kaniko cache repo. Empty disables cache."
       default: ""

@@ -71,3 +71,16 @@ def test_tekton_install_allows_source_and_build_cache_pvcs():
 
     assert "kubectl patch configmap feature-flags -n tekton-pipelines" in install
     assert '''-p '{"data":{"coschedule":"disabled"}}' '''.strip() in install
+
+
+def test_compile_pipeline_defaults_are_valid_container_images():
+    for name in (
+        "stack-bootstrap-pipeline.yaml",
+        "stack-pr-pipeline.yaml",
+        "stack-merge-pipeline.yaml",
+    ):
+        pipeline = (ROOT / "pipeline" / name).read_text()
+        for image_param in ("npm", "maven", "gradle", "pip", "php"):
+            marker = f"- name: compile-image-{image_param}"
+            default = pipeline.split(marker, 1)[1].split("- name:", 1)[0]
+            assert 'default: "ubuntu:22.04"' in default
