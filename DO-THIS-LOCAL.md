@@ -7,7 +7,7 @@ Cloud agents for this PR ran **`--local-only`** (no `kubectl` / Docker / Kind). 
 ## Prerequisites
 
 - Kind (or equivalent) cluster with Tekton Pipelines installed
-- This repo checked out on branch `cursor/m13-production-hardening-features-b923` (or `main` after merge)
+- This repo checked out (typically `main`, or the branch under test)
 - Python venv + tools from [docs/AGENT-REGRESSION.md](docs/AGENT-REGRESSION.md)
 
 ```bash

@@ -2,7 +2,7 @@
 
 This document is the **story** behind how tekton-dag is verified end-to-end. Use it for **onboarding**, **release checklists**, and **video voiceover**. Operational detail lives in [REGRESSION.md](REGRESSION.md), [AGENT-REGRESSION.md](AGENT-REGRESSION.md), and [scripts/run-regression.sh](../scripts/run-regression.sh).
 
-**Scope:** An **application PR** only runs that stack’s declared tests inside **stack-pr-test**. The **`run-regression*.sh`** suites are **platform / system** checks (orchestrator, GUI, real PipelineRuns, Newman, Results). They are **not** all expected to run on every GitHub pull request unless you wire CI that way — see [REGRESSION.md](REGRESSION.md) § *Application PR pipeline vs platform (system) regression*.
+**Scope:** An **application PR** only runs that stack’s declared tests inside **stack-pr-test**. The **`run-regression*.sh`** suites are **platform / system** checks (orchestrator, GUI, real PipelineRuns, Newman, Results). They are **not** all expected to run on every GitHub pull request — see [REGRESSION.md](REGRESSION.md) for the Actions trigger table (cheap local job every PR; Kind on schedule or path filters).
 
 ## Why regression is more than unit tests
 

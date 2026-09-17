@@ -126,6 +126,10 @@ echo ">>> CI policy: Dependabot ignores + operator Go pin — scripts/check-ci-p
 python3 "$SCRIPT_DIR/check-ci-policy.py"
 
 echo ""
+echo ">>> Docs: relative Markdown links — scripts/check-markdown-links.py"
+python3 "$SCRIPT_DIR/check-markdown-links.py"
+
+echo ""
 echo ">>> Phase 1: DAG verification (no cluster) — scripts/verify-dag-phase1.sh"
 ensure_mikefarah_yq
 need yq

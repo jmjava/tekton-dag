@@ -8,6 +8,7 @@ This directory contains **bash** automation for Kind/Tekton setup, image builds,
 - **Shared shell API:** `common.sh` (sourced by install/publish/regression scripts)
 - **Primary regression:** `./scripts/run-regression.sh` — details in [docs/REGRESSION.md](../docs/REGRESSION.md)
 - **Cursor / agents:** `./scripts/run-regression-agent.sh` — [docs/AGENT-REGRESSION.md](../docs/AGENT-REGRESSION.md)
+- **Product intercept E2E:** `./scripts/run-product-intercept-e2e.sh`
 
 ## Obsolete scripts
 
@@ -15,4 +16,4 @@ Retired scripts are moved to **`scripts/archive/`** (see [scripts/archive/README
 
 ## Demo video generation
 
-Demo pipelines live under **`docs/demos/`** (e.g. `generate-all.sh`, `compose.sh`), not here.
+Demo pipelines live under **`docs/demos/`**. Canonical interface is the **`docgen`** CLI (`docgen generate-all`, `docgen compose`). The `.sh` scripts there are thin wrappers.

@@ -39,11 +39,11 @@ See **[seip-tasks.md](seip-tasks.md)**. No ICSE 2027 date. Gate 0 is a real site
 Engineering completeness is separate from the HotCRP PDF. As of this branch:
 
 - `--local-only --require-lang-tests` **passes** and is **gated** by [`.github/workflows/local-regression.yml`](../../.github/workflows/local-regression.yml).
-- Playwright, Newman, Phase 2, and Kind isolation **measurements** are gated by [`.github/workflows/cluster-regression.yml`](../../.github/workflows/cluster-regression.yml) (**not** on pull requests). A **GitHub Actions** log exists only after that workflow has run (dispatch / nightly on default branch / `v*` tag). This Cloud Agent recorded a local Kind run (isolation 6/6, Phase 2 Succeeded, Newman 18/18); that is not an Actions artifact.
-- Intercept E2E (Telepresence + mirrord) is still **out of band** (S34).
-- README milestone test counts are **stale**.
+- Playwright, Newman, Phase 2, and Kind isolation **measurements** are gated by [`.github/workflows/cluster-regression.yml`](../../.github/workflows/cluster-regression.yml) (nightly / dispatch / `v*` tags / Helm-or-cluster-script PRs — **not** every PR). Isolation-eval is skipped on those PRs.
+- Intercept E2E automation is [`.github/workflows/intercept-e2e.yml`](../../.github/workflows/intercept-e2e.yml) (weekly + path filters). Live matrix evidence is still required ([M17.3](../../milestones/milestone-17.md)).
+- README milestone test counts were refreshed in the 2026-09 documentation review (orchestrator 108, common 89, GUI backend 68, Playwright 70, Newman 20/38).
 
-Until a **recorded** cluster-regression artifact exists for a tagged commit, do not tell reviewers the *platform* (Tekton/intercepts) is continuously verified on every PR. Local unit/static CI plus an on-demand Kind job is the honest claim.
+Until a **recorded** cluster-regression artifact exists for a tagged commit, do not tell reviewers the *platform* (Tekton/intercepts) is continuously verified on every PR. Local unit/static CI plus scheduled Kind jobs is the honest claim.
 
 **Kind cluster-ci design debt (2026-09-07 run, not site evidence):**
 
@@ -51,12 +51,12 @@ Until a **recorded** cluster-regression artifact exists for a tagged commit, do 
 |----|---------|--------|
 | **S38** | `install-tekton.sh` tracked `latest`; v1.6 rejected `taskRef.name: $(params.pre-build-task)`. Hooks use cluster resolver; pin Pipelines/Triggers. | Landed |
 | **S39** | `common.sh` defaulted host `localhost:5001` while `kind-with-registry.sh` listens on **`:5000`**. Newman image push failed (`connection refused` on 5001). Phase 2 `stack-dag-verify` **Succeeded**. | Landed |
-| **S33 local** | `run-cluster-ci.sh` on this Cloud Agent Kind: isolation 6/6, Phase 2 Succeeded, Newman 18 req / 36 asserts. `kind load` overlayfs warning (nested Docker); registry pull worked. | Local log only; GHA not dispatched |
-| **M14 soak** | Default-on: Helm `operator.enabled=true`, Kind `STACKRUN_VIA_CRD=true`. Newman 18/18 and 6/6 StackRun → PipelineRun. Team `default` Ready; Stacks `valid` + `injectionNamespace`. Some PRs then `CouldntGetTask` (task catalog). | Landed (product); GHA cluster-regression still not the proof |
+| **S33 local** | `run-cluster-ci.sh` on this Cloud Agent Kind: isolation 6/6, Phase 2 Succeeded, Newman 18 req / 36 asserts. `kind load` overlayfs warning (nested Docker); registry pull worked. | Local log (2026-09-07); GHA cluster-regression now exists as a nightly/path-filtered workflow |
+| **M14 soak** | Default-on: Helm `operator.enabled=true`, Kind `STACKRUN_VIA_CRD=true`. Newman 18/18 and 6/6 StackRun → PipelineRun. Team `default` Ready; Stacks `valid` + `injectionNamespace`. Some PRs then `CouldntGetTask` (task catalog). | Landed (product); GHA cluster-regression is the scheduled proof path |
 | **M15** | Idempotent StackRun→PipelineRun, GHA `--skip-operator`, Triggers `prNumber`, Flask/GUI promote wait, soak `ready==total`. | Landed [#19](https://github.com/jmjava/tekton-dag/pull/19) — [milestone-15.md](../../milestones/milestone-15.md) |
-| **M16** | Team CR overlay, `continueFrom`, Kind webhook installer, escape hatches retired, spoken demos 01/08/18/19 rebuilt. | Code-complete [#20](https://github.com/jmjava/tekton-dag/pull/20)–[#24](https://github.com/jmjava/tekton-dag/pull/24); S34 parked — [milestone-16.md](../../milestones/milestone-16.md) |
-| **S34** | Phase 2 ≠ intercept E2E. Dummy isolation-eval ≠ Telepresence/mirrord. Bootstrap skipped SSH/GitHub secrets. | Open |
-| Lessons | Dual-port registry, Kaniko stdout vs results, intercept vs Pod Security: see [seip/lessons-learned.md](seip/lessons-learned.md). | Registry default paid in S39; intercept PSS still S34 |
+| **M16** | Team CR overlay, `continueFrom`, Kind webhook installer, escape hatches retired, spoken demos 01/08/18/19 rebuilt. | Code-complete [#20](https://github.com/jmjava/tekton-dag/pull/20)–[#24](https://github.com/jmjava/tekton-dag/pull/24); intercept follow-on is M17.3 — [milestone-16.md](../../milestones/milestone-16.md) |
+| **S34 / M17.3** | Phase 2 ≠ intercept E2E. Dummy isolation-eval ≠ Telepresence/mirrord. Weekly `intercept-e2e.yml` exists; live matrix evidence still required. | Automation in-tree; checkbox open until a retained artifact |
+| Lessons | Dual-port registry, Kaniko stdout vs results, intercept vs Pod Security: see [seip/lessons-learned.md](seip/lessons-learned.md). | Registry default paid in S39; intercept PSS still tracked with M17.3 |
 
 ## Must-not-do
 

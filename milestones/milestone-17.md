@@ -43,12 +43,17 @@ regression criteria in `docs/AGENT-REGRESSION.md` are satisfied.
     PR PipelineRun → build → intercept route → app tests → cleanup.
   - Cover Telepresence and mirrord over an explicit cadence; neither may be
     described as continuously verified without current evidence.
-  - Acceptance: artifacts retain PipelineRun/TaskRun logs and traffic evidence.
+  - In-tree: [`.github/workflows/intercept-e2e.yml`](../.github/workflows/intercept-e2e.yml)
+    + [`scripts/run-product-intercept-e2e.sh`](../scripts/run-product-intercept-e2e.sh).
+  - Acceptance: artifacts retain PipelineRun/TaskRun logs and traffic evidence
+    from a **live** matrix run (local automation green is not enough).
 
 - [ ] **M17.4 Add scheduled Tekton Results verification**
   - Install Results/Postgres and run the strict Results DB verification.
-  - Acceptance: `run-regression-agent-full.sh` equivalent exits zero and uploads
-    diagnostic artifacts on failure.
+  - In-tree: [`.github/workflows/results-regression.yml`](../.github/workflows/results-regression.yml)
+    (pinned Results v0.20.0 + ephemeral Postgres + `run-regression-agent-full.sh`).
+  - Acceptance: a **live** `run-regression-agent-full.sh` equivalent exits zero
+    and uploads diagnostic artifacts on failure.
 
 ## P1 — CI gates and operator assurance
 

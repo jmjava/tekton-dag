@@ -43,6 +43,7 @@ Use `-f` with a per-team values file (for example `teams/<team>/values.yaml`) wh
 | `templates/_helpers.tpl` | Labels, names, service account helper |
 | `templates/orchestration-deployment.yaml` | Orchestrator Deployment + Service (optional) |
 | `templates/rbac.yaml` | ServiceAccount and optional cluster-admin binding |
+| `templates/operator.yaml` | Go operator Deployment (when `operator.enabled`, default true) |
 | `templates/pipelines/pipelines.yaml` | Tekton pipelines/triggers from packaged `raw/pipelines/*.yaml` |
 | `templates/tasks/tasks.yaml` | Tekton tasks from packaged `raw/tasks/*.yaml` |
 | `templates/configmap-stacks.yaml` | `tekton-dag-stacks`: all `raw/stacks/*.yaml` |

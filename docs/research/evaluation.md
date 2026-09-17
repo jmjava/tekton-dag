@@ -2,9 +2,9 @@
 
 Workshop and tool-demo reviewers accept **functional** evidence if claims stay inside it. Research-track and SEIP reviewers will not. This inventory lists what already exists in-tree so the paper does not invent numbers.
 
-**Short answer: no, the testing work is not “all done.”** There is a real, passing *local* unit/static suite, now **gated on GitHub PRs**. This Cloud Agent Kind cluster ran isolation-eval, Phase 2, and Newman. Intercept E2E (S34) and GitHub `cluster-regression` artifacts have not. Comparative studies a research PC would ask for remain incomplete.
+**Short answer: no, the testing work is not “all done.”** There is a real, passing *local* unit/static suite, now **gated on GitHub PRs**. Kind cluster-regression, intercept E2E, and Results/Postgres jobs exist as scheduled (and path-filtered) GitHub Actions workflows. Comparative studies a research PC would ask for remain incomplete. Do not tell reviewers intercepts are continuously verified without a recent retained matrix artifact.
 
-## What actually ran (this packaging branch)
+## What actually ran (packaging snapshot, 2026-09-07)
 
 On 2026-09-07, `bash scripts/run-regression-stream.sh --local-only --require-lang-tests` is the CI path (Phase 1 + pytest + vitest + isolation-eval protocol + Maven + PHPUnit + operator `go test`). Playwright later ran locally (**69 passed**, Vite only). Nested Docker + Kind:
 
@@ -12,14 +12,14 @@ On 2026-09-07, `bash scripts/run-regression-stream.sh --local-only --require-lan
 - `stack-dag-verify` Phase 2: **Succeeded**.
 - Newman vs in-cluster orchestrator: **18 requests / 36 assertions, 0 failed** (`run-cluster-ci.sh --skip-isolation --skip-phase2` after S39; `kind load` warned overlayfs on this nested VM, image came from `localhost:5000`).
 - Operator Kind soak (`STACKRUN_VIA_CRD=true`): **18/18 Newman**; **6/6** StackRuns received a `status.pipelineRunName` and a PipelineRun labeled `tektondag.io/stackrun` (bootstrap ×2, pr ×2, merge, promote). Some PipelineRuns then hit Tekton `CouldntGetTask` / `ResolvingTaskRef` (task catalog on this cluster, not operator create). `scripts/install-operator-kind.sh` + `WAIT_STACKRUN_RECONCILE=1`.
-- Intercept E2E (S34) was **not** run. GitHub `cluster-regression` was **not** dispatched (no Actions artifact).
+- Intercept E2E (S34) was **not** run on that day. GitHub `cluster-regression` had **not** been dispatched yet (no Actions artifact from that session).
 
 | Suite | Collected / result |
 |-------|-------------------|
 | Phase 1 DAG (`verify-dag-phase1.sh`) | PASSED (stack-one, stack-two-vendor, single-app, single-flask-app) |
-| pytest orchestrator | **105 passed** (README still says 62) |
-| pytest `tekton-dag-common` | **47 passed** (README still says 14) |
-| pytest management-gui backend | **61 passed** (README still says 56) |
+| pytest orchestrator | **105 passed** (current tree is 108 `test_` functions) |
+| pytest `tekton-dag-common` | **47 passed** (current tree is 89 `test_` functions) |
+| pytest management-gui backend | **61 passed** (current tree is 68 `test_` functions) |
 | pytest baggage-python | **17 passed** |
 | pytest isolation-eval | **10 passed** |
 | vitest baggage-node | **15 passed** |
@@ -27,22 +27,34 @@ On 2026-09-07, `bash scripts/run-regression-stream.sh --local-only --require-lan
 | Maven Java baggage | both modules OK (`--require-lang-tests`) |
 | operator `go test` | `internal/pipeline` + `internal/controller` OK |
 
-`--local-only` **skips** Playwright on purpose. This environment ran `npx playwright test` in `management-gui/frontend`: **69 passed** (Vite only, no cluster). Kind isolation-eval **6/6**, Phase 2 **Succeeded**, Newman **18/18 requests**, operator soak **6/6** StackRun→PipelineRun. S34 intercept E2E was not run.
+`--local-only` **skips** Playwright on purpose. That environment ran `npx playwright test` in `management-gui/frontend`: **69 passed** (Vite only, no cluster). Kind isolation-eval **6/6**, Phase 2 **Succeeded**, Newman **18/18 requests**, operator soak **6/6** StackRun→PipelineRun. S34 intercept E2E was not run that day.
+
+## Current automation (2026-09-16)
+
+| Workflow | Role |
+|----------|------|
+| `local-regression.yml` | Every PR / `main` push: `--local-only --require-lang-tests` |
+| `cluster-regression.yml` | Nightly + tags + Helm/cluster-script PRs |
+| `intercept-e2e.yml` | Weekly Telepresence + mirrord product path |
+| `results-regression.yml` | Weekly Results/Postgres + `run-regression-agent-full.sh` |
+| `operator.yml` | `operator/**` PRs: unit/envtest + Kind domain E2E |
+
+Cite a **retained Actions artifact**, not the workflow file, when claiming cluster or intercept verification.
 
 ## What exists but is *not* CI-gated on every PR
 
-`--local-only --require-lang-tests` **does** run on pull requests ([`.github/workflows/local-regression.yml`](../../.github/workflows/local-regression.yml)). The suites below are **not** on PRs; they run on [`.github/workflows/cluster-regression.yml`](../../.github/workflows/cluster-regression.yml) (nightly / dispatch / tags) unless noted.
+`--local-only --require-lang-tests` **does** run on pull requests ([`.github/workflows/local-regression.yml`](../../.github/workflows/local-regression.yml)). The suites below are **not** on every PR; they run on scheduled or path-filtered Kind workflows (see [REGRESSION.md](../REGRESSION.md)).
 
 | Suite | Approx. cases | How you run it today |
 |-------|---------------|----------------------|
-| Go `operator/` e2e | present | Kind soak via `run-cluster-ci.sh` (operator on by default; `--skip-operator` to opt out) |
-| Playwright GUI | 69 `test(` | cluster-regression Playwright job; `npx playwright test` locally |
-| Newman orchestrator | collection grew past the README “15 requests / 30 assertions” | `run-cluster-ci.sh` (live orchestrator Service) |
-| Newman graph (M9) | ~10 requests in `tests/postman/graph-tests.json` | `run-cluster-ci.sh --with-graph` |
-| Newman management GUI | optional | `--gui-newman` (not in cluster-regression) |
+| Go `operator/` e2e | present | Kind soak via `run-cluster-ci.sh` (operator on by default; `--skip-operator` to opt out); operator.yml Kind domain job on `operator/**` |
+| Playwright GUI | 70 `test(` | cluster-regression Playwright job; `npx playwright test` locally |
+| Newman orchestrator | 20 requests / 38 assertions | `run-cluster-ci.sh` (live orchestrator Service) |
+| Newman graph (M9) | 10 requests / 36 assertions in `tests/postman/graph-tests.json` | `run-cluster-ci.sh --with-graph` |
+| Newman management GUI | 24 requests / 54 assertions | `--gui-newman` (not in cluster-regression) |
 | `stack-dag-verify` PipelineRun | one real Tekton run | `run-cluster-ci.sh` / `--require-dag-verify` |
-| Intercept E2E both backends | scripts exist | S34: `run-e2e-with-intercepts.sh` |
-| Kind clone-vs-intercept **measurements** | CSV rows | `run-cluster-ci.sh` / `run-isolation-eval.sh --cluster` |
+| Intercept E2E both backends | weekly workflow + scripts | [`intercept-e2e.yml`](../../.github/workflows/intercept-e2e.yml) / `run-product-intercept-e2e.sh` (legacy helper: `run-e2e-with-intercepts.sh`) |
+| Kind clone-vs-intercept **measurements** | CSV rows | `run-cluster-ci.sh` / `run-isolation-eval.sh --cluster` (skipped on cluster-regression **pull_request**) |
 | Sample **app-repo** tests (Newman/Playwright/Artillery in the six `tekton-dag-*` repos) | declared in stack YAML | only during `stack-pr-test`, not platform regression |
 
 C2 (polyglot baggage **unit** tests) is PR-gated for Python, Node, Java, and PHP. In-cluster hop validation (`validate-stack-propagation`) remains a pipeline task. C3 isolation **probes on Kind** run in cluster-regression (dummy HTTP stacks, not Telepresence). C4 (test-plan) has mocked pytest + a Postman collection; `milestones/milestone-9.md` still says **Planned** even though `query-test-plan` is wired in `stack-pr-pipeline.yaml`.
@@ -61,8 +73,10 @@ C2 (polyglot baggage **unit** tests) is PR-gated for Python, Node, Java, and PHP
 Same header-filter idea is documented as parity with Telepresence `--http-match`. E2E scripts exist for **both** backends:
 
 ```bash
-./scripts/run-e2e-with-intercepts.sh --intercept-backend telepresence
-./scripts/run-e2e-with-intercepts.sh --intercept-backend mirrord
+./scripts/run-product-intercept-e2e.sh --intercept-backend telepresence
+./scripts/run-product-intercept-e2e.sh --intercept-backend mirrord
+# local Kind helper:
+./scripts/run-e2e-with-intercepts.sh --intercept-backend telepresence --skip-bootstrap
 ```
 
 **How to report:** “In a controlled Kind deployment of the three-app exemplar, unmatched requests remained on the baseline replica; matched requests were stolen (5/5 each).” Cite [`docs/mirrord-poc-results.md`](../mirrord-poc-results.md) for that smoke, and `run-isolation-eval.sh --cluster` for dummy-stack probes (this Cloud Agent: 6/6 `isolation_ok`). Neither is a site measurement (S21).
@@ -114,7 +128,7 @@ Code exists (`/api/test-plan`, `query-test-plan` task, Neo4j client, Postman gra
 | Missing study **or** missing engineering gate | Why it matters | Minimum next step |
 |-----------------------------------------------|----------------|-------------------|
 | Recorded cluster-regression log on a tag | C1/C3 need a live PipelineRun **artifact**, not only a workflow file | `workflow_dispatch` on [cluster-regression.yml](../../.github/workflows/cluster-regression.yml) or push a `v*` tag after merge |
-| Intercept E2E both backends | C3 beyond dummy-stack probes | S34: `run-e2e-with-intercepts.sh` on a chosen tag |
+| Intercept E2E both backends | C3 beyond dummy-stack probes | Live `intercept-e2e.yml` matrix artifact (or `run-product-intercept-e2e.sh` on a chosen tag) |
 | Cost/time vs. namespace-per-PR (**measured**, ≥3 repeats) | Central *research* claim of routing vs. cloning | Dispatch cluster CI with `isolation_repeats=3`; cite the artifact CSV, not the plan |
 | Concurrent PRs | Multi-tenant intercepts | Two PRs, two headers, no cross-steal |
 | Developer study | Demo “envisioned users” | Even n=3 think-aloud |
@@ -131,7 +145,7 @@ Until cluster E2E and the *studies* exist, keep the paper in **tool / experience
 
 **External.** Six first-party sample repos under one GitHub user are not an independent software ecosystem. Polyglot coverage is real (Vue, Spring, Flask, PHP) but all examples were written to fit the platform.
 
-**Reliability.** Cluster E2E is timing-sensitive (image pulls, intercept attach). Report the **script** (`run-e2e-with-intercepts.sh`) rather than a single laptop run as the result.
+**Reliability.** Cluster E2E is timing-sensitive (image pulls, intercept attach). Report the **script** (`run-product-intercept-e2e.sh` / `run-e2e-with-intercepts.sh`) and a retained Actions artifact rather than a single laptop run as the result.
 
 ## Carbon / sustainability (ICSE encourages a mention)
 
