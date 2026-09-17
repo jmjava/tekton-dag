@@ -1,3 +1,6 @@
+# Weekly (and path-filtered) pinned Results/Postgres + strict agent regression.
+# Not the everyday PR gate. Path filters cover Results installers and
+# run-regression-agent-full.sh.
 name: Tekton Results regression
 
 on:

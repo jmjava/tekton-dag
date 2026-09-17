@@ -1,3 +1,8 @@
+# Weekly (and path-filtered) product-path evidence: trigger → StackRun →
+# operator → PR PipelineRun → intercept (Telepresence or mirrord) → tests.
+# Not the everyday PR gate — local-regression.yml is. Path filters still
+# start Kind when Helm/tasks/operator/orchestrator/pipeline/stacks or the
+# listed scripts change.
 name: intercept product E2E
 
 on:

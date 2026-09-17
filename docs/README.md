@@ -11,7 +11,8 @@ This folder contains design, operations, and verification docs for the tekton-da
 | **Archive (not maintained)** | [archive/](archive/) — obsolete session plans and similar |
 | **Customization & ops** | [CUSTOMIZATION.md](CUSTOMIZATION.md), [MAINTENANCE.md](MAINTENANCE.md) |
 | **Teams: stacks + baggage libs** | [TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md](TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md) — header libraries per runtime, new stack checklist |
-| **Demo toolchain (M8)** | [demos/](demos/) — [demos/README.md](demos/README.md), `generate-all.sh`; [milestones/milestone-8.md](../milestones/milestone-8.md) |
+| **Demo toolchain (M8)** | [demos/](demos/) — [demos/README.md](demos/README.md) (`docgen` CLI; `generate-all.sh` is a thin wrapper); [milestones/milestone-8.md](../milestones/milestone-8.md) |
+| **GitHub Actions** | [REGRESSION.md](REGRESSION.md) — which workflows run on every PR vs schedule/path filters |
 | **GitHub Pages** | [GITHUB-PAGES.md](GITHUB-PAGES.md) — how the demo site is deployed; fix 404 |
 | **Illustrations & logo** | [assets/README.md](assets/README.md) — composite PNGs + **split panels** in `assets/panels/` for READMEs and demos |
 | **Agents / regression loop** | [AGENT-REGRESSION.md](AGENT-REGRESSION.md) — iterate until full regression green; [../AGENTS.md](../AGENTS.md) |

@@ -15,7 +15,7 @@ spec:
     2. Clones and builds ONLY the changed app (snapshot tag) — no build of other apps
     3. Deploys intercepts only for that app; rest of stack keeps running as-is
     4. Validates header propagation, runs test suites
-    5. After tests pass: bumps RC version, pushes version commit
+    5. Posts a PR comment; does **not** bump `versions.yaml` (snapshot image tags only)
     6. Cleans up PR pods (always)
     PR builds use snapshot tagging so they are never confused with real releases.
 

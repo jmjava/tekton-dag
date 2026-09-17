@@ -1,8 +1,12 @@
-# Cluster-backed regression (S33). Not on pull requests — Kind/Tekton is too
-# slow and too easy to confuse with the PR-gated --local-only job.
+# Cluster-backed regression (S33). Kind/Tekton is too slow to run on every
+# pull request — local-regression.yml is the everyday gate.
 #
 # Runs: Playwright (no cluster) + Kind (isolation-eval --cluster, Phase 2
-# stack-dag-verify, Newman vs orchestrator).
+# stack-dag-verify, Newman vs orchestrator). Isolation-eval is skipped on
+# pull_request; nightly / dispatch / tags still measure it.
+#
+# pull_request paths below exercise this job when Helm or cluster-ci scripts
+# change. Everyday product PRs (tasks/, docs/, orchestrator/, …) do not match.
 name: cluster regression
 
 on:

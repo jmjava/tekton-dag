@@ -14,7 +14,7 @@ Shared helpers live in [`scripts/common.sh`](../scripts/common.sh) (sourced by m
 | [`run-regression.sh`](../scripts/run-regression.sh) | **Main regression driver** — pytest, vitest, isolation-eval protocol, Java/PHP/operator unit tests, Playwright, cluster/Newman, optional DAG verify & Results DB. See [REGRESSION.md](REGRESSION.md). |
 | [`run-lang-unit-tests.sh`](../scripts/run-lang-unit-tests.sh) | Maven (both baggage modules), PHPUnit, operator `go test ./internal/... ./api/...`. |
 | [`run-isolation-eval.sh`](../scripts/run-isolation-eval.sh) | Clone-vs-intercept harness: `--offline` plan CSV; `--cluster` Kind measurements. |
-| [`run-cluster-ci.sh`](../scripts/run-cluster-ci.sh) | Kind cluster CI: isolation-eval `--cluster`, `stack-dag-verify`, Newman. Used by [cluster-regression.yml](../.github/workflows/cluster-regression.yml) (not on PRs). |
+| [`run-cluster-ci.sh`](../scripts/run-cluster-ci.sh) | Kind cluster CI: isolation-eval `--cluster`, `stack-dag-verify`, Newman. Used by [cluster-regression.yml](../.github/workflows/cluster-regression.yml) (nightly / tags / Helm-or-cluster-script PRs; not every PR). |
 | [`run-regression-agent.sh`](../scripts/run-regression-agent.sh) | Streamed output for **agents** (Cursor); wraps tiers for iterative fix loops. [AGENT-REGRESSION.md](AGENT-REGRESSION.md) |
 | [`run-regression-agent-full.sh`](../scripts/run-regression-agent-full.sh) | Full agent-oriented run (heavier than default agent script). |
 | [`run-regression-stream.sh`](../scripts/run-regression-stream.sh) | Regression with streaming log-friendly behavior. |
@@ -25,7 +25,7 @@ Shared helpers live in [`scripts/common.sh`](../scripts/common.sh) (sourced by m
 | [`verify-dag-phase1.sh`](../scripts/verify-dag-phase1.sh) | Local DAG structure checks (Phase 1). |
 | [`verify-dag-phase2.sh`](../scripts/verify-dag-phase2.sh) | Cluster: `stack-dag-verify` PipelineRun + CLI match (Phase 2). |
 | [`verify-m4-stacks-and-labels.sh`](../scripts/verify-m4-stacks-and-labels.sh) | M4-era stack/label checks (still useful for multi-namespace stacks). |
-| [`run-artillery-variants.sh`](../scripts/run-artillery-variants.sh) | Load / Artillery variant runs (optional performance testing). |
+| [`run-stack-tests-runners.sh`](../scripts/run-stack-tests-runners.sh) | Fixtures for Newman / Playwright / Artillery branches of `run-stack-tests`. |
 
 ---
 
@@ -38,6 +38,12 @@ Shared helpers live in [`scripts/common.sh`](../scripts/common.sh) (sourced by m
 | [`cloud-agent-start-docker.sh`](../scripts/cloud-agent-start-docker.sh) | Cloud Agent `start`: dockerd with fuse-overlayfs; does not create Kind. |
 | [`install-kind-default-storage.sh`](../scripts/install-kind-default-storage.sh) | Default StorageClass for Kind. |
 | [`install-tekton.sh`](../scripts/install-tekton.sh) | Install Tekton Pipelines (and related baseline). |
+| [`install-operator-kind.sh`](../scripts/install-operator-kind.sh) | Kind: CRDs + tekton-dag-operator image/Deployment. Required for `generate-run.sh --apply`. |
+| [`install-operator-webhook-kind.sh`](../scripts/install-operator-webhook-kind.sh) | Kind: TLS certs + Stack ValidatingWebhookConfiguration (`failurePolicy: Fail`). |
+| [`apply-stack-crs.sh`](../scripts/apply-stack-crs.sh) | Apply Stack (and Team) CRs from Git YAML into the cluster. |
+| [`check-helm-chart.sh`](../scripts/check-helm-chart.sh) | `helm template` / package sanity for `helm/tekton-dag`. |
+| [`check-markdown-links.py`](../scripts/check-markdown-links.py) | Relative Markdown link checker (run from `run-regression.sh`). |
+| [`check-ci-policy.py`](../scripts/check-ci-policy.py) | Dependabot ignores + operator Go pin (run from `run-regression.sh`). |
 | [`install-tekton-dashboard.sh`](../scripts/install-tekton-dashboard.sh) | Install Tekton Dashboard. |
 | [`uninstall-tekton-dashboard.sh`](../scripts/uninstall-tekton-dashboard.sh) | Remove Tekton Dashboard. |
 | [`port-forward-tekton-dashboard.sh`](../scripts/port-forward-tekton-dashboard.sh) | `kubectl port-forward` to dashboard. |
@@ -45,7 +51,6 @@ Shared helpers live in [`scripts/common.sh`](../scripts/common.sh) (sourced by m
 | [`install-postgres-kind.sh`](../scripts/install-postgres-kind.sh) | Postgres in Kind (Results / app DB). |
 | [`install-neo4j-kind.sh`](../scripts/install-neo4j-kind.sh) | Neo4j in Kind for graph features. |
 | [`bootstrap-namespace.sh`](../scripts/bootstrap-namespace.sh) | Bootstrap namespace resources with least-privilege pipeline RBAC. `--cluster-admin` is an explicit disposable-cluster escape hatch. |
-| [`install-operator-webhook-kind.sh`](../scripts/install-operator-webhook-kind.sh) | Kind: TLS certs + Stack ValidatingWebhookConfiguration (`failurePolicy: Fail`). |
 
 ---
 
@@ -55,6 +60,8 @@ Shared helpers live in [`scripts/common.sh`](../scripts/common.sh) (sourced by m
 |--------|---------|
 | [`publish-build-images.sh`](../scripts/publish-build-images.sh) | Build/push **compile** images (polyglot builders). |
 | [`publish-orchestrator-image.sh`](../scripts/publish-orchestrator-image.sh) | Build/push **orchestrator** image. |
+| [`publish-operator-image.sh`](../scripts/publish-operator-image.sh) | Build/push **operator** image. |
+| [`publish-management-gui-image.sh`](../scripts/publish-management-gui-image.sh) | Build/push **management GUI** image. |
 | [`generate-run.sh`](../scripts/generate-run.sh) | Emit/apply a **StackRun** (operator). `--pipeline-run` was removed in M16. |
 | [`promote-pipelines.sh`](../scripts/promote-pipelines.sh) | Promote pipeline definitions across environments/namespaces. |
 | [`create-and-push-sample-repos.sh`](../scripts/create-and-push-sample-repos.sh) | Sample app repos for demos/regression. |
@@ -71,7 +78,8 @@ Shared helpers live in [`scripts/common.sh`](../scripts/common.sh) (sourced by m
 | [`merge-pr.sh`](../scripts/merge-pr.sh) | Merge helper for test PRs. |
 | [`rerun-pr-from.sh`](../scripts/rerun-pr-from.sh) | Create a StackRun with `spec.continueFrom` to re-run `stack-pr-continue` from a failed PR. |
 | [`configure-github-webhooks.sh`](../scripts/configure-github-webhooks.sh) | Wire GitHub webhooks to EventListener. |
-| [`run-e2e-with-intercepts.sh`](../scripts/run-e2e-with-intercepts.sh) | End-to-end with **telepresence** or **mirrord** intercept backend. |
+| [`run-e2e-with-intercepts.sh`](../scripts/run-e2e-with-intercepts.sh) | Local Kind helper: bootstrap (optional) + PR pipeline with **telepresence** or **mirrord**. |
+| [`run-product-intercept-e2e.sh`](../scripts/run-product-intercept-e2e.sh) | Authenticated trigger → StackRun → operator → PR PipelineRun → intercept traffic. Used by [intercept-e2e.yml](../.github/workflows/intercept-e2e.yml). |
 | [`run-all-setup-and-test.sh`](../scripts/run-all-setup-and-test.sh) | Broad setup + test orchestration (legacy-style “do a lot”). |
 
 ---
@@ -109,8 +117,8 @@ Shared helpers live in [`scripts/common.sh`](../scripts/common.sh) (sourced by m
 
 | Location | Purpose |
 |----------|---------|
-| [`docs/demos/generate-all.sh`](../docs/demos/generate-all.sh) | Regenerate Manim, VHS, TTS, and composed MP4s (M8 + M12.2 segments). |
-| [`docs/demos/compose.sh`](../docs/demos/compose.sh) | FFmpeg: merge visuals + narration per segment. |
+| [`docs/demos/generate-all.sh`](../docs/demos/generate-all.sh) | Thin wrapper: `docgen generate-all` (canonical: [demos/README.md](demos/README.md)). |
+| [`docs/demos/compose.sh`](../docs/demos/compose.sh) | Thin wrapper: `docgen compose`. |
 
 See [milestones/milestone-8.md](../milestones/milestone-8.md) and [milestones/milestone-12.2.md](../milestones/milestone-12.2.md).
 

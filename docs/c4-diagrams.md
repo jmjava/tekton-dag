@@ -1,6 +1,6 @@
 # C4 Architecture Diagrams — Tekton DAG (current code)
 
-These diagrams reflect the **current** pipeline and task layout: platform repo (tekton-dag) with `stacks/` and `versions.yaml`; app repos are **separate** Git repos cloned per stack. Runs locally on Kind or in cloud; no AWS required.
+These diagrams reflect the **current** pipeline and task layout: platform repo (tekton-dag) with `stacks/` and `versions.yaml`; app repos are **separate** Git repos cloned per stack. The control plane is CRD-primary: the orchestrator (or `generate-run.sh`) creates a **StackRun**; the operator reconciles it to a Tekton **PipelineRun**. Runs locally on Kind or in cloud.
 
 ## Level 1: System Context
 
@@ -16,16 +16,16 @@ C4Context
     System(tekton_std, "Tekton DAG", "Universal pipeline: clone platform + app repos, resolve DAG, build per toolchain, deploy intercepts, validate, test, version. Local (Kind) or cloud.")
 
     System_Ext(github, "GitHub", "Platform repo (tekton-dag) + app repos (jmjava/tekton-dag-*). Webhooks or manual generate-run.sh")
-    System_Ext(registry, "Container Registry", "Local (localhost:5000) or ECR. Stores RC and release images")
-    System_Ext(k8s, "Kubernetes Cluster", "Kind or cloud. Runs app deployments, Telepresence intercepts")
+    System_Ext(registry, "Container Registry", "Local (localhost:5000) or ECR. Stores snapshot and release images")
+    System_Ext(k8s, "Kubernetes Cluster", "Kind or cloud. Runs app deployments, Telepresence or mirrord intercepts")
     System_Ext(argocd, "ArgoCD", "Optional GitOps; syncs from registry")
     System_Ext(argo_rollouts, "Argo Rollouts", "Optional blue/green production promotion")
 
     Rel(dev, github, "Opens PR / merges PR")
-    Rel(github, tekton_std, "Webhook or manual pipeline run")
-    Rel(tekton_std, registry, "Pushes RC and release images")
-    Rel(tekton_std, k8s, "Deploys PR pods, Telepresence intercepts")
-    Rel(tekton_std, github, "Pushes version bump commits")
+    Rel(github, tekton_std, "Webhook or StackRun via generate-run.sh / orchestrator")
+    Rel(tekton_std, registry, "Pushes snapshot and release images")
+    Rel(tekton_std, k8s, "Deploys PR pods and intercepts")
+    Rel(tekton_std, github, "Merge pipeline may push version-bump commits")
     Rel(platform, tekton_std, "Defines stacks, sets version overrides")
     Rel(registry, argocd, "ArgoCD syncs tagged images")
     Rel(argocd, argo_rollouts, "Triggers blue/green rollout")
@@ -46,9 +46,17 @@ C4Container
 
         Container(event_listener, "EventListener", "Tekton Triggers", "Optional. Routes GitHub webhooks to PR or merge pipeline. Manual: generate-run.sh")
 
-        Container(pr_pipeline, "stack-pr-test", "Tekton Pipeline", "PR: fetch platform → resolve → clone-app-repos → bump RC → build → deploy intercepts → validate → test → push version → cleanup")
+        Container(orchestrator, "Orchestrator", "Flask", "Webhooks + API: creates StackRun CRs (bearer-auth mutations)")
+
+        Container(operator, "Operator", "Go", "Reconciles Stack / StackRun / Team to PipelineRuns")
+
+        Container(pr_pipeline, "stack-pr-test", "Tekton Pipeline", "PR: fetch platform → resolve → clone-app-repos → snapshot-tag → build changed app → deploy intercepts → validate → test → PR comment → cleanup")
 
         Container(merge_pipeline, "stack-merge-release", "Tekton Pipeline", "Merge: fetch → resolve → clone-app-repos → release version → build → tag-release-images → push version")
+
+        Container(bootstrap_pipeline, "stack-bootstrap", "Tekton Pipeline", "Bootstrap: deploy full stack with optional secrets/config injection")
+
+        Container(promote_pipeline, "stack-promote", "Tekton Pipeline", "Promote: copy release images via stacks/registries.yaml")
 
         Container(dag_verify, "stack-dag-verify", "Tekton Pipeline", "Local verification: fetch + resolve only (no build/deploy)")
 
@@ -67,16 +75,22 @@ C4Container
 
     Rel(dev, github, "PR / merge")
     Rel(github, event_listener, "Webhook")
+    Rel(github, orchestrator, "Webhook / API")
     Rel(event_listener, pr_pipeline, "PR opened/sync")
     Rel(event_listener, merge_pipeline, "PR merged")
+    Rel(orchestrator, operator, "StackRun")
+    Rel(operator, pr_pipeline, "PipelineRun")
+    Rel(operator, merge_pipeline, "PipelineRun")
+    Rel(operator, bootstrap_pipeline, "PipelineRun")
+    Rel(operator, promote_pipeline, "PipelineRun")
     Rel(pr_pipeline, stack_defs, "Reads stack graph")
-    Rel(pr_pipeline, version_reg, "Reads/bumps RC version")
+    Rel(pr_pipeline, version_reg, "Reads versions (no bump)")
     Rel(merge_pipeline, stack_defs, "Reads stack graph")
     Rel(merge_pipeline, version_reg, "Promotes release, bumps next dev")
     Rel(event_listener, stack_registry, "Resolves repo → stack")
-    Rel(pr_pipeline, registry, "Pushes v0.1.0-rc.N images")
+    Rel(pr_pipeline, registry, "Pushes snapshot-tagged images")
     Rel(pr_pipeline, k8s, "Deploys intercept pods")
-    Rel(merge_pipeline, registry, "Pushes v0.1.0 release images")
+    Rel(merge_pipeline, registry, "Pushes release images")
     Rel(platform, stack_defs, "Defines/updates stacks")
     Rel(platform, version_reg, "Manual major/minor bumps")
     Rel(platform, scripts, "Queries graphs, triggers manual runs")
@@ -98,17 +112,17 @@ C4Component
 
         Component(clone_apps, "clone-app-repos", "clone-app-repos", "Clones each app repo from stack .apps[].repo (e.g. jmjava/tekton-dag-vue-fe) into workspace/<app-name> via SSH")
 
-        Component(bump_rc, "bump-rc-version", "version-bump", "Increments RC in versions.yaml (0.1.0-rc.3 → rc.4); emits bumped-versions for image tags")
+        Component(snapshot, "pr-snapshot-tag", "pr-snapshot-tag", "Emits a snapshot image tag for the changed app (not a versions.yaml RC bump)")
 
-        Component(build, "build-apps", "build-stack-apps", "Per app: compile (npm/maven/gradle/composer/pip) then Kaniko containerize. Pushes RC-tagged images")
+        Component(build, "build-apps", "build-stack-apps", "Changed app only: compile (npm/maven/gradle/composer/pip) then Kaniko containerize. Pushes snapshot-tagged images")
 
-        Component(deploy, "deploy-intercepts", "deploy-stack-intercepts", "Deploys PR pods for build-apps, Telepresence intercept with header matching")
+        Component(deploy, "deploy-intercepts", "deploy-stack-intercepts", "Deploys PR pods for build-apps, Telepresence or mirrord intercept with header matching")
 
         Component(validate, "validate-propagation", "validate-stack-propagation", "Request through entry; verifies header reaches intercepted app(s)")
 
         Component(test, "run-tests", "run-stack-tests", "E2E through entry; per-app Postman/Playwright/Artillery")
 
-        Component(push_ver, "push-version-commit", "git-cli", "Pushes RC bump commit to platform repo")
+        Component(comment, "post-pr-comment", "post-pr-comment", "Posts test summary on the application PR")
 
         Component(cleanup, "cleanup", "cleanup-stack-pods", "Finally: deletes PR pods (always)")
     }
@@ -123,18 +137,17 @@ C4Component
     Rel(resolve, stack_defs, "Reads stack YAML")
     Rel(resolve, version_reg, "Reads versions, overrides")
     Rel(resolve, clone_apps, "stack-json, build-apps")
-    Rel(clone_apps, bump_rc, "workspace with app sources")
-    Rel(bump_rc, version_reg, "Writes bumped RC")
-    Rel(bump_rc, build, "bumped-versions (image tags)")
-    Rel(build, registry, "Pushes v0.1.0-rc.N")
+    Rel(clone_apps, snapshot, "workspace with app sources")
+    Rel(snapshot, build, "snapshot image tag")
+    Rel(build, registry, "Pushes snapshot-tagged images")
     Rel(build, deploy, "built-images")
     Rel(deploy, k8s, "Creates PR pods + intercepts")
     Rel(deploy, validate, " ")
     Rel(validate, k8s, "Test request through chain")
     Rel(validate, test, " ")
     Rel(test, k8s, "Runs test suites")
-    Rel(test, push_ver, " ")
-    Rel(push_ver, github, "Pushes version commit")
+    Rel(test, comment, "test-summary")
+    Rel(comment, github, "PR comment")
     Rel(cleanup, k8s, "Deletes PR pods (finally)")
 ```
 
@@ -311,46 +324,29 @@ sequenceDiagram
 
 ## Dynamic Diagram: Version Lifecycle
 
+PR runs use **snapshot image tags** and do not advance `stacks/versions.yaml`. Merge/release promotes the release tag and bumps the next development cycle. Optional `stack-promote` copies that release into another registry.
+
 ```mermaid
 stateDiagram-v2
-    [*] --> rc0: App onboarded<br/>0.1.0-rc.0
+    [*] --> snapshot: PR opened<br/>stack-pr-test
+    snapshot --> snapshot: more PRs<br/>new snapshot tags
+    snapshot --> released: PR merged<br/>stack-merge-release
+    released --> next_dev: bump next cycle<br/>e.g. 0.1.1-rc.0
+    next_dev --> snapshot: next PR
+    released --> promoted: stack-promote<br/>copy to target registry
 
-    rc0 --> rc1: PR #1 passes<br/>bump RC
-    rc1 --> rc2: PR #2 passes<br/>bump RC
-    rc2 --> rc3: PR #3 passes<br/>bump RC
-
-    rc3 --> released: PR merged<br/>promote to 0.1.0
-    released --> next_rc0: bump patch<br/>0.1.1-rc.0
-
-    next_rc0 --> next_rc1: PR #4 passes
-    next_rc1 --> next_released: PR merged<br/>promote to 0.1.1
-
-    state rc0 {
-        [*]: v0.1.0-rc.0
-    }
-    state rc1 {
-        [*]: v0.1.0-rc.1
-    }
-    state rc2 {
-        [*]: v0.1.0-rc.2
-    }
-    state rc3 {
-        [*]: v0.1.0-rc.3
+    state snapshot {
+        [*]: snapshot-tagged image<br/>intercept tests, no versions.yaml bump
     }
     state released {
         [*]: v0.1.0<br/>image tagged, pushed to registry
     }
-    state next_rc0 {
-        [*]: v0.1.1-rc.0
+    state next_dev {
+        [*]: v0.1.1-rc.0 on versions.yaml
     }
-    state next_rc1 {
-        [*]: v0.1.1-rc.1
+    state promoted {
+        [*]: same release tag<br/>in stacks/registries.yaml target
     }
-    state next_released {
-        [*]: v0.1.1<br/>image tagged, pushed to registry
-    }
-
-    next_released --> [*]: available for<br/>Argo Rollouts promotion
 ```
 
 ## Dynamic Diagram: Build Toolchain Selection

@@ -4,9 +4,23 @@ Standalone Tekton pipeline system for **local development and proof-of-concept**
 
 **Academic packaging** ([docs/research/](docs/research/)) records claims and evidence for a possible workshop paper. It does **not** set architecture. Control plane direction is CRD-primary (`Stack` / `StackRun`); see [M14](milestones/milestone-14.md). Cite via [`CITATION.cff`](CITATION.cff). License: [Apache-2.0](LICENSE).
 
-[![local regression](https://github.com/jmjava/tekton-dag/actions/workflows/local-regression.yml/badge.svg)](https://github.com/jmjava/tekton-dag/actions/workflows/local-regression.yml) runs `scripts/run-regression.sh --local-only --require-lang-tests` on every pull request (Phase 1, pytest, vitest, isolation-eval protocol, Maven, PHPUnit, operator `go test`).
+[![local regression](https://github.com/jmjava/tekton-dag/actions/workflows/local-regression.yml/badge.svg)](https://github.com/jmjava/tekton-dag/actions/workflows/local-regression.yml)
+[![cluster regression](https://github.com/jmjava/tekton-dag/actions/workflows/cluster-regression.yml/badge.svg)](https://github.com/jmjava/tekton-dag/actions/workflows/cluster-regression.yml)
 
-[![cluster regression](https://github.com/jmjava/tekton-dag/actions/workflows/cluster-regression.yml/badge.svg)](https://github.com/jmjava/tekton-dag/actions/workflows/cluster-regression.yml) runs Playwright plus Kind (`scripts/run-cluster-ci.sh`: isolation-eval `--cluster`, `stack-dag-verify`, Newman) on **nightly / `workflow_dispatch` / `v*` tags** — not on pull requests.
+**Not every workflow runs on every PR.** Cheap jobs (local regression, docgen smoke, dependency review) run on each pull request. Kind jobs are scheduled or path-filtered — see [docs/REGRESSION.md](docs/REGRESSION.md).
+
+| Workflow | Everyday PR / `main` push | Also runs |
+|----------|---------------------------|-----------|
+| [local regression](https://github.com/jmjava/tekton-dag/actions/workflows/local-regression.yml) | Yes — `--local-only --require-lang-tests` | `workflow_dispatch` |
+| [docgen demo-function](.github/workflows/docgen-demo-function.yml) | Yes (cheap smoke) | |
+| [dependency review](.github/workflows/dependency-review.yml) | PRs only | |
+| [operator](.github/workflows/operator.yml) | Only if `operator/**` (or `install-tekton.sh`) changed | `workflow_dispatch` |
+| [cluster regression](https://github.com/jmjava/tekton-dag/actions/workflows/cluster-regression.yml) | No | Nightly cron, `v*` tags, dispatch, or PRs that touch Helm / `run-cluster-ci.sh` / `bootstrap-namespace.sh` (isolation-eval skipped on those PRs) |
+| [intercept product E2E](.github/workflows/intercept-e2e.yml) | No | Weekly cron, dispatch, or PRs/pushes matching that workflow's path filters (Helm, tasks, operator, orchestrator, pipeline, stacks, and listed scripts) |
+| [Tekton Results](.github/workflows/results-regression.yml) | No | Weekly cron, dispatch, or PRs that touch Results installers / `run-regression-agent-full.sh` |
+| [GitHub Pages](.github/workflows/pages.yml) | No | `main` pushes that touch `docs/**` |
+
+The Actions sidebar can still list **deleted** workflow names. Disable those in the GitHub UI (Actions → workflow → ⋯ → Disable). **Dependabot Updates** is GitHub-managed, not a repo workflow file.
 
 ## What's new (M13 foundations)
 
@@ -60,6 +74,7 @@ Each row links to the **in-browser player** on Pages (`#seg-…`) and to the **c
 | 16 | Management GUI | Vue 3 + Flask: team switcher, DAG view, runs, triggers, tests, Git browser | ~3:30 | [▶](https://jmjava.github.io/tekton-dag/#seg-16) | [`16-management-gui.mp4`](docs/demos/recordings/16-management-gui.mp4) |
 | 17 | Extending the GUI | Five-step pattern: Flask route, pytest, Pinia store, Vue component, Playwright | ~2:36 | [▶](https://jmjava.github.io/tekton-dag/#seg-17) | [`17-extending-gui.mp4`](docs/demos/recordings/17-extending-gui.mp4) |
 | 18 | What's Coming Next | Post-M16 roadmap: retry, sizing, multi-cluster, reliability, observability | ~3:25 | [▶](https://jmjava.github.io/tekton-dag/#seg-18) | [`18-roadmap-forward.mp4`](docs/demos/recordings/18-roadmap-forward.mp4) |
+| 19 | Kubernetes Operator | `Stack` / `StackRun` CRDs, operator reconcile, Kind soak | ~2:00 | [▶](https://jmjava.github.io/tekton-dag/#seg-19) | [`19-kubernetes-operator.mp4`](docs/demos/recordings/19-kubernetes-operator.mp4) |
 
 ### Concat Demos
 
@@ -86,15 +101,15 @@ Each row links to the **in-browser player** on Pages (`#seg-…`) and to the **c
 | [M8](milestones/milestone-8.md) | **Partial** | Demo assets: Manim + TTS + composed segments + [GitHub Pages](https://jmjava.github.io/tekton-dag/); VHS terminal recordings, Slidev PDF, full concat still open |
 | [M9](milestones/milestone-9.md) | **Completed** | Test-trace regression graph + minimal test selection (Neo4j, mock Datadog). 10 Newman requests, 36 assertions. Test filtering in PR pipeline. |
 | [M10](milestones/milestone-10.md) | **Completed** | Multi-team scaling: orchestration service, Helm chart, ArgoCD, batched builds |
-| [M10.1](milestones/milestone-10-1.md) | **Completed** | Orchestration service testing: Postman/Newman (15 requests, 30 assertions), integration validation |
-| [M11](milestones/milestone-11.md) | **Completed** | Vue 3 Management GUI + Python/Flask backend (replaces `reporting-gui/`). Multi-team, multi-cluster, DAG visualization. Current regression inventory: 70 Playwright tests and 68 backend pytest tests. |
-| [M12](milestones/milestone-12.md) | **Completed** | Architecture customization: shared Python package, Helm ConfigMap/PVC templates, parameterized pipelines (no hardcoded `localhost:5000`), `scripts/common.sh`, build image variants (Java 11/17/21, Node 18/20/22, Python 3.10–3.12, PHP 8.1–8.3), custom pipeline hook tasks (pre/post build/test), stack JSON schema, 62 orchestrator pytest tests, 14 shared-package tests. Full docs: [CUSTOMIZATION.md](docs/CUSTOMIZATION.md), [TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md](docs/TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md), MAINTENANCE.md, Helm README. |
+| [M10.1](milestones/milestone-10-1.md) | **Completed** | Orchestration service testing: Postman/Newman (live collection is now 20 requests / 38 assertions). |
+| [M11](milestones/milestone-11.md) | **Completed** | Vue 3 Management GUI + Python/Flask backend (replaces `reporting-gui/`). Multi-team, multi-cluster, DAG visualization. Current inventory: 70 Playwright tests and 68 backend pytest tests. |
+| [M12](milestones/milestone-12.md) | **Completed** | Architecture customization: shared Python package, Helm ConfigMap/PVC templates, parameterized pipelines (no hardcoded `localhost:5000`), `scripts/common.sh`, build image variants (Java 11/17/21, Node 18/20/22, Python 3.10–3.12, PHP 8.1–8.3), custom pipeline hook tasks (pre/post build/test), stack JSON schema. Current inventory: 108 orchestrator pytest tests, 89 `tekton-dag-common` tests. Full docs: [CUSTOMIZATION.md](docs/CUSTOMIZATION.md), [TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md](docs/TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md), [MAINTENANCE.md](docs/MAINTENANCE.md), Helm README. |
 | [M12.2](milestones/milestone-12.2.md) | **Partial** | **Part A done:** doc sync + archive. **Part B open:** regression + Management GUI [docs & demo plan](docs/TESTING-AND-REGRESSION-OVERVIEW.md) / [GUI extension](docs/MANAGEMENT-GUI-EXTENSION.md) / [video segments](docs/demos/segments-m12-2-regression-gui.md) |
 | [doc-generator](milestones/milestone-doc-generator.md) | **Completed** | Reusable Python library ([`docgen`](https://github.com/jmjava/documentation-generator)) extracting the demo pipeline (TTS, Manim, VHS, ffmpeg, validation, Pages). OCR validation, A/V sync, narration linting, auto-generated GitHub Pages. All 18 demo segments regenerated via `docgen`. |
 | [M13](milestones/milestone-13.md) | **Partial** | Production hardening foundations shipped: webhook HMAC, stack secrets/config + deploy wiring + injection-status APIs, PipelineRun timeouts / task retries / failure classifier / resource profiles, `stack-promote` + registries + approval gate. Open: intercept secret/config wiring, Helm `appConfig` / ESO, GUI panels, observability, cross-cluster deploy. Roadmap video: [segment 18](https://jmjava.github.io/tekton-dag/#seg-18). Local cluster checklist: [DO-THIS-LOCAL.md](DO-THIS-LOCAL.md). |
 | [M14](milestones/milestone-14.md) | **Partial** | **Kubernetes operator (CRD-primary, default-on):** `Stack` + `StackRun` + `Team` (`tektondag.io/v1alpha1`). Helm `operator.enabled` defaults **true**; Flask/GUI/Triggers/`generate-run.sh` create StackRuns. Kind soak path: `scripts/install-operator-kind.sh`, `run-cluster-ci.sh` (operator on unless `--skip-operator`). Hygiene: [M15](milestones/milestone-15.md). Follow-ons: [M16](milestones/milestone-16.md). |
 | [M15](milestones/milestone-15.md) | **Completed** | Control-plane hygiene: idempotent StackRun→PipelineRun, GHA `--skip-operator`, Triggers `prNumber`, Flask/GUI promote approval, soak `ready==total`, dead PipelineRun builders. Squash-merged [#19](https://github.com/jmjava/tekton-dag/pull/19). |
-| [M16](milestones/milestone-16.md) | **Code-complete** | Team CR overlay, `spec.continueFrom`, Kind webhook installer, PipelineRun escape hatches retired, spoken demo segments 01/08/18/19 rebuilt ([#20](https://github.com/jmjava/tekton-dag/pull/20)–[#24](https://github.com/jmjava/tekton-dag/pull/24)). Remaining: S34 intercept E2E (parked). |
+| [M16](milestones/milestone-16.md) | **Code-complete** | Team CR overlay, `spec.continueFrom`, Kind webhook installer, PipelineRun escape hatches retired, spoken demo segments 01/08/18/19 rebuilt ([#20](https://github.com/jmjava/tekton-dag/pull/20)–[#24](https://github.com/jmjava/tekton-dag/pull/24)). Intercept E2E follow-on is [M17.3](milestones/milestone-17.md) (`intercept-e2e.yml`); live matrix evidence is still required. |
 | [M17](milestones/milestone-17.md) | **In progress** | End-to-end audit closure: least-privilege RBAC, authenticated mutation APIs, full intercept/Results verification, CI quality gates, maintainability consolidation, and documentation accuracy. |
 
 Older milestones (M2, M3) are in [milestones/completed/](milestones/completed/).
@@ -156,9 +171,9 @@ flowchart LR
 | **Merge** (`stack-merge-release`) | Promote RC to release, build, tag release images, push next dev cycle version commit. |
 | **Promote** (`stack-promote`) | Copy release-tagged images to a target registry/environment (`registries.yaml` or API overrides); optional approval gate. |
 
-**Intercept backends:** Telepresence (default) or mirrord, selected via pipeline param `intercept-backend`. Both are implemented; continuously scheduled full intercept E2E is tracked in [M17](milestones/milestone-17.md).
+**Intercept backends:** Telepresence (default) or mirrord, selected via pipeline param `intercept-backend`. Both are implemented. Weekly/manual CI is [`.github/workflows/intercept-e2e.yml`](.github/workflows/intercept-e2e.yml) (`scripts/run-product-intercept-e2e.sh`). Treat only a recent successful matrix job and its retained traffic artifact as verification ([M17.3](milestones/milestone-17.md)).
 
-**Orchestration service** (M10): In-cluster Flask service that receives GitHub webhooks, resolves repo-to-stack dynamically, and creates PipelineRuns. Packaged via Helm chart with ArgoCD ApplicationSet for multi-team provisioning. See [docs/m10-multi-team-architecture.md](docs/m10-multi-team-architecture.md).
+**Orchestration service** (M10): In-cluster Flask service that receives GitHub webhooks, resolves repo-to-stack dynamically, and creates **StackRun** CRs. The Go operator reconciles each StackRun into a Tekton PipelineRun. Packaged via Helm (`operator.enabled` defaults **true**) with an ArgoCD ApplicationSet for multi-team provisioning. Mutation APIs require a bearer token. See [docs/m10-multi-team-architecture.md](docs/m10-multi-team-architecture.md) and [orchestrator/README.md](orchestrator/README.md).
 
 ---
 
@@ -170,6 +185,9 @@ flowchart LR
 
 # 2. Tekton + stack tasks/pipelines
 ./scripts/install-tekton.sh
+
+# 2b. Operator (CRDs + controller). generate-run.sh applies StackRuns, not raw PipelineRuns.
+./scripts/install-operator-kind.sh
 
 # 3. Publish build images to Kind registry (one-time)
 ./scripts/publish-build-images.sh
@@ -205,23 +223,26 @@ kubectl port-forward svc/el-stack-event-listener 8080:8080 -n tekton-pipelines &
 
 ## Regression testing
 
-**E2E with intercepts** — runs bootstrap (optional) + PR pipeline + Tekton Results verification:
+**E2E with intercepts** — two entrypoints:
+
+- **CI / authenticated product path:** `scripts/run-product-intercept-e2e.sh` (used by `intercept-e2e.yml`).
+- **Local Kind helper:** `scripts/run-e2e-with-intercepts.sh` (bootstrap + PR pipeline; optional `--skip-bootstrap`).
 
 ```bash
-# Full run (bootstrap + PR pipeline)
-./scripts/run-e2e-with-intercepts.sh --intercept-backend telepresence
-./scripts/run-e2e-with-intercepts.sh --intercept-backend mirrord
+# Product path against a cluster that already has the control plane
+./scripts/run-product-intercept-e2e.sh --intercept-backend telepresence
+./scripts/run-product-intercept-e2e.sh --intercept-backend mirrord
 
-# Skip bootstrap if stack is already deployed (saves ~8-12 min)
-./scripts/run-e2e-with-intercepts.sh --intercept-backend telepresence --skip-bootstrap
+# Full local helper (bootstrap + PR pipeline)
+./scripts/run-e2e-with-intercepts.sh --intercept-backend telepresence
 ./scripts/run-e2e-with-intercepts.sh --intercept-backend mirrord --skip-bootstrap
 ```
 
-**Orchestrator service tests** — Newman suite against the live service (15 requests, 30 assertions):
+**Orchestrator service tests** — Newman suite against the live service (20 requests / 38 assertions in `tests/postman/orchestrator-tests.json`):
 
 ```bash
 ./scripts/run-orchestrator-tests.sh
-./scripts/run-orchestrator-tests.sh --skip-integration  # skip PipelineRun validation
+./scripts/run-orchestrator-tests.sh --skip-integration  # skip live StackRun/PipelineRun wait
 ```
 
 ---
@@ -263,7 +284,8 @@ C4Container
     Person(platform, "Platform Engineer")
 
     System_Boundary(tekton_std, "Tekton DAG") {
-        Container(orchestrator, "Orchestrator Service", "Flask + Gunicorn", "Webhook handler, stack resolver, PipelineRun creator")
+        Container(orchestrator, "Orchestrator Service", "Flask + Gunicorn", "Webhook handler, stack resolver, StackRun creator")
+        Container(operator, "Operator", "Go / Kubebuilder", "Reconciles Stack + StackRun CRs to PipelineRuns")
         Container(event_listener, "EventListener", "Tekton Triggers", "Legacy webhook path via Cloudflare Tunnel")
         Container(pr_pipeline, "stack-pr-test", "Tekton Pipeline", "PR: build, intercept, validate, test")
         Container(merge_pipeline, "stack-merge-release", "Tekton Pipeline", "Merge: promote, build, tag, push")
@@ -284,6 +306,7 @@ C4Container
     Rel(orchestrator, pr_pipeline, "Creates StackRun; operator reconciles")
     Rel(orchestrator, bootstrap_pipeline, "Creates StackRun; operator reconciles")
     Rel(orchestrator, merge_pipeline, "Creates StackRun; operator reconciles")
+    Rel(orchestrator, operator, "StackRun CR")
     Rel(event_listener, pr_pipeline, "PR opened")
     Rel(event_listener, merge_pipeline, "PR merged")
     Rel(pr_pipeline, stack_defs, "Read")
@@ -354,10 +377,12 @@ In-cluster Flask service that replaces script-driven orchestration for productio
 | `/api/stacks` | GET | List registered stacks |
 | `/api/teams` | GET | List team configs |
 | `/api/runs` | GET | List recent StackRuns |
-| `/api/run` | POST | Create a StackRun (pr, bootstrap, merge, or promote) |
-| `/api/bootstrap` | POST | Trigger bootstrap pipeline |
-| `/webhook/github` | POST | GitHub webhook handler |
-| `/api/reload` | POST | Hot-reload stack and team configs |
+| `/api/run` | POST | Create a StackRun (pr, bootstrap, merge, or promote). Requires `Authorization: Bearer`. |
+| `/api/bootstrap` | POST | Trigger bootstrap pipeline. Requires bearer token. |
+| `/webhook/github` | POST | GitHub webhook handler (HMAC when `WEBHOOK_SECRET` is set) |
+| `/api/reload` | POST | Hot-reload stack and team configs. Requires bearer token. |
+
+All non-read-only `/api/*` routes require a bearer token (`API_MUTATION_TOKEN`). See [orchestrator/README.md](orchestrator/README.md).
 
 Deploy:
 
@@ -493,23 +518,24 @@ Pre-commit hook runs GitGuardian ggshield: `pip install pre-commit && pre-commit
 
 | Directory | Contents |
 |-----------|----------|
-| `stacks/` | Stack YAML (DAG definitions), [registry.yaml](stacks/registry.yaml), [versions.yaml](stacks/versions.yaml) |
+| `stacks/` | Stack YAML (DAG definitions), [registry.yaml](stacks/registry.yaml) (repo → stack), [registries.yaml](stacks/registries.yaml) (promote targets), [versions.yaml](stacks/versions.yaml) |
 | `tasks/` | Tekton tasks: resolve-stack, clone-app-repos, build-compile-*, build-containerize, deploy-full-stack, deploy-intercept, deploy-intercept-mirrord, validate-propagation, validate-original-traffic, run-stack-tests, pr-snapshot-tag, version-bump, tag-release-images, post-pr-comment, cleanup-stack |
-| `pipeline/` | stack-pr-test, stack-merge-release, stack-bootstrap, stack-pr-continue, stack-dag-verify, triggers |
+| `pipeline/` | stack-pr-test, stack-merge-release, stack-bootstrap, stack-promote, stack-pr-continue, stack-dag-verify, triggers |
+| `operator/` | Go Kubebuilder operator: `Stack` / `StackRun` / `Team` CRDs (`tektondag.io/v1alpha1`). See [operator/README.md](operator/README.md). |
 | `orchestrator/` | Flask orchestration service: creates StackRuns through app.py/routes.py; includes resolver, Kubernetes client, and a contract-only legacy PipelineRun builder used by golden tests |
-| `helm/tekton-dag/` | Helm chart: packages tasks, pipelines, orchestrator deployment, RBAC |
+| `helm/tekton-dag/` | Helm chart: packages tasks, pipelines, orchestrator deployment, operator, RBAC |
 | `argocd/` | ArgoCD AppProject and ApplicationSet for multi-team provisioning |
 | `teams/` | Per-team config (team.yaml, values.yaml) for multi-team data model |
 | `build-images/` | Dockerfiles and build script for pre-built compile images |
-| `libs/` | Standalone baggage middleware libraries (Spring Boot, Node, Flask, PHP) |
-| `scripts/` | CLI scripts: generate-run, publish-build-images, publish-orchestrator-image, run-e2e-with-intercepts, run-orchestrator-tests, run-valid-pr-flow, kind-with-registry, install-tekton, install-tekton-results, and more |
+| `libs/` | Standalone baggage middleware libraries (Spring Boot, Node, Flask, PHP) plus `tekton-dag-common` |
+| `scripts/` | CLI scripts: generate-run, publish-build-images, publish-orchestrator-image, run-product-intercept-e2e, run-e2e-with-intercepts, run-orchestrator-tests, run-valid-pr-flow, kind-with-registry, install-tekton, install-operator-kind, install-tekton-results, and more |
 | `management-gui/` | Vue 3 + Flask management GUI (frontend + backend). See [Management GUI](#management-gui-m11) |
 | `tests/postman/` | Postman/Newman collections (orchestrator-tests.json, management-gui-tests.json) |
 | `docs/` | Architecture docs, diagrams, guides. See [docs/README.md](docs/README.md) |
 | `docs/research/` | Workshop / tool-demo packaging: claims, related work, IEEE draft |
 | `milestones/` | Milestone planning and status docs |
 | `session-notes/` | Session notes and debugging logs |
-| `reporting-gui/` | Vue + Node reporting GUI. See [reporting-gui/README.md](reporting-gui/README.md) |
+| `reporting-gui/` | **Legacy** Vue + Node reporting GUI (M17.17: archive). Canonical UI is `management-gui/`. See [reporting-gui/README.md](reporting-gui/README.md) |
 | `sample-repos/` | Scripts for creating sample app repos |
 | `config/` | Kubernetes manifests (Postgres for Tekton Results) |
 | `.vscode/` | Launch configs and debug setup for all app frameworks |
@@ -520,12 +546,16 @@ Pre-commit hook runs GitGuardian ggshield: `pip install pre-commit && pre-commit
 
 - [docs/DAG-AND-PROPAGATION.md](docs/DAG-AND-PROPAGATION.md) — stack DAG and header propagation
 - [docs/c4-diagrams.md](docs/c4-diagrams.md) — full diagram set
+- [docs/REGRESSION.md](docs/REGRESSION.md) — platform regression tiers and GitHub Actions triggers
 - [docs/PR-TEST-FLOW.md](docs/PR-TEST-FLOW.md) — valid PR test flow
 - [docs/m10-multi-team-architecture.md](docs/m10-multi-team-architecture.md) — multi-team architecture
 - [docs/argocd-architecture-guide.md](docs/argocd-architecture-guide.md) — ArgoCD + Tekton together
 - [docs/bootstrap-pipeline-speed-analysis.md](docs/bootstrap-pipeline-speed-analysis.md) — pipeline speed analysis
 - [docs/m7-mirrord-intercept-task.md](docs/m7-mirrord-intercept-task.md) — mirrord intercept task
 - [docs/demo-playbook.md](docs/demo-playbook.md) — demo recording playbook
-- [docs/README-FULL.md](docs/README-FULL.md) — full design doc
+- [docs/README-FULL.md](docs/README-FULL.md) — historical long-form design (pre-operator; see banner there)
+- [orchestrator/README.md](orchestrator/README.md) — orchestrator API and env
+- [operator/README.md](operator/README.md) — Stack / StackRun operator
+- [helm/tekton-dag/README.md](helm/tekton-dag/README.md) — Helm chart
 - [docs/research/README.md](docs/research/README.md) — academic / workshop packaging
 - [SHARING-BACK.md](SHARING-BACK.md) — sharing back to reference-architecture

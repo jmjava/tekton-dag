@@ -1,3 +1,6 @@
+# Everyday PR / main-push gate. Does not start Kind.
+# Kind jobs live in cluster-regression.yml, intercept-e2e.yml,
+# results-regression.yml, and operator.yml (path-filtered or scheduled).
 name: local regression
 
 on:

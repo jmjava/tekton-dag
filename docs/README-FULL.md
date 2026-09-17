@@ -1,5 +1,7 @@
 # Tekton Job Standardization
 
+> **Historical long-form design.** Runtime control plane is now CRD-primary (`Stack` / `StackRun` via the operator). PR runs use **snapshot image tags** and do **not** bump `versions.yaml`. For current behavior start at the root [README](../README.md), [DAG-AND-PROPAGATION.md](DAG-AND-PROPAGATION.md), and [milestones/milestone-14.md](../milestones/milestone-14.md).
+
 One universal Tekton pipeline system that adapts to any combination of applications — single services, multi-tier stacks, or fan-out graphs — while managing versioning, build toolchains, header propagation, and container image lifecycle automatically.
 
 ## Problem

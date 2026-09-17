@@ -4,16 +4,17 @@ This document is a map of the **tekton-dag** repository: what each area does, ho
 
 ## Architecture overview
 
-The system wires **stack definitions** (YAML) to **Tekton** pipelines, with an in-cluster **orchestrator** that creates `PipelineRun` objects and optional **Neo4j** queries for test planning.
+The system wires **stack definitions** (YAML) to **Tekton** pipelines. The in-cluster **orchestrator** creates `StackRun` objects; the **operator** reconciles them to `PipelineRun`s. Optional **Neo4j** queries support test planning.
 
 | Area | Role |
 |------|------|
 | **`stacks/`** | Stack YAML: applications, build tool per app, downstream dependencies, test configuration. Often synced into the cluster via Helm ConfigMaps. |
 | **`tasks/`** | Tekton `Task` manifests: resolve stack, clone repos, compile (per tool), containerize, deploy intercepts / full stack, validate propagation, run tests, versioning, cleanup, graph helpers, etc. |
-| **`pipeline/`** | Tekton `Pipeline` definitions and trigger bindings. Core flows: PR test, bootstrap deploy, merge/release. Additional pipelines exist for continuation and DAG verification. |
+| **`pipeline/`** | Tekton `Pipeline` definitions and trigger bindings. Core flows: PR test, bootstrap deploy, merge/release, promote. Additional pipelines exist for continuation and DAG verification. |
+| **`operator/`** | Go Kubebuilder controller for `Stack`, `StackRun`, and `Team` (`tektondag.io/v1alpha1`). Canonical PipelineRun builder. |
 | **`orchestrator/`** | Flask service: `app.py` (config), `routes.py` (HTTP API), `stack_resolver.py` (repo → stack), `stackrun_builder.py` (StackRun CRs), `k8s_client.py`, `graph_client.py` (Neo4j). The legacy PipelineRun builder is a golden-contract oracle, not the runtime path. |
 | **`management-gui/`** | Vue 3 (Vite) frontend plus Flask backend for operating and observing pipelines, teams, and repos. |
-| **`helm/tekton-dag/`** | Helm chart: orchestrator, management GUI, RBAC, ConfigMaps for stacks/teams, optional PVCs, values for registry and defaults. |
+| **`helm/tekton-dag/`** | Helm chart: orchestrator, operator, management GUI, RBAC, ConfigMaps for stacks/teams, optional PVCs, values for registry and defaults. `operator.enabled` defaults **true**. |
 | **`scripts/`** | Bash utilities; new scripts should `source` **`scripts/common.sh`** for shared defaults (`NAMESPACE`, `GIT_URL`, port-forward helpers, etc.). |
 | **`build-images/`** | Parameterized Dockerfiles for compile-side images (Maven, Gradle, Node, Python, PHP, mirrord) and scripts to build/push them. |
 | **`teams/`** | Per-team metadata (`team.yaml`) and related values; orchestrator discovers teams under mounted paths (e.g. `/teams/<team>/team.yaml`). |
@@ -22,9 +23,10 @@ The system wires **stack definitions** (YAML) to **Tekton** pipelines, with an i
 
 | Pipeline | File | Purpose |
 |----------|------|---------|
-| `stack-pr-test` | `pipeline/stack-pr-pipeline.yaml` | PR path: resolve stack, build changed app, intercept deploy, tests, version bump, cleanup. |
+| `stack-pr-test` | `pipeline/stack-pr-pipeline.yaml` | PR path: resolve stack, snapshot-tag and build the changed app, intercept deploy, tests, PR comment, cleanup. **No** `versions.yaml` bump. |
 | `stack-bootstrap` | `pipeline/stack-bootstrap-pipeline.yaml` | Full stack bring-up / environment bootstrap. |
-| `stack-merge-release` | `pipeline/stack-merge-pipeline.yaml` | Post-merge release flow (images, tags, etc.). |
+| `stack-merge-release` | `pipeline/stack-merge-pipeline.yaml` | Post-merge release flow (images, tags, next-cycle version bump). |
+| `stack-promote` | `pipeline/stack-promote-pipeline.yaml` | Copy release images to a target registry (`stacks/registries.yaml`). |
 
 Other pipelines in `pipeline/` include **`stack-pr-continue`**, **`stack-dag-verify`**, and **`triggers.yaml`** (EventListener / bindings / templates) for webhook-style automation.
 
@@ -53,7 +55,7 @@ Tasks live under `tasks/` (see filenames for the canonical Tekton `metadata.name
 
 ### `orchestrator/`
 
-- **Contains:** Flask app, K8s and Neo4j clients, PipelineRun construction.
+- **Contains:** Flask app, K8s and Neo4j clients, StackRun construction (runtime) plus a contract-only PipelineRun builder (tests).
 - **Modify when:** New HTTP APIs, different default params on created runs, resolver rules, or graph behavior.
 
 ### `management-gui/`
@@ -140,7 +142,7 @@ Implement a Tekton `Task`, install it in the cluster, then set the pipeline para
 | Orchestrator unit tests | `cd orchestrator && python3 -m pytest tests/ -v` | **108** tests at the M17 baseline. |
 | Management GUI backend | `cd management-gui/backend && python3 -m pytest tests/ -v` | **68** tests at the M17 baseline. |
 | Management GUI frontend (E2E) | `cd management-gui/frontend && npx playwright test` | **70** tests at the M17 baseline. |
-| Newman / Postman (cluster) | `./scripts/run-orchestrator-tests.sh --all` | Requires running orchestrator (and Neo4j for graph collection); see script header for prerequisites. |
+| Newman / Postman (cluster) | `./scripts/run-orchestrator-tests.sh --all` | 20 requests / 38 assertions in `tests/postman/orchestrator-tests.json`. Requires a running orchestrator (and Neo4j for graph collection); see script header. |
 
 ---
 

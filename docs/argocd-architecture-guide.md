@@ -126,7 +126,7 @@ tekton-dag
 
 - receives PR event
 - determines pipeline DAG
-- creates PipelineRun
+- creates a StackRun; the operator reconciles it to a PipelineRun
 
 ↓
 
@@ -150,7 +150,7 @@ tekton-dag
 
 ---
 
-## 2 tekton-dag Generates PipelineRun
+## 2 tekton-dag Creates a StackRun
 
 Example resource created dynamically:
 

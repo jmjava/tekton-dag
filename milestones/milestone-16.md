@@ -1,6 +1,6 @@
 # Milestone 16 — Control-plane follow-ons
 
-**Status:** Code-complete except parked S34 (M15 [#19](https://github.com/jmjava/tekton-dag/pull/19); overlay / continueFrom / webhook [#20](https://github.com/jmjava/tekton-dag/pull/20); escape hatches [#21](https://github.com/jmjava/tekton-dag/pull/21); hint polish [#22](https://github.com/jmjava/tekton-dag/pull/22); unused create helpers [#23](https://github.com/jmjava/tekton-dag/pull/23); spoken demo rebuild [#24](https://github.com/jmjava/tekton-dag/pull/24)).
+**Status:** Code-complete except parked S34 *as an M16 slice* (M15 [#19](https://github.com/jmjava/tekton-dag/pull/19); overlay / continueFrom / webhook [#20](https://github.com/jmjava/tekton-dag/pull/20); escape hatches [#21](https://github.com/jmjava/tekton-dag/pull/21); hint polish [#22](https://github.com/jmjava/tekton-dag/pull/22); unused create helpers [#23](https://github.com/jmjava/tekton-dag/pull/23); spoken demo rebuild [#24](https://github.com/jmjava/tekton-dag/pull/24)). Intercept product automation moved to [M17.3](milestone-17.md) (`.github/workflows/intercept-e2e.yml`); do not treat that workflow as proof that both backends are currently healthy.
 
 **Goal:** Finish the remaining dual sources of truth after M15 hygiene. Still **no new CRD kinds**.
 
@@ -11,7 +11,7 @@
 - [x] Retire `--pipeline-run` / Flask `STACKRUN_VIA_CRD=false` (Flask always creates StackRuns; Helm env stays `"true"` for mixed-image rollouts; `--skip-operator` no longer flips the flag)
 - [x] `spec.continueFrom` on StackRun + operator `stack-pr-continue` builder; `rerun-pr-from.sh` creates a StackRun
 - [x] Demo **hints** already describe default-on; rebuilt **spoken** `docs/demos/narration/*.md` + MP4s via TTS + Manim + `docgen compose` + `docgen validate --pre-push` (segments 01, 08, 18, 19) — [#24](https://github.com/jmjava/tekton-dag/pull/24)
-- [ ] S34 intercept E2E remains a separate stop — do not start unless explicitly requested
+- [ ] S34 intercept E2E remains a separate stop in **M16** — automation now lives under M17.3; do not start a new E2E design unless explicitly requested
 
 ## Exit criteria
 
