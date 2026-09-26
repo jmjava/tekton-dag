@@ -96,7 +96,7 @@ The orchestrator must map **GitHub repo → stack + app**. If you add new repos,
 
 1. Ensure **compile images** exist for your toolchains ([CUSTOMIZATION.md §3](CUSTOMIZATION.md), [§7](CUSTOMIZATION.md)).
 2. Apply **tasks and pipelines** to the team namespace (or use the chart).
-3. Run a **bootstrap** then a **PR** pipeline against the validation cluster; confirm **validate-propagation** and **validate-original-traffic** pass.
+3. Run a **bootstrap** then a **PR** pipeline against the validation cluster; confirm **validate-propagation** and **validate-original-traffic** pass. `validate-propagation` is **fail-closed**: a missing or rewritten original override (`pr-42`) fails the task. Each app should echo a hop report on `GET /propagation` — see [BAGGAGE-CONTRACT.md](BAGGAGE-CONTRACT.md) and [sample-repos/CONVERT-BAGGAGE.md](../sample-repos/CONVERT-BAGGAGE.md).
 
 ### Step G — Docs and ownership
 

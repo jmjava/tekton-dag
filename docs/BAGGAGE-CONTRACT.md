@@ -49,6 +49,36 @@ python -m tekton_dag_common.baggage_contract emit --stack stacks/stack-one.yaml 
 
 `BAGGAGE_ENABLED` / `baggage.enabled` / `VITE_BAGGAGE_ENABLED` default **off**. Production builds omit the library or leave it disabled.
 
+## Hop-report (fail-closed validation)
+
+`validate-stack-propagation` sends the original header to the originator and **exits 1** if any required hop dropped or rewrote it. Apps should echo:
+
+```json
+{
+  "app": "demo-fe",
+  "session": "pr-42",
+  "hops": [
+    {
+      "app": "release-lifecycle-demo",
+      "session": "pr-42",
+      "hops": [{ "app": "demo-api", "session": "pr-42" }]
+    }
+  ]
+}
+```
+
+Serve this on `GET /propagation` (optional alias: `/`). A static frontend proxies `/propagation` to the BFF and sets a cookie so `install()` can attach the same value on browser `fetch`.
+
+```bash
+python -m tekton_dag_common.propagation_validate evaluate \
+  --chain "demo-fe release-lifecycle-demo demo-api" \
+  --header-val pr-42 --build-apps demo-api --response -
+python -m tekton_dag_common.propagation_validate simulate \
+  --stack stacks/stack-one.yaml --header-val pr-42
+```
+
+Sample-app conversion kit: [`sample-repos/CONVERT-BAGGAGE.md`](../sample-repos/CONVERT-BAGGAGE.md).
+
 ## Conformance
 
 Shared vectors in [`libs/baggage-contract/vectors.json`](../libs/baggage-contract/vectors.json) are loaded by Python, Node, and PHP tests. Java modules assert the same cases. `scripts/run-baggage-conformance.sh` runs the suite.

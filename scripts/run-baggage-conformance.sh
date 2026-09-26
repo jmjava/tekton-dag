@@ -12,8 +12,15 @@ python3 -m tekton_dag_common.baggage_contract doctor --stack stacks/stack-one.ya
 echo ">>> baggage emit --all"
 python3 -m tekton_dag_common.baggage_contract emit --stack stacks/stack-one.yaml --all >/dev/null
 
-echo ">>> pytest: baggage contract + python client"
-python3 -m pytest libs/tekton-dag-common/tests/test_baggage_contract.py libs/baggage-python/tests/test_baggage.py -v --tb=short
+echo ">>> pytest: baggage contract + hop-to-hop validate + python client"
+python3 -m pytest \
+  libs/tekton-dag-common/tests/test_baggage_contract.py \
+  libs/tekton-dag-common/tests/test_propagation_validate.py \
+  libs/baggage-python/tests/test_baggage.py -v --tb=short
+
+echo ">>> simulate stack-one hop-to-hop"
+python3 -m tekton_dag_common.propagation_validate simulate \
+  --stack stacks/stack-one.yaml --header-val pr-42 >/dev/null
 
 if command -v npm >/dev/null 2>&1; then
   echo ">>> vitest: baggage-node"

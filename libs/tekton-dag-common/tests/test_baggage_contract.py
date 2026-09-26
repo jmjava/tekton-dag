@@ -98,6 +98,16 @@ def test_stack_one_emit_and_doctor():
         "vite",
     )
     assert "VITE_BAGGAGE_ROLE=originator" in fe
+    k8s = emit_env(
+        {
+            "role": "forwarder",
+            "header_name": "x-dev-session",
+            "baggage_key": "dev-session",
+        },
+        "k8s",
+    )
+    assert "BAGGAGE_ENABLED" in k8s
+    assert 'value: "forwarder"' in k8s
     assert find_app(stack, "demo-api")["name"] == "demo-api"
 
 

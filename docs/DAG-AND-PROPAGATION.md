@@ -63,7 +63,7 @@ So: **“intercepted”** = “this app’s traffic, when it carries the PR head
 
 - The **same header** (e.g. `x-dev-session: pr-42`) is used for:
   - Telepresence intercept matching (route to PR pod when request has this header).
-  - Validation: **validate-stack-propagation** sends a request from the entry with this header and checks it flows along the propagation chain and appears where expected.
+  - Validation: **validate-stack-propagation** sends a request from the entry with this header and **fails** if a required hop dropped or rewrote the original value.
   - Your own testing: you hit the entry with this header so the whole path uses “this PR’s” code where intercepts are active.
 - So that **one header value** ties together: “which run,” “which PR’s build,” and “which traffic gets routed to PR pods.”
 

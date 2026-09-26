@@ -216,6 +216,19 @@ def emit_env(config: Mapping[str, str], fmt: str = "env") -> str:
                 f"VITE_BAGGAGE_KEY={key}",
             ]
         )
+    if fmt == "k8s":
+        return "\n".join(
+            [
+                "- name: BAGGAGE_ENABLED",
+                '  value: "true"',
+                "- name: BAGGAGE_ROLE",
+                f'  value: "{role}"',
+                "- name: BAGGAGE_HEADER_NAME",
+                f'  value: "{header}"',
+                "- name: BAGGAGE_KEY",
+                f'  value: "{key}"',
+            ]
+        )
     prefix = "export " if fmt == "env" else ""
     return "\n".join(
         [
@@ -288,7 +301,7 @@ def main(argv: Iterable[str] | None = None) -> int:
     emit.add_argument("--stack", required=True)
     emit.add_argument("--app")
     emit.add_argument("--all", action="store_true")
-    emit.add_argument("--format", choices=("env", "dotenv", "vite", "spring"), default="env")
+    emit.add_argument("--format", choices=("env", "dotenv", "vite", "spring", "k8s"), default="env")
 
     doc = sub.add_parser("doctor", help="Validate stack propagation roles")
     doc.add_argument("--stack", required=True)

@@ -33,6 +33,17 @@ Then edit and push from each repo (e.g. `cd ~/github/jmjava/tekton-dag-spring-bo
 
 Stacks reference them as `repo: jmjava/tekton-dag-<name>` in `stacks/*.yaml`.
 
+## Baggage conversion (install + hop-report)
+
+The platform contract is: **copy the original override header hop-to-hop** and echo it so `validate-stack-propagation` can fail closed. The sample repos still need that wiring.
+
+```bash
+./sample-repos/apply-baggage-conversion.sh ~/github/jmjava
+./scripts/emit-baggage-env.sh --stack stacks/stack-one.yaml --all
+```
+
+Details: [CONVERT-BAGGAGE.md](CONVERT-BAGGAGE.md), [docs/BAGGAGE-CONTRACT.md](../docs/BAGGAGE-CONTRACT.md).
+
 ## VS Code workspace (run and debug from the IDE)
 
 The platform repo’s launch configs (`.vscode/launch.json`) expect each app repo to be a **workspace folder** in a **multi-root workspace**, with a **folder name** that matches the repo name (e.g. `tekton-dag-vue-fe`). That way `cwd` and sources resolve correctly when you run **Vue (demo-fe): Launch & debug** or **Spring Boot (release-lifecycle-demo): Attach**, etc.

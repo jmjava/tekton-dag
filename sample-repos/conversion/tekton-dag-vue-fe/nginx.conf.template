@@ -1,0 +1,27 @@
+map $http_x_dev_session $dev_session_cookie {
+    ""      "";
+    default "x-dev-session=$http_x_dev_session; Path=/; SameSite=Lax";
+}
+
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    add_header Set-Cookie $dev_session_cookie always;
+
+    location /propagation {
+        proxy_pass ${BFF_UPSTREAM};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header x-dev-session $http_x_dev_session;
+        proxy_set_header baggage $http_baggage;
+        proxy_pass_request_headers on;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

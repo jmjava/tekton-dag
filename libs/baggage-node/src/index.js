@@ -83,7 +83,8 @@ export function createBaggageConfig(overrides = {}) {
 
 export function defaultConfig() {
   const env = (typeof import.meta !== 'undefined' && import.meta.env) || {}
-  if (env.PROD) return createBaggageConfig({ enabled: false })
+  // Default off. Production Docker images may still set VITE_BAGGAGE_ENABLED=true
+  // so intercepts keep the original override on browser fetch.
   return createBaggageConfig({
     headerName: env.VITE_BAGGAGE_HEADER_NAME,
     baggageKey: env.VITE_BAGGAGE_KEY,
