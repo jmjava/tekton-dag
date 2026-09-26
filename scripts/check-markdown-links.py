@@ -22,6 +22,7 @@ SKIP_DIR_NAMES = {
     "venv",
     "__pycache__",
     ".pytest_cache",
+    "vendor",
 }
 
 # Not rewritten as product docs; broken historical links should not fail CI.

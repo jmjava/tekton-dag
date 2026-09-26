@@ -15,11 +15,26 @@ VECTORS = json.loads(
 )
 
 
+_BAGGAGE_ENV = (
+    "BAGGAGE_ENABLED",
+    "BAGGAGE_ROLE",
+    "BAGGAGE_HEADER_NAME",
+    "BAGGAGE_KEY",
+    "BAGGAGE_SESSION_VALUE",
+)
+
+
 @pytest.fixture(autouse=True)
 def _reset_instrumentation():
     baggage.reset_requests_instrumentation()
+    saved = {key: os.environ.get(key) for key in _BAGGAGE_ENV}
     yield
     baggage.reset_requests_instrumentation()
+    for key in _BAGGAGE_ENV:
+        if saved[key] is None:
+            os.environ.pop(key, None)
+        else:
+            os.environ[key] = saved[key]
 
 
 class TestW3cCodec:
@@ -67,15 +82,15 @@ class TestContractVectors:
 
 
 def _make_app(env_overrides):
-    with patch.dict(os.environ, env_overrides, clear=False):
-        test_app = Flask(__name__)
-        baggage.install(test_app)
+    os.environ.update(env_overrides)
+    test_app = Flask(__name__)
+    baggage.install(test_app)
 
-        @test_app.route("/check")
-        def _check():
-            return getattr(g, "dev_session", None) or ""
+    @test_app.route("/check")
+    def _check():
+        return getattr(g, "dev_session", None) or ""
 
-        return test_app
+    return test_app
 
 
 class TestForwarderHook:

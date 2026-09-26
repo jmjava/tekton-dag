@@ -1,13 +1,5 @@
 """Shared utilities for tekton-dag orchestrator and management GUI."""
 
-from tekton_dag_common.baggage_contract import (
-    apply_outgoing_headers,
-    doctor_stack,
-    emit_env,
-    incoming_session,
-    infer_role,
-    outgoing_session,
-)
 from tekton_dag_common.api_auth import bearer_token_matches
 from tekton_dag_common.deploy_injection import (
     build_env_from,
@@ -58,13 +50,7 @@ __all__ = [
     "TEKTON_API_VERSION",
     "TEKTON_GROUP",
     "TEKTON_VERSION",
-    "apply_outgoing_headers",
     "apply_reliability",
-    "doctor_stack",
-    "emit_env",
-    "incoming_session",
-    "infer_role",
-    "outgoing_session",
     "base_pipelinerun",
     "bearer_token_matches",
     "build_env_from",
