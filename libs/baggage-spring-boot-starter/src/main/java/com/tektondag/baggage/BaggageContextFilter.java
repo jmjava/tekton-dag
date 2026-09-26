@@ -5,15 +5,15 @@ import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Role-aware incoming filter. Extracts or creates a dev-session value,
- * stores it in OTel Baggage and BaggageContextHolder (ThreadLocal)
- * for downstream propagation by BaggageRestTemplateInterceptor.
+ * Incoming filter. Stores the original override header in request context so
+ * outbound interceptors can copy it hop-to-hop.
  */
 public class BaggageContextFilter extends OncePerRequestFilter {
 
@@ -25,9 +25,7 @@ public class BaggageContextFilter extends OncePerRequestFilter {
 
   @Override
   protected void doFilterInternal(
-      HttpServletRequest request,
-      HttpServletResponse response,
-      FilterChain filterChain)
+      HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
       throws ServletException, IOException {
 
     String sessionValue = resolveSessionValue(request);
@@ -40,9 +38,7 @@ public class BaggageContextFilter extends OncePerRequestFilter {
     BaggageContextHolder.set(sessionValue);
 
     Baggage updated =
-        Baggage.current().toBuilder()
-            .put(properties.getBaggageKey(), sessionValue)
-            .build();
+        Baggage.current().toBuilder().put(properties.getBaggageKey(), sessionValue).build();
     Context newContext = Context.current().with(updated);
 
     try (Scope scope = newContext.makeCurrent()) {
@@ -53,15 +49,24 @@ public class BaggageContextFilter extends OncePerRequestFilter {
   }
 
   private String resolveSessionValue(HttpServletRequest request) {
-    return switch (properties.getRole()) {
-      case ORIGINATOR -> {
-        String configured = properties.getSessionValue();
-        yield (configured != null && !configured.isBlank()) ? configured.trim() : null;
+    return BaggagePolicy.incomingSession(
+        properties.getRole(),
+        request.getHeader(properties.getHeaderName()),
+        cookieValue(request, properties.getHeaderName()),
+        request.getParameter(properties.getHeaderName()),
+        properties.getSessionValue());
+  }
+
+  static String cookieValue(HttpServletRequest request, String name) {
+    Cookie[] cookies = request.getCookies();
+    if (cookies == null) {
+      return null;
+    }
+    for (Cookie cookie : cookies) {
+      if (name.equalsIgnoreCase(cookie.getName())) {
+        return cookie.getValue();
       }
-      case FORWARDER, TERMINAL -> {
-        String header = request.getHeader(properties.getHeaderName());
-        yield (header != null && !header.isBlank()) ? header.trim() : null;
-      }
-    };
+    }
+    return null;
   }
 }

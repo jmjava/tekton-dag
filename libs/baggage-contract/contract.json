@@ -1,0 +1,60 @@
+{
+  "version": "1.0.0",
+  "id": "tektondag.baggage.v1",
+  "defaults": {
+    "headerName": "x-dev-session",
+    "baggageKey": "dev-session",
+    "baggageHeader": "baggage",
+    "enabled": false,
+    "role": "forwarder",
+    "strict": false
+  },
+  "env": {
+    "enabled": "BAGGAGE_ENABLED",
+    "role": "BAGGAGE_ROLE",
+    "headerName": "BAGGAGE_HEADER_NAME",
+    "baggageKey": "BAGGAGE_KEY",
+    "sessionValue": "BAGGAGE_SESSION_VALUE",
+    "strict": "BAGGAGE_STRICT"
+  },
+  "springProperties": {
+    "enabled": "baggage.enabled",
+    "role": "baggage.role",
+    "headerName": "baggage.header-name",
+    "baggageKey": "baggage.baggage-key",
+    "sessionValue": "baggage.session-value"
+  },
+  "viteEnv": {
+    "enabled": "VITE_BAGGAGE_ENABLED",
+    "role": "VITE_BAGGAGE_ROLE",
+    "headerName": "VITE_BAGGAGE_HEADER_NAME",
+    "baggageKey": "VITE_BAGGAGE_KEY",
+    "sessionValue": "VITE_DEV_SESSION"
+  },
+  "originatorIncomingPriority": ["header", "cookie", "query", "sessionValue"],
+  "roles": {
+    "originator": {
+      "acceptIncoming": true,
+      "mintIfMissing": true,
+      "propagateOutgoing": true
+    },
+    "forwarder": {
+      "acceptIncoming": true,
+      "mintIfMissing": false,
+      "propagateOutgoing": true
+    },
+    "terminal": {
+      "acceptIncoming": true,
+      "mintIfMissing": false,
+      "propagateOutgoing": false
+    }
+  },
+  "unknownRole": "fail-closed",
+  "invariant": "The original override header value (the session that selects a PR/override container somewhere in the stack) must be transferred unchanged from call to call. Clients must never rewrite, mint-over, or drop a present incoming value.",
+  "inferRole": {
+    "explicitField": "propagation-role",
+    "noDownstream": "terminal",
+    "frontendRole": "originator",
+    "else": "forwarder"
+  }
+}

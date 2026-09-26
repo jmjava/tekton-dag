@@ -34,7 +34,7 @@ final class BaggageMiddlewareTest extends TestCase
         $this->assertNull(BaggageContext::get());
     }
 
-    public function testOriginatorUsesConfiguredValue(): void
+    public function testOriginatorUsesConfiguredValueWhenNothingIncoming(): void
     {
         putenv('BAGGAGE_ENABLED=true');
         $mw = new BaggageMiddleware(role: 'originator', sessionValue: 'my-session');
@@ -42,12 +42,20 @@ final class BaggageMiddlewareTest extends TestCase
         $this->assertSame('my-session', BaggageContext::get());
     }
 
-    public function testOriginatorIgnoresIncomingHeader(): void
+    public function testOriginatorPreservesOriginalOverrideHeader(): void
     {
         putenv('BAGGAGE_ENABLED=true');
         $mw = new BaggageMiddleware(role: 'originator', sessionValue: 'configured');
-        $mw->handle('should-be-ignored');
-        $this->assertSame('configured', BaggageContext::get());
+        $mw->handle('pr-42');
+        $this->assertSame('pr-42', BaggageContext::get());
+    }
+
+    public function testOriginatorUsesQueryWhenNoHeader(): void
+    {
+        putenv('BAGGAGE_ENABLED=true');
+        $mw = new BaggageMiddleware(role: 'originator', sessionValue: 'configured');
+        $mw->handle(null, null, 'pr-99');
+        $this->assertSame('pr-99', BaggageContext::get());
     }
 
     public function testTerminalExtractsHeader(): void

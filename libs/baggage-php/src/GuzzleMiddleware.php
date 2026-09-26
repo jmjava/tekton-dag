@@ -7,30 +7,34 @@ namespace TektonDag\Baggage;
 use Psr\Http\Message\RequestInterface;
 
 /**
- * Guzzle middleware that propagates baggage headers on outgoing requests.
+ * Outgoing Guzzle middleware. Copies the original override onto the next hop.
  *
  * Usage:
- *   $stack = HandlerStack::create();
- *   $stack->push(GuzzleMiddleware::create());
- *   $client = new Client(['handler' => $stack]);
+ *   $client = Baggage::guzzleClient();
+ * or:
+ *   $stack->push(GuzzleMiddleware::fromEnv());
  */
 final class GuzzleMiddleware
 {
+    public static function fromEnv(): callable
+    {
+        return self::create(
+            role: getenv('BAGGAGE_ROLE') ?: 'forwarder',
+            headerName: getenv('BAGGAGE_HEADER_NAME') ?: 'x-dev-session',
+            baggageKey: getenv('BAGGAGE_KEY') ?: 'dev-session',
+            sessionValue: getenv('BAGGAGE_SESSION_VALUE') ?: '',
+        );
+    }
+
     public static function create(
         string $role = 'forwarder',
         string $headerName = 'x-dev-session',
         string $baggageKey = 'dev-session',
         string $sessionValue = '',
     ): callable {
-        $role = strtolower($role);
-
         return static function (callable $handler) use ($role, $headerName, $baggageKey, $sessionValue): callable {
             return static function (RequestInterface $request, array $options) use ($handler, $role, $headerName, $baggageKey, $sessionValue) {
-                $value = match ($role) {
-                    'originator' => self::nonBlank($sessionValue),
-                    'forwarder' => BaggageContext::get(),
-                    default => null,
-                };
+                $value = BaggagePolicy::outgoingSession($role, BaggageContext::get(), $sessionValue);
 
                 if ($value !== null) {
                     $request = $request->withHeader($headerName, $value);
@@ -46,13 +50,5 @@ final class GuzzleMiddleware
                 return $handler($request, $options);
             };
         };
-    }
-
-    private static function nonBlank(?string $s): ?string
-    {
-        if ($s === null || trim($s) === '') {
-            return null;
-        }
-        return trim($s);
     }
 }

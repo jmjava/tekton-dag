@@ -1,25 +1,55 @@
 /**
- * Client-side baggage propagation for Vue / browser apps.
+ * Role-aware W3C baggage / x-dev-session for browser and Node.
  *
- * Roles:
- *   originator — sets headers on all outgoing calls from configured session value
- *   forwarder  — reads incoming session (e.g. from a cookie or meta tag), propagates
- *   terminal   — no outgoing propagation
- *
- * Production safety:
- *   - In production builds (import.meta.env.PROD), defaultConfig() returns enabled:false.
- *   - Vite tree-shakes dead branches so interceptor registration is eliminated.
- *   - VITE_BAGGAGE_ENABLED must be "true" for the middleware to activate.
+ * Invariant: the original override header (the session that selects a PR
+ * container somewhere in the stack) is transferred unchanged hop-to-hop.
+ * Call install() / adoptIncoming() — do not write your own header code.
  */
 
-// ---------------------------------------------------------------------------
-// W3C Baggage codec
-// ---------------------------------------------------------------------------
+const ROLES = new Set(['originator', 'forwarder', 'terminal'])
+
+export function firstNonBlank(...values) {
+  for (const raw of values) {
+    if (raw == null) continue
+    const text = String(raw).trim()
+    if (text) return text
+  }
+  return null
+}
+
+export function normalizeRole(role) {
+  if (role == null || String(role).trim() === '') return 'forwarder'
+  const text = String(role).trim().toLowerCase()
+  return ROLES.has(text) ? text : null
+}
+
+export function incomingSession({
+  role,
+  header,
+  cookie,
+  query,
+  sessionValue,
+  enabled = true,
+} = {}) {
+  if (!enabled) return null
+  const resolved = normalizeRole(role)
+  if (!resolved) return null
+  const incoming = firstNonBlank(header, cookie, query)
+  if (resolved === 'originator') return firstNonBlank(incoming, sessionValue)
+  return incoming
+}
+
+export function outgoingSession({ role, contextValue, sessionValue } = {}) {
+  const resolved = normalizeRole(role)
+  if (resolved === 'originator') return firstNonBlank(contextValue, sessionValue)
+  if (resolved === 'forwarder') return firstNonBlank(contextValue)
+  return null
+}
 
 export function parseBaggage(header) {
   const entries = {}
-  if (!header || !header.trim()) return entries
-  for (const member of header.split(',')) {
+  if (!header || !String(header).trim()) return entries
+  for (const member of String(header).split(',')) {
     const trimmed = member.trim()
     if (!trimmed) continue
     const eq = trimmed.indexOf('=')
@@ -41,34 +71,104 @@ export function serializeBaggage(entries) {
     .join(',')
 }
 
-// ---------------------------------------------------------------------------
-// Configuration
-// ---------------------------------------------------------------------------
-
 export function createBaggageConfig(overrides = {}) {
   return {
     headerName: overrides.headerName || 'x-dev-session',
     baggageKey: overrides.baggageKey || 'dev-session',
     sessionValue: overrides.sessionValue || '',
-    role: (overrides.role || 'originator').toLowerCase(),
+    role: normalizeRole(overrides.role ?? 'forwarder'),
     enabled: overrides.enabled ?? false,
   }
 }
 
 export function defaultConfig() {
-  if (import.meta.env.PROD) return createBaggageConfig({ enabled: false })
+  const env = (typeof import.meta !== 'undefined' && import.meta.env) || {}
+  if (env.PROD) return createBaggageConfig({ enabled: false })
   return createBaggageConfig({
-    headerName: import.meta.env.VITE_BAGGAGE_HEADER_NAME,
-    baggageKey: import.meta.env.VITE_BAGGAGE_KEY,
-    sessionValue: import.meta.env.VITE_DEV_SESSION,
-    role: import.meta.env.VITE_BAGGAGE_ROLE,
-    enabled: import.meta.env.VITE_BAGGAGE_ENABLED === 'true',
+    headerName: env.VITE_BAGGAGE_HEADER_NAME,
+    baggageKey: env.VITE_BAGGAGE_KEY,
+    sessionValue: env.VITE_DEV_SESSION,
+    role: env.VITE_BAGGAGE_ROLE,
+    enabled: env.VITE_BAGGAGE_ENABLED === 'true',
   })
 }
 
-// ---------------------------------------------------------------------------
-// fetch wrapper
-// ---------------------------------------------------------------------------
+let adopted = { header: '', cookie: '', query: '' }
+
+export function adoptIncoming(incoming = {}, config) {
+  const cfg = config || defaultConfig()
+  const headers = incoming.headers || {}
+  const headerFromMap =
+    incoming.header ||
+    headers[cfg.headerName] ||
+    headers[String(cfg.headerName).toLowerCase()] ||
+    ''
+  adopted = {
+    header: headerFromMap || '',
+    cookie: incoming.cookie || '',
+    query: incoming.query || incoming.search || '',
+  }
+  return { ...adopted }
+}
+
+export function resetAdoptedIncoming() {
+  adopted = { header: '', cookie: '', query: '' }
+}
+
+function readCookie(cookieHeader, name) {
+  if (!cookieHeader) return ''
+  const parts = String(cookieHeader).split(';')
+  for (const part of parts) {
+    const trimmed = part.trim()
+    if (!trimmed) continue
+    const eq = trimmed.indexOf('=')
+    if (eq < 1) continue
+    if (trimmed.slice(0, eq).trim() === name) return trimmed.slice(eq + 1).trim()
+  }
+  return ''
+}
+
+function browserSources(headerName) {
+  let cookie = ''
+  let query = ''
+  try {
+    if (typeof document !== 'undefined' && document.cookie) {
+      cookie = readCookie(document.cookie, headerName)
+    }
+    if (typeof location !== 'undefined' && location.search) {
+      query = new URLSearchParams(location.search).get(headerName) || ''
+    }
+  } catch {
+    // non-browser
+  }
+  return { cookie, query }
+}
+
+export function resolveOutgoing(config) {
+  const cfg = config || defaultConfig()
+  const browser = browserSources(cfg.headerName)
+  const context = incomingSession({
+    role: cfg.role,
+    header: adopted.header,
+    cookie: firstNonBlank(adopted.cookie, browser.cookie),
+    query: firstNonBlank(adopted.query, browser.query),
+    sessionValue: cfg.sessionValue,
+    enabled: cfg.enabled,
+  })
+  return outgoingSession({
+    role: cfg.role,
+    contextValue: context,
+    sessionValue: cfg.sessionValue,
+  })
+}
+
+function applyHeaders(headersInit, config, value) {
+  const headers = new Headers(headersInit || {})
+  headers.set(config.headerName, value)
+  const existing = headers.get('baggage') || ''
+  headers.set('baggage', mergeBaggage(existing, config.baggageKey, value))
+  return headers
+}
 
 export function createBaggageFetch(config, baseFetch = globalThis.fetch) {
   const resolvedConfig = config || defaultConfig()
@@ -77,36 +177,24 @@ export function createBaggageFetch(config, baseFetch = globalThis.fetch) {
     if (!resolvedConfig.enabled) {
       return baseFetch(url, options)
     }
-
     const value = resolveOutgoing(resolvedConfig)
     if (!value) return baseFetch(url, options)
-
-    const headers = new Headers(options.headers || {})
-    headers.set(resolvedConfig.headerName, value)
-    const existing = headers.get('baggage') || ''
-    headers.set('baggage', mergeBaggage(existing, resolvedConfig.baggageKey, value))
-
+    const headers = applyHeaders(options.headers, resolvedConfig, value)
     return baseFetch(url, { ...options, headers })
   }
 }
-
-// ---------------------------------------------------------------------------
-// Axios request interceptor factory
-// ---------------------------------------------------------------------------
 
 export function createAxiosInterceptor(config) {
   const resolvedConfig = config || defaultConfig()
 
   return function baggageInterceptor(axiosConfig) {
     if (!resolvedConfig.enabled) return axiosConfig
-
     const value = resolveOutgoing(resolvedConfig)
     if (!value) return axiosConfig
-
     axiosConfig.headers = axiosConfig.headers || {}
     axiosConfig.headers[resolvedConfig.headerName] = value
-    const existing = axiosConfig.headers['baggage'] || ''
-    axiosConfig.headers['baggage'] = mergeBaggage(
+    const existing = axiosConfig.headers.baggage || axiosConfig.headers['baggage'] || ''
+    axiosConfig.headers.baggage = mergeBaggage(
       existing,
       resolvedConfig.baggageKey,
       value,
@@ -115,18 +203,12 @@ export function createAxiosInterceptor(config) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Internal
-// ---------------------------------------------------------------------------
-
-function resolveOutgoing(config) {
-  switch (config.role) {
-    case 'originator':
-      return config.sessionValue?.trim() || null
-    case 'forwarder':
-      return config.sessionValue?.trim() || null
-    case 'terminal':
-    default:
-      return null
+export function install(config) {
+  const resolved = config || defaultConfig()
+  const original = globalThis.fetch
+  const wrapped = createBaggageFetch(resolved, original)
+  globalThis.fetch = wrapped
+  return function uninstall() {
+    if (globalThis.fetch === wrapped) globalThis.fetch = original
   }
 }

@@ -1,8 +1,6 @@
 # baggage-spring-boot-starter
 
-Role-aware W3C baggage / `x-dev-session` auto-configuration for Spring Boot.
-
-## Installation
+Transfers the **original override header** hop-to-hop. Add the starter; do not write interceptors. Spec: [docs/BAGGAGE-CONTRACT.md](../../docs/BAGGAGE-CONTRACT.md).
 
 ```xml
 <dependency>
@@ -12,29 +10,15 @@ Role-aware W3C baggage / `x-dev-session` auto-configuration for Spring Boot.
 </dependency>
 ```
 
-Install locally first: `cd libs/baggage-spring-boot-starter && mvn install`
-
-## Configuration (application.properties)
-
-| Property | Default | Description |
-|----------|---------|-------------|
-| `baggage.enabled` | `false` | Must be `true` to activate |
-| `baggage.role` | `FORWARDER` | `ORIGINATOR`, `FORWARDER`, or `TERMINAL` |
-| `baggage.header-name` | `x-dev-session` | Custom header name |
-| `baggage.baggage-key` | `dev-session` | W3C baggage key |
-| `baggage.session-value` | (empty) | Session value for originator role |
-
-## Usage
-
-Add the dependency. Spring Boot auto-configuration handles the rest. Set `baggage.enabled=true` and `baggage.role` in your application.properties.
-
-## Production safety
-
-- **Build-time**: add under a Maven profile. Production build skips the profile.
-- **Runtime**: `@ConditionalOnProperty(name = "baggage.enabled", havingValue = "true")`.
-
-## Testing
-
-```bash
-mvn clean test
+```properties
+baggage.enabled=true
+baggage.role=FORWARDER
+baggage.header-name=x-dev-session
+baggage.baggage-key=dev-session
 ```
+
+`./scripts/emit-baggage-env.sh --stack stacks/stack-one.yaml --app release-lifecycle-demo --format spring`
+
+Incoming filter reads header, then cookie, then query. A present `pr-42` wins over `baggage.session-value`. Outgoing `RestTemplate` calls get that same value. Other clients: `BaggagePropagator.apply(httpHeaders, properties)`.
+
+`mvn clean test`

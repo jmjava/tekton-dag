@@ -1,0 +1,193 @@
+{
+  "version": "1.0.0",
+  "codec": [
+    {
+      "name": "parse-empty",
+      "parse": [null, "", "  "],
+      "expected": {}
+    },
+    {
+      "name": "parse-single",
+      "header": "dev-session=abc",
+      "expected": { "dev-session": "abc" }
+    },
+    {
+      "name": "parse-multiple",
+      "header": "k1=v1,k2=v2,k3=v3",
+      "expected": { "k1": "v1", "k2": "v2", "k3": "v3" }
+    },
+    {
+      "name": "parse-preserves-properties",
+      "header": "k1=v1;prop=pval,k2=v2",
+      "expected": { "k1": "v1;prop=pval", "k2": "v2" }
+    },
+    {
+      "name": "merge-add",
+      "existing": "k1=v1",
+      "key": "dev-session",
+      "value": "abc",
+      "contains": ["k1=v1", "dev-session=abc"]
+    },
+    {
+      "name": "merge-replace",
+      "existing": "dev-session=old,k1=v1",
+      "key": "dev-session",
+      "value": "new",
+      "contains": ["dev-session=new", "k1=v1"],
+      "excludes": ["=old"]
+    },
+    {
+      "name": "merge-empty",
+      "existing": null,
+      "key": "dev-session",
+      "value": "abc",
+      "equals": "dev-session=abc"
+    },
+    {
+      "name": "round-trip",
+      "header": "k1=v1,k2=v2"
+    }
+  ],
+  "resolveIncoming": [
+    {
+      "name": "disabled-ignores-everything",
+      "enabled": false,
+      "role": "originator",
+      "header": "pr-42",
+      "sessionValue": "minted",
+      "expected": null
+    },
+    {
+      "name": "unknown-role-fail-closed",
+      "enabled": true,
+      "role": "sidecar",
+      "header": "pr-42",
+      "sessionValue": "minted",
+      "expected": null
+    },
+    {
+      "name": "originator-prefers-header-over-session",
+      "enabled": true,
+      "role": "originator",
+      "header": "pr-42",
+      "sessionValue": "minted",
+      "expected": "pr-42"
+    },
+    {
+      "name": "originator-cookie-before-query-and-session",
+      "enabled": true,
+      "role": "originator",
+      "cookie": "from-cookie",
+      "query": "from-query",
+      "sessionValue": "minted",
+      "expected": "from-cookie"
+    },
+    {
+      "name": "originator-query-before-session",
+      "enabled": true,
+      "role": "originator",
+      "query": "from-query",
+      "sessionValue": "minted",
+      "expected": "from-query"
+    },
+    {
+      "name": "originator-mints-when-nothing-incoming",
+      "enabled": true,
+      "role": "originator",
+      "sessionValue": "minted",
+      "expected": "minted"
+    },
+    {
+      "name": "originator-empty-when-nothing",
+      "enabled": true,
+      "role": "originator",
+      "expected": null
+    },
+    {
+      "name": "forwarder-uses-header",
+      "enabled": true,
+      "role": "forwarder",
+      "header": "pr-42",
+      "sessionValue": "must-not-mint",
+      "expected": "pr-42"
+    },
+    {
+      "name": "forwarder-does-not-mint",
+      "enabled": true,
+      "role": "forwarder",
+      "sessionValue": "must-not-mint",
+      "expected": null
+    },
+    {
+      "name": "forwarder-cookie-when-no-header",
+      "enabled": true,
+      "role": "forwarder",
+      "cookie": "from-cookie",
+      "expected": "from-cookie"
+    },
+    {
+      "name": "terminal-uses-header-does-not-mint",
+      "enabled": true,
+      "role": "terminal",
+      "header": "pr-42",
+      "sessionValue": "must-not-mint",
+      "expected": "pr-42"
+    },
+    {
+      "name": "terminal-empty-without-incoming",
+      "enabled": true,
+      "role": "terminal",
+      "sessionValue": "must-not-mint",
+      "expected": null
+    },
+    {
+      "name": "trims-whitespace",
+      "enabled": true,
+      "role": "forwarder",
+      "header": "  pr-42  ",
+      "expected": "pr-42"
+    }
+  ],
+  "resolveOutgoing": [
+    {
+      "name": "originator-outgoing-prefers-context",
+      "role": "originator",
+      "context": "pr-42",
+      "sessionValue": "minted",
+      "expected": "pr-42"
+    },
+    {
+      "name": "originator-outgoing-mints-without-context",
+      "role": "originator",
+      "sessionValue": "minted",
+      "expected": "minted"
+    },
+    {
+      "name": "forwarder-outgoing-from-context-only",
+      "role": "forwarder",
+      "context": "pr-42",
+      "sessionValue": "must-not-mint",
+      "expected": "pr-42"
+    },
+    {
+      "name": "forwarder-outgoing-empty-without-context",
+      "role": "forwarder",
+      "sessionValue": "must-not-mint",
+      "expected": null
+    },
+    {
+      "name": "terminal-never-outgoing",
+      "role": "terminal",
+      "context": "pr-42",
+      "sessionValue": "minted",
+      "expected": null
+    },
+    {
+      "name": "unknown-never-outgoing",
+      "role": "sidecar",
+      "context": "pr-42",
+      "sessionValue": "minted",
+      "expected": null
+    }
+  ]
+}

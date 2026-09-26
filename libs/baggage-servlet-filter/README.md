@@ -1,43 +1,16 @@
 # baggage-servlet-filter
 
-Role-aware W3C baggage / `x-dev-session` servlet filter for legacy Spring / WAR-deployed apps.
+Transfers the **original override header** hop-to-hop for servlet/WAR apps. Spec: [docs/BAGGAGE-CONTRACT.md](../../docs/BAGGAGE-CONTRACT.md).
 
-## Installation
+Register `BaggageServletFilter`, then apply outgoing headers with `BaggageOutgoing.apply` — do not copy headers by hand.
 
-```xml
-<dependency>
-  <groupId>com.tektondag</groupId>
-  <artifactId>baggage-servlet-filter</artifactId>
-  <version>1.0.0</version>
-</dependency>
+```java
+BaggageOutgoing.apply(headers, "x-dev-session", "dev-session", BaggageRole.FORWARDER, null);
 ```
 
-Install locally first: `cd libs/baggage-servlet-filter && mvn install`
-
-## Configuration (web.xml)
-
-```xml
-<filter>
-  <filter-name>baggageFilter</filter-name>
-  <filter-class>com.tektondag.baggage.BaggageServletFilter</filter-class>
-  <init-param>
-    <param-name>role</param-name>
-    <param-value>forwarder</param-value>
-  </init-param>
-</filter>
-<filter-mapping>
-  <filter-name>baggageFilter</filter-name>
-  <url-pattern>/*</url-pattern>
-</filter-mapping>
-```
-
-## Production safety
-
-- **Build-time**: add under a Maven profile. Production build skips the profile.
-- **Runtime**: no-op unless `BAGGAGE_ENABLED=true` env var is set.
-
-## Testing
+A present incoming `pr-42` is stored in `BaggageContextHolder` and must be the value sent downstream.
 
 ```bash
+./scripts/emit-baggage-env.sh --stack stacks/stack-one.yaml --app my-war
 mvn clean test
 ```

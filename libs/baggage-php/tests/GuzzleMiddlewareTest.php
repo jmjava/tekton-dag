@@ -38,6 +38,24 @@ final class GuzzleMiddlewareTest extends TestCase
         $this->assertStringContainsString('dev-session=orig-sess', $request->getHeaderLine('baggage'));
     }
 
+    public function testOriginatorPrefersContextOriginalOverride(): void
+    {
+        BaggageContext::set('pr-42');
+
+        $history = [];
+        $stack = HandlerStack::create(new MockHandler([new Response(200)]));
+        $stack->push(GuzzleMiddleware::create(
+            role: 'originator',
+            sessionValue: 'orig-sess',
+        ));
+        $stack->push(Middleware::history($history));
+
+        $client = new Client(['handler' => $stack]);
+        $client->get('http://downstream/api');
+
+        $this->assertSame('pr-42', $history[0]['request']->getHeaderLine('x-dev-session'));
+    }
+
     public function testForwarderPropagatesFromContext(): void
     {
         BaggageContext::set('fwd-sess');
