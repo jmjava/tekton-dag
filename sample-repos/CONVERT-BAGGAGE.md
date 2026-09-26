@@ -49,4 +49,4 @@ Then commit and push **each** sample repo. This platform PR cannot open those Gi
 | tekton-dag-flask | `install(app)` | instrumented `requests` | JSON `/` and `/propagation` |
 | tekton-dag-php | `Baggage::install()` | `Baggage::guzzleClient()` | JSON `public/index.php` |
 
-Libraries default **off**. Cluster / PR images must set `BAGGAGE_ENABLED=true` (or Vite/Spring equivalents) from `emit --format k8s` / `vite` / `spring`.
+Libraries default **off**. `deploy-full-stack` and the intercept tasks inject `BAGGAGE_*`, `APP_NAME`, and `DOWNSTREAM_URL` / `BFF_UPSTREAM` from the stack. Local/Vite still needs `emit --format vite` at image build time. Set `propagation.enabled: false` to skip injection.

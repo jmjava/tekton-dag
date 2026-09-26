@@ -183,15 +183,41 @@ def stack_propagation(stack: Mapping[str, Any]) -> dict[str, str]:
     }
 
 
+def propagation_inject_enabled(stack: Mapping[str, Any]) -> bool:
+    """Stack deploys inject library env unless propagation.enabled is false."""
+    prop = stack.get("propagation") if isinstance(stack.get("propagation"), dict) else {}
+    raw = prop.get("enabled", True)
+    if isinstance(raw, bool):
+        return raw
+    return str(raw).strip().lower() not in {"false", "0", "no", "off"}
+
+
+def first_downstream_name(app: Mapping[str, Any]) -> str | None:
+    downstream = app.get("downstream")
+    if not downstream:
+        return None
+    if isinstance(downstream, str):
+        name = downstream.strip()
+        return name or None
+    if isinstance(downstream, list) and downstream:
+        return str(downstream[0]).strip() or None
+    return None
+
+
 def app_config(stack: Mapping[str, Any], app: Mapping[str, Any]) -> dict[str, str]:
     prop = stack_propagation(stack)
-    return {
+    cfg = {
         "app": str(app.get("name") or ""),
         "role": infer_role(app),
         "header_name": prop["header_name"],
         "baggage_key": prop["baggage_key"],
-        "enabled": "true",
+        "enabled": "true" if propagation_inject_enabled(stack) else "false",
     }
+    downstream = first_downstream_name(app)
+    if downstream:
+        cfg["downstream"] = downstream
+        cfg["downstream_url"] = f"http://{downstream}"
+    return cfg
 
 
 def emit_env(config: Mapping[str, str], fmt: str = "env") -> str:
@@ -217,18 +243,28 @@ def emit_env(config: Mapping[str, str], fmt: str = "env") -> str:
             ]
         )
     if fmt == "k8s":
-        return "\n".join(
-            [
-                "- name: BAGGAGE_ENABLED",
-                '  value: "true"',
-                "- name: BAGGAGE_ROLE",
-                f'  value: "{role}"',
-                "- name: BAGGAGE_HEADER_NAME",
-                f'  value: "{header}"',
-                "- name: BAGGAGE_KEY",
-                f'  value: "{key}"',
-            ]
-        )
+        lines = [
+            "- name: BAGGAGE_ENABLED",
+            f'  value: "{config.get("enabled") or "true"}"',
+            "- name: BAGGAGE_ROLE",
+            f'  value: "{role}"',
+            "- name: BAGGAGE_HEADER_NAME",
+            f'  value: "{header}"',
+            "- name: BAGGAGE_KEY",
+            f'  value: "{key}"',
+        ]
+        if config.get("app"):
+            lines.extend(["- name: APP_NAME", f'  value: "{config["app"]}"'])
+        if config.get("downstream_url"):
+            lines.extend(
+                [
+                    "- name: DOWNSTREAM_URL",
+                    f'  value: "{config["downstream_url"]}"',
+                    "- name: BFF_UPSTREAM",
+                    f'  value: "{config["downstream_url"]}"',
+                ]
+            )
+        return "\n".join(lines)
     prefix = "export " if fmt == "env" else ""
     return "\n".join(
         [

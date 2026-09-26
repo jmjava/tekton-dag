@@ -30,12 +30,15 @@ Do **not** write header-copying code.
 
 1. Add the library for the runtime.
 2. Call `install()` (Spring Boot: add the starter).
-3. Emit env from the stack so header name and role match YAML:
+3. Emit env from the stack so header name and role match YAML. **Cluster deploys do this for you:** `deploy-full-stack` and the intercept tasks inject `BAGGAGE_*`, `APP_NAME`, and `DOWNSTREAM_URL` / `BFF_UPSTREAM` from the stack. Local/Vite still needs emit at build time:
 
 ```bash
 python -m tekton_dag_common.baggage_contract emit --stack stacks/stack-one.yaml --app demo-fe --format vite
+python -m tekton_dag_common.baggage_contract emit --stack stacks/stack-one.yaml --app demo-fe --format k8s
 ./scripts/baggage-doctor.sh --stack stacks/stack-one.yaml
 ```
+
+Set `propagation.enabled: false` on a stack to skip injection (production images stay default-off).
 
 | Runtime | Incoming | Outgoing (automatic) |
 |---------|----------|----------------------|
@@ -78,6 +81,12 @@ python -m tekton_dag_common.propagation_validate simulate \
 ```
 
 Sample-app conversion kit: [`sample-repos/CONVERT-BAGGAGE.md`](../sample-repos/CONVERT-BAGGAGE.md).
+
+Local (no cluster) — three Flask hops using `install()`:
+
+```bash
+./scripts/run-local-hop-chain.sh
+```
 
 ## Conformance
 

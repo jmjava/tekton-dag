@@ -85,7 +85,23 @@ spec:
           PROXY_NAME="mirrord-proxy-${APP}-${TS}"
           CM_NAME="mirrord-config-${APP}-${TS}"
 
+          BAGGAGE_ROLE=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '
+            (.apps[] | select(.name==$a)) as $app |
+            ($app.downstream // []) as $down |
+            $app."propagation-role" // (
+              if ($down|length)==0 then "terminal"
+              elif (($app.role // "")|ascii_downcase)=="frontend" then "originator"
+              else "forwarder" end)
+          ')
+          BAGGAGE_HEADER=$(echo "$STACK_JSON" | jq -r '.propagation."header-name" // "x-dev-session"')
+          BAGGAGE_KEY=$(echo "$STACK_JSON" | jq -r '.propagation."baggage-key" // "dev-session"')
+          DOWNSTREAM_URL=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '
+            (.apps[] | select(.name==$a) | .downstream // []) as $down |
+            if ($down|length)>0 then "http://" + ($down[0]|tostring) else empty end
+          ')
+
           echo "  Deploying PR pod: $POD_NAME in $NS"
+          echo "  Baggage:   role=$BAGGAGE_ROLE header=$BAGGAGE_HEADER"
           cat <<PRPOD | kubectl apply -f -
         apiVersion: v1
         kind: Pod
@@ -104,6 +120,21 @@ spec:
             args: ["-c", "while true; do echo 'PR build for ${APP}'; sleep 30; done"]
             ports:
             - containerPort: ${CPORT}
+            env:
+            - name: BAGGAGE_ENABLED
+              value: "true"
+            - name: BAGGAGE_ROLE
+              value: "${BAGGAGE_ROLE}"
+            - name: BAGGAGE_HEADER_NAME
+              value: "${BAGGAGE_HEADER}"
+            - name: BAGGAGE_KEY
+              value: "${BAGGAGE_KEY}"
+            - name: APP_NAME
+              value: "${APP}"
+            - name: DOWNSTREAM_URL
+              value: "${DOWNSTREAM_URL}"
+            - name: BFF_UPSTREAM
+              value: "${DOWNSTREAM_URL}"
         PRPOD
 
           kubectl wait --for=condition=Ready "pod/${POD_NAME}" --namespace "$NS" --timeout=300s

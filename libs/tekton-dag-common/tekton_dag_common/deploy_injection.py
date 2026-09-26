@@ -7,7 +7,9 @@ M13 pillars 6–7: stack YAML ``secrets`` and ``config`` blocks are converted in
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, Mapping
+
+from tekton_dag_common.baggage_contract import app_config, propagation_inject_enabled
 
 _DNS1123_RE = re.compile(r"[^a-z0-9-]+")
 
@@ -141,6 +143,24 @@ def validate_injection_refs(
             if name not in existing_configmaps:
                 errors.append(f"app {app_name}: missing ConfigMap {name}")
     return errors
+
+
+def build_pod_env(stack: Mapping[str, Any], app: Mapping[str, Any]) -> list[dict[str, str]]:
+    """Env vars so install() matches the stack header name, role, and next hop."""
+    if not propagation_inject_enabled(stack):
+        return []
+    cfg = app_config(stack, app)
+    env = [
+        {"name": "BAGGAGE_ENABLED", "value": "true"},
+        {"name": "BAGGAGE_ROLE", "value": cfg["role"]},
+        {"name": "BAGGAGE_HEADER_NAME", "value": cfg["header_name"]},
+        {"name": "BAGGAGE_KEY", "value": cfg["baggage_key"]},
+        {"name": "APP_NAME", "value": cfg["app"]},
+    ]
+    if cfg.get("downstream_url"):
+        env.append({"name": "DOWNSTREAM_URL", "value": cfg["downstream_url"]})
+        env.append({"name": "BFF_UPSTREAM", "value": cfg["downstream_url"]})
+    return env
 
 
 def injection_summary(app: dict[str, Any]) -> dict[str, Any]:

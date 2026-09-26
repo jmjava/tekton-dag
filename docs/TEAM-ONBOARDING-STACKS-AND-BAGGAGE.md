@@ -11,7 +11,7 @@ This guide is for **teams adopting tekton-dag** who need to:
 
 ## 1. Baggage / header-forwarding libraries (by runtime)
 
-Each app must **copy the original incoming override** onto outbound calls—except **terminals**, which only consume it. A present `pr-42` (or whatever the pipeline sent) **must not be rewritten**. The platform ships **standalone libraries** under `libs/`. Call `install()` / add the Spring starter; emit env from the stack so names match:
+Each app must **copy the original incoming override** onto outbound calls—except **terminals**, which only consume it. A present `pr-42` (or whatever the pipeline sent) **must not be rewritten**. The platform ships **standalone libraries** under `libs/`. Call `install()` / add the Spring starter. Bootstrap and intercept deploys inject `BAGGAGE_*` from the stack; emit env for local/Vite builds so names match:
 
 ```bash
 ./scripts/emit-baggage-env.sh --stack stacks/<stack>.yaml --app <app>

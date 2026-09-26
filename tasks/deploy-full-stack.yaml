@@ -12,6 +12,8 @@ spec:
     expects these Services to exist; it only adds PR pods + Telepresence intercept for changed app(s).
     M13: injects stack secrets/config blocks as envFrom and volume mounts; fails fast when
     referenced Secrets are missing.
+    Also injects BAGGAGE_* / APP_NAME / DOWNSTREAM_URL so install() copies the
+    original override header hop-to-hop without a hand-written env block.
   params:
     - name: stack-json
       type: string
@@ -125,6 +127,34 @@ spec:
                 configMap: {name: .value.configmap}
               })
             ] as $vols |
+            ($app.downstream // []) as $down |
+            (.propagation."header-name" // "x-dev-session") as $hname |
+            (.propagation."baggage-key" // "dev-session") as $bkey |
+            ((.propagation.enabled // true) | tostring) as $penabled |
+            ($app."propagation-role" // (
+              if ($down|length)==0 then "terminal"
+              elif (($app.role // "")|ascii_downcase) == "frontend" then "originator"
+              else "forwarder"
+              end
+            )) as $role |
+            (
+              if ($penabled == "false" or $penabled == "False") then []
+              else
+                [
+                  {name: "BAGGAGE_ENABLED", value: "true"},
+                  {name: "BAGGAGE_ROLE", value: $role},
+                  {name: "BAGGAGE_HEADER_NAME", value: $hname},
+                  {name: "BAGGAGE_KEY", value: $bkey},
+                  {name: "APP_NAME", value: $a}
+                ]
+                + (if ($down|length) > 0 then
+                    [
+                      {name: "DOWNSTREAM_URL", value: ("http://" + ($down[0]|tostring))},
+                      {name: "BFF_UPSTREAM", value: ("http://" + ($down[0]|tostring))}
+                    ]
+                  else [] end)
+              end
+            ) as $baggageEnv |
             {
               apiVersion: "apps/v1",
               kind: "Deployment",
@@ -150,6 +180,7 @@ spec:
                           periodSeconds: 10
                         }
                       }
+                      + (if ($baggageEnv|length) > 0 then {env: $baggageEnv} else {} end)
                       + (if ($envFrom|length) > 0 then {envFrom: $envFrom} else {} end)
                       + (if ($mounts|length) > 0 then {volumeMounts: $mounts} else {} end)
                     )],
@@ -161,6 +192,11 @@ spec:
 
           echo ""
           echo "  Deploying $APP -> $NS (image: $IMAGE)"
+          echo "$DEPLOY_JSON" | jq -r '
+            .spec.template.spec.containers[0].env // []
+            | map("    " + .name + "=" + .value)
+            | if length>0 then "  Baggage env:\n" + join("\n") else empty end
+          '
           kubectl create namespace "$NS" --dry-run=client -o yaml | kubectl apply -f -
           echo "$DEPLOY_JSON" | kubectl apply -f -
 

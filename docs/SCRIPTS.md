@@ -16,6 +16,7 @@ Shared helpers live in [`scripts/common.sh`](../scripts/common.sh) (sourced by m
 | [`run-baggage-conformance.sh`](../scripts/run-baggage-conformance.sh) | Shared override-header contract: doctor, emit, Python/Node vector tests. |
 | [`emit-baggage-env.sh`](../scripts/emit-baggage-env.sh) | Emit `BAGGAGE_*` / Vite / Spring / k8s env from a stack app. |
 | [`validate-propagation-response.sh`](../scripts/validate-propagation-response.sh) | Fail-closed hop-to-hop check against a hop-report body. |
+| [`run-local-hop-chain.sh`](../scripts/run-local-hop-chain.sh) | Local Flask originator→forwarder→terminal; fails if `pr-42` is rewritten. |
 | [`baggage-doctor.sh`](../scripts/baggage-doctor.sh) | Validate stack propagation roles and print per-app header config. |
 | [`run-isolation-eval.sh`](../scripts/run-isolation-eval.sh) | Clone-vs-intercept harness: `--offline` plan CSV; `--cluster` Kind measurements. |
 | [`run-cluster-ci.sh`](../scripts/run-cluster-ci.sh) | Kind cluster CI: isolation-eval `--cluster`, `stack-dag-verify`, Newman. Used by [cluster-regression.yml](../.github/workflows/cluster-regression.yml) (nightly / tags / Helm-or-cluster-script PRs; not every PR). |

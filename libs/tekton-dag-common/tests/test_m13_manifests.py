@@ -86,6 +86,18 @@ def test_deploy_full_stack_has_validate_secrets_param():
     assert "missing Secret" in script or "VALIDATE_SECRETS" in script
     assert "ConfigMap" in script
     assert "volname" in script or "ascii_downcase" in script
+    assert "BAGGAGE_ENABLED" in script
+    assert "BAGGAGE_ROLE" in script
+    assert "DOWNSTREAM_URL" in script
+    assert "APP_NAME" in script
+
+
+def test_intercept_tasks_inject_baggage_env():
+    for rel in ("tasks/deploy-intercept.yaml", "tasks/deploy-intercept-mirrord.yaml"):
+        script = _load(rel)["spec"]["steps"][0]["script"]
+        assert "BAGGAGE_ENABLED" in script, rel
+        assert "BAGGAGE_ROLE" in script, rel
+        assert "APP_NAME" in script, rel
 
 
 def test_resolve_stack_installs_jq_and_yq_without_swallowing_errors():

@@ -108,6 +108,20 @@ def test_stack_one_emit_and_doctor():
     )
     assert "BAGGAGE_ENABLED" in k8s
     assert 'value: "forwarder"' in k8s
+    fe_k8s = emit_env(
+        {
+            "role": "originator",
+            "header_name": "x-dev-session",
+            "baggage_key": "dev-session",
+            "app": "demo-fe",
+            "downstream_url": "http://release-lifecycle-demo",
+            "enabled": "true",
+        },
+        "k8s",
+    )
+    assert "APP_NAME" in fe_k8s
+    assert "DOWNSTREAM_URL" in fe_k8s
+    assert "BFF_UPSTREAM" in fe_k8s
     assert find_app(stack, "demo-api")["name"] == "demo-api"
 
 

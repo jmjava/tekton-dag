@@ -1,7 +1,10 @@
 """Tests for secrets/config Deployment injection helpers."""
 
+from pathlib import Path
+
 from tekton_dag_common.deploy_injection import (
     build_env_from,
+    build_pod_env,
     build_volume_mounts_and_volumes,
     injection_summary,
     referenced_configmap_names,
@@ -9,6 +12,9 @@ from tekton_dag_common.deploy_injection import (
     sanitize_volume_name,
     validate_injection_refs,
 )
+from tekton_dag_common.stack_resolver_base import load_stack_yaml
+
+ROOT = Path(__file__).resolve().parents[3]
 
 
 def _app(**kwargs):
@@ -151,3 +157,36 @@ def test_skips_incomplete_volume_mount_entries():
     assert len(volumes) == 2
     assert mounts[0]["mountPath"] == "/etc/ok"
     assert mounts[1]["mountPath"] == "/etc/cm"
+
+
+def _env_map(env):
+    return {item["name"]: item["value"] for item in env}
+
+
+def test_stack_one_pod_env_turns_libraries_on():
+    stack = load_stack_yaml(ROOT / "stacks" / "stack-one.yaml")
+    by_name = {a["name"]: a for a in stack["apps"]}
+
+    fe = _env_map(build_pod_env(stack, by_name["demo-fe"]))
+    assert fe["BAGGAGE_ENABLED"] == "true"
+    assert fe["BAGGAGE_ROLE"] == "originator"
+    assert fe["BAGGAGE_HEADER_NAME"] == "x-dev-session"
+    assert fe["APP_NAME"] == "demo-fe"
+    assert fe["DOWNSTREAM_URL"] == "http://release-lifecycle-demo"
+    assert fe["BFF_UPSTREAM"] == "http://release-lifecycle-demo"
+
+    bff = _env_map(build_pod_env(stack, by_name["release-lifecycle-demo"]))
+    assert bff["BAGGAGE_ROLE"] == "forwarder"
+    assert bff["DOWNSTREAM_URL"] == "http://demo-api"
+
+    api = _env_map(build_pod_env(stack, by_name["demo-api"]))
+    assert api["BAGGAGE_ROLE"] == "terminal"
+    assert "DOWNSTREAM_URL" not in api
+
+
+def test_pod_env_respects_propagation_disabled():
+    stack = {
+        "propagation": {"enabled": False, "header-name": "x-dev-session"},
+        "apps": [{"name": "demo-fe", "role": "frontend", "downstream": ["api"]}],
+    }
+    assert build_pod_env(stack, stack["apps"][0]) == []

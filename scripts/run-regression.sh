@@ -155,6 +155,10 @@ python3 -m tekton_dag_common.baggage_contract doctor --stack "$REPO_ROOT/stacks/
 python3 -m tekton_dag_common.baggage_contract emit --stack "$REPO_ROOT/stacks/stack-one.yaml" --all >/dev/null
 
 echo ""
+echo ">>> local hop-to-hop (Flask install(), no cluster)"
+bash "$SCRIPT_DIR/run-local-hop-chain.sh"
+
+echo ""
 echo ">>> vitest: libs/baggage-node"
 need npm
 (cd "$REPO_ROOT/libs/baggage-node" && npm install --silent && npm run test)
