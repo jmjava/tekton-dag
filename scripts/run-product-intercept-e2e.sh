@@ -201,6 +201,18 @@ verify_pr_evidence() {
 resolve_api_token
 start_port_forward
 
+# The pipeline SA cannot create ServiceAccounts. Telepresence connect runs
+# inside the PR pod and needs an API client the runner creates here.
+if [[ "$INTERCEPT_BACKEND" == "telepresence" ]]; then
+  kubectl create namespace staging --dry-run=client -o yaml | kubectl apply -f -
+  kubectl create serviceaccount telepresence-intercept -n staging \
+    --dry-run=client -o yaml | kubectl apply -f -
+  kubectl create clusterrolebinding telepresence-intercept-staging \
+    --clusterrole=cluster-admin \
+    --serviceaccount=staging:telepresence-intercept \
+    --dry-run=client -o yaml | kubectl apply -f -
+fi
+
 echo ">>> Trigger bootstrap through authenticated orchestrator API"
 bootstrap_payload="$(jq -nc --arg stack "stacks/$STACK_FILE" \
   '{mode:"bootstrap", stack_file:$stack, git_revision:"main"}')"

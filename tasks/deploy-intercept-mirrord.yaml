@@ -141,11 +141,7 @@ spec:
 
           # mirrord config: steal traffic matching header, target the deployment (original app)
           HEADER_FILTER="${INTERCEPT}"
-          if [ -z "$HEADER_FILTER" ]; then
-            HEADER_FILTER=".*"
-          else
-            HEADER_FILTER=$(printf '%s' "$HEADER_FILTER" | sed 's/: */: /')
-          fi
+          [ -z "$HEADER_FILTER" ] && HEADER_FILTER=".*"
           MIRRORD_CONFIG=$(jq -n \
             --arg path "deployment/${APP}" \
             --arg ns "$NS" \
@@ -205,7 +201,12 @@ spec:
               name: ${CM_NAME}
         PROXYPOD
 
-          kubectl wait --for=condition=Ready "pod/${PROXY_NAME}" --namespace "$NS" --timeout=120s
+          if ! kubectl wait --for=condition=Ready "pod/${PROXY_NAME}" --namespace "$NS" --timeout=120s; then
+            echo "ERROR: mirrord proxy ${PROXY_NAME} did not become Ready" >&2
+            kubectl describe "pod/${PROXY_NAME}" -n "$NS" >&2 || true
+            kubectl logs "pod/${PROXY_NAME}" -n "$NS" >&2 || true
+            exit 1
+          fi
           echo "  Intercept active for $APP (traffic with header -> PR pod $POD_NAME)"
           echo ""
 
