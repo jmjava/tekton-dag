@@ -203,14 +203,12 @@ spec:
           echo "  Pod:       $POD_NAME"
           echo "  Baggage:   role=$BAGGAGE_ROLE header=$HEADER_NAME"
 
-          INTERCEPT_ARGS=""
+          HTTP_MATCH=""
           if [ -n "$INTERCEPT" ]; then
-            INTERCEPT_ARGS="/usr/local/bin/telepresence intercept ${APP} --namespace ${NS} --port ${CPORT}:${SPORT} --http-match ${INTERCEPT}"
-          else
-            INTERCEPT_ARGS="/usr/local/bin/telepresence intercept ${APP} --namespace ${NS} --port ${CPORT}:${SPORT}"
+            HTTP_MATCH="--http-match ${INTERCEPT}"
           fi
 
-          cat <<EOF | kubectl apply -f -
+          cat <<PRPOD | kubectl apply -f -
         apiVersion: v1
         kind: Pod
         metadata:
@@ -221,7 +219,6 @@ spec:
             component: ${APP}
             managed-by: tekton-job-standardization
         spec:
-          serviceAccountName: telepresence-intercept
           containers:
           - name: pr-component
             image: ${IMAGE}
@@ -242,11 +239,37 @@ spec:
               value: "${DOWNSTREAM_URL}"
             - name: BFF_UPSTREAM
               value: "${DOWNSTREAM_URL}"
+        PRPOD
+
+          kubectl wait --for=condition=Ready "pod/${POD_NAME}" \
+            --namespace "$NS" --timeout=300s
+          PR_POD_IP=$(kubectl get pod "$POD_NAME" -n "$NS" -o jsonpath='{.status.podIP}')
+          echo "  Pod ready: $POD_NAME (IP: $PR_POD_IP)"
+
+          CLIENT_NAME="tp-client-${APP}-$(date +%s)"
+          echo "  Deploying telepresence client: $CLIENT_NAME"
+          cat <<CLIENTPOD | kubectl apply -f -
+        apiVersion: v1
+        kind: Pod
+        metadata:
+          name: ${CLIENT_NAME}
+          namespace: ${NS}
+          labels:
+            app: telepresence-client
+            component: ${APP}
+            managed-by: tekton-job-standardization
+        spec:
+          serviceAccountName: telepresence-intercept
+          containers:
           - name: telepresence
             image: $(params.telepresence-image)
             env:
             - name: HOME
               value: /tmp
+            - name: SCOUT_DISABLE
+              value: "1"
+            - name: TELEPRESENCE_LOGIN_DISABLED
+              value: "1"
             command: ["/bin/sh"]
             args:
             - -c
@@ -261,7 +284,7 @@ spec:
                 'clusters:' \
                 '- cluster:' \
                 "    certificate-authority: \$SA/ca.crt" \
-                '    server: https://kubernetes.default.svc' \
+                '    server: https://kubernetes.default.svc:443' \
                 '  name: in-cluster' \
                 'contexts:' \
                 '- context:' \
@@ -276,29 +299,35 @@ spec:
                 "    token: \$TOKEN" \
                 > /tmp/kubeconfig
               export KUBECONFIG=/tmp/kubeconfig
+              mkdir -p /dev/net
+              [ -c /dev/net/tun ] || mknod /dev/net/tun c 10 200
+              echo "telepresence version:"
               /usr/local/bin/telepresence version
-              /usr/local/bin/telepresence connect --manager-namespace ambassador
-              ${INTERCEPT_ARGS}
+              echo "connecting to traffic-manager..."
+              /usr/local/bin/telepresence connect --manager-namespace ambassador --mapped-namespaces ${NS}
+              echo "creating intercept ${APP} -> ${PR_POD_IP}:${CPORT}..."
+              /usr/local/bin/telepresence intercept ${APP} --namespace ${NS} --address ${PR_POD_IP} --port ${CPORT}:${SPORT} ${HTTP_MATCH}
               echo "Intercept active for ${APP}!"
               tail -f /dev/null
             securityContext:
               runAsUser: 0
+              privileged: true
               capabilities:
-                add: [NET_ADMIN]
-        EOF
+                add: [NET_ADMIN, NET_RAW]
+        CLIENTPOD
 
-          kubectl wait --for=condition=Ready "pod/${POD_NAME}" \
-            --namespace "$NS" --timeout=300s
-
-          echo "  Pod ready: $POD_NAME"
           echo "  Waiting until telepresence reports the intercept is active"
           deadline=$((SECONDS + 180))
-          until kubectl logs "pod/${POD_NAME}" -n "$NS" -c telepresence 2>/dev/null | grep -q "Intercept active for ${APP}!"; do
+          until kubectl logs "pod/${CLIENT_NAME}" -n "$NS" 2>/dev/null | grep -q "Intercept active for ${APP}!"; do
             if [ "$SECONDS" -ge "$deadline" ]; then
               echo "ERROR: intercept for ${APP} did not become active" >&2
-              kubectl logs "pod/${POD_NAME}" -n "$NS" -c telepresence --previous >&2 || true
-              kubectl logs "pod/${POD_NAME}" -n "$NS" -c telepresence >&2 || true
-              kubectl describe "pod/${POD_NAME}" -n "$NS" >&2 || true
+              echo "=== client status ===" >&2
+              kubectl get pod "${CLIENT_NAME}" -n "$NS" -o jsonpath='{.status.phase} {.status.containerStatuses}' >&2 || true
+              echo >&2
+              echo "=== previous client logs ===" >&2
+              kubectl logs "pod/${CLIENT_NAME}" -n "$NS" --previous >&2 || true
+              echo "=== current client logs ===" >&2
+              kubectl logs "pod/${CLIENT_NAME}" -n "$NS" >&2 || true
               exit 1
             fi
             sleep 5
