@@ -43,7 +43,7 @@ spec:
       default: "staging"
     - name: telepresence-image
       type: string
-      default: "ghcr.io/telepresenceio/tel2:2.20.0"
+      default: "localhost:5000/tekton-dag-build-telepresence:latest"
   workspaces:
     - name: shared-workspace
       optional: true
@@ -203,6 +203,12 @@ spec:
           echo "  Pod:       $POD_NAME"
           echo "  Baggage:   role=$BAGGAGE_ROLE header=$HEADER_NAME"
 
+          kubectl create serviceaccount telepresence-intercept -n "$NS" --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create clusterrolebinding "telepresence-intercept-${NS}" \
+            --clusterrole=cluster-admin \
+            --serviceaccount="${NS}:telepresence-intercept" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
           INTERCEPT_ARGS=""
           if [ -n "$INTERCEPT" ]; then
             INTERCEPT_ARGS="telepresence intercept ${APP} --namespace ${NS} --port ${CPORT}:${SPORT} --http-match ${INTERCEPT}"
@@ -221,6 +227,7 @@ spec:
             component: ${APP}
             managed-by: tekton-job-standardization
         spec:
+          serviceAccountName: telepresence-intercept
           containers:
           - name: pr-component
             image: ${IMAGE}
@@ -248,13 +255,13 @@ spec:
             - -c
             - |
               set -e
-              sleep 10
-              telepresence helm install
-              telepresence connect
+              sleep 2
+              telepresence connect --manager-namespace ambassador --namespace ${NS}
               ${INTERCEPT_ARGS}
               echo "Intercept active for ${APP}!"
               tail -f /dev/null
             securityContext:
+              runAsUser: 0
               capabilities:
                 add: [NET_ADMIN]
         EOF

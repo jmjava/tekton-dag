@@ -59,5 +59,5 @@ kubectl wait --for=condition=Available deployment/traffic-manager -n "$NAMESPACE
 echo ""
 echo "  Done. Traffic Manager is in namespace '$NAMESPACE'."
 echo "  PR pipeline deploy-intercept pods will use it for intercepts."
-echo "  (Sidecar image in deploy-intercept task should match; default tel2:2.20.0)"
+echo "  (Intercept sidecar uses the telepresence CLI image, not the tel2 agent)"
 echo ""

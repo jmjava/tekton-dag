@@ -141,7 +141,11 @@ spec:
 
           # mirrord config: steal traffic matching header, target the deployment (original app)
           HEADER_FILTER="${INTERCEPT}"
-          [ -z "$HEADER_FILTER" ] && HEADER_FILTER=".*"
+          if [ -z "$HEADER_FILTER" ]; then
+            HEADER_FILTER=".*"
+          else
+            HEADER_FILTER=$(printf '%s' "$HEADER_FILTER" | sed 's/: */: /')
+          fi
           MIRRORD_CONFIG=$(jq -n \
             --arg path "deployment/${APP}" \
             --arg ns "$NS" \

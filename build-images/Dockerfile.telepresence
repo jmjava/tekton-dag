@@ -1,0 +1,11 @@
+# CLI image for in-cluster intercepts.
+# ghcr.io/telepresenceio/tel2 is the traffic agent and does not contain
+# the telepresence binary the deploy task runs.
+FROM bitnami/kubectl:latest
+
+USER root
+ARG TELEPRESENCE_VERSION=2.20.0
+RUN curl -fsSL "https://github.com/telepresenceio/telepresence/releases/download/v${TELEPRESENCE_VERSION}/telepresence-linux-amd64" -o /usr/local/bin/telepresence \
+  && chmod +x /usr/local/bin/telepresence \
+  && telepresence version
+USER 1001

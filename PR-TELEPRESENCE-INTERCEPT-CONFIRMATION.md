@@ -36,7 +36,7 @@ For a stack **A → B → C → D** where **C** changed in the PR:
 - **Intercept header:** `x-dev-session:pr-<number>` (configurable via stack `propagation.header-name`)
 - **Intercept command:** `telepresence intercept <app> --namespace <ns> --port <container>:<service> --http-match <header>`
 - **PR pod naming:** `pr-<app>-<timestamp>`
-- **Telepresence image:** `ghcr.io/telepresenceio/tel2:2.20.0`
+- **Telepresence image:** `localhost:5000/tekton-dag-build-telepresence:latest` (CLI). Traffic Manager stays `tel2`, installed separately.
 
 ### Source references
 
