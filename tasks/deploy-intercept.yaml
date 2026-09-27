@@ -308,7 +308,7 @@ spec:
               echo "connecting to traffic-manager..."
               /usr/local/bin/telepresence connect --manager-namespace ambassador --mapped-namespaces ${NS}
               echo "creating intercept ${APP} -> ${PR_POD_IP}:${CPORT}..."
-              /usr/local/bin/telepresence intercept ${APP} --namespace ${NS} --address ${PR_POD_IP} --port ${CPORT}:${SPORT} ${HTTP_MATCH}
+              /usr/local/bin/telepresence intercept ${APP} --address ${PR_POD_IP} --port ${CPORT}:${SPORT} ${HTTP_MATCH}
               echo "Intercept active for ${APP}!"
               tail -f /dev/null
             securityContext:
