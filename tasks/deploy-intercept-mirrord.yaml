@@ -181,9 +181,12 @@ spec:
             - -c
             - |
               set -e
+              export HOME=/tmp
               echo "Starting mirrord proxy for ${APP} -> ${PR_POD_IP}:${CPORT}"
-              exec mirrord exec -f /config/config.json -- socat TCP-LISTEN:${CPORT},fork TCP:${PR_POD_IP}:${CPORT}
+              exec /usr/local/bin/mirrord exec -f /config/config.json -- socat TCP-LISTEN:${CPORT},fork TCP:${PR_POD_IP}:${CPORT}
             env:
+            - name: HOME
+              value: /tmp
             - name: PR_POD_IP
               value: "${PR_POD_IP}"
             - name: CPORT
@@ -193,6 +196,8 @@ spec:
               mountPath: /config
               readOnly: true
             securityContext:
+              runAsUser: 0
+              privileged: true
               capabilities:
                 add: [SYS_ADMIN, SYS_PTRACE, NET_ADMIN]
           volumes:

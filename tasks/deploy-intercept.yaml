@@ -205,9 +205,9 @@ spec:
 
           INTERCEPT_ARGS=""
           if [ -n "$INTERCEPT" ]; then
-            INTERCEPT_ARGS="telepresence intercept ${APP} --namespace ${NS} --port ${CPORT}:${SPORT} --http-match ${INTERCEPT}"
+            INTERCEPT_ARGS="/usr/local/bin/telepresence intercept ${APP} --namespace ${NS} --port ${CPORT}:${SPORT} --http-match ${INTERCEPT}"
           else
-            INTERCEPT_ARGS="telepresence intercept ${APP} --namespace ${NS} --port ${CPORT}:${SPORT}"
+            INTERCEPT_ARGS="/usr/local/bin/telepresence intercept ${APP} --namespace ${NS} --port ${CPORT}:${SPORT}"
           fi
 
           cat <<EOF | kubectl apply -f -
@@ -244,13 +244,40 @@ spec:
               value: "${DOWNSTREAM_URL}"
           - name: telepresence
             image: $(params.telepresence-image)
+            env:
+            - name: HOME
+              value: /tmp
             command: ["/bin/sh"]
             args:
             - -c
             - |
               set -e
-              sleep 2
-              telepresence connect --manager-namespace ambassador --namespace ${NS}
+              export HOME=/tmp
+              SA=/var/run/secrets/kubernetes.io/serviceaccount
+              TOKEN=\$(cat "\$SA/token")
+              printf '%s\n' \
+                'apiVersion: v1' \
+                'kind: Config' \
+                'clusters:' \
+                '- cluster:' \
+                "    certificate-authority: \$SA/ca.crt" \
+                '    server: https://kubernetes.default.svc' \
+                '  name: in-cluster' \
+                'contexts:' \
+                '- context:' \
+                '    cluster: in-cluster' \
+                '    namespace: ${NS}' \
+                '    user: sa' \
+                '  name: in-cluster' \
+                'current-context: in-cluster' \
+                'users:' \
+                '- name: sa' \
+                '  user:' \
+                "    token: \$TOKEN" \
+                > /tmp/kubeconfig
+              export KUBECONFIG=/tmp/kubeconfig
+              /usr/local/bin/telepresence version
+              /usr/local/bin/telepresence connect --manager-namespace ambassador
               ${INTERCEPT_ARGS}
               echo "Intercept active for ${APP}!"
               tail -f /dev/null
@@ -269,7 +296,9 @@ spec:
           until kubectl logs "pod/${POD_NAME}" -n "$NS" -c telepresence 2>/dev/null | grep -q "Intercept active for ${APP}!"; do
             if [ "$SECONDS" -ge "$deadline" ]; then
               echo "ERROR: intercept for ${APP} did not become active" >&2
+              kubectl logs "pod/${POD_NAME}" -n "$NS" -c telepresence --previous >&2 || true
               kubectl logs "pod/${POD_NAME}" -n "$NS" -c telepresence >&2 || true
+              kubectl describe "pod/${POD_NAME}" -n "$NS" >&2 || true
               exit 1
             fi
             sleep 5
