@@ -41,16 +41,15 @@ echo "=============================================="
 # environments with "mkdir /root/snap: permission denied"; then run this script with
 # full permissions or install helm without snap (e.g. get.helm.sh).
 kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+# http2Probe hangs nginx/HTTP1 apps on headered intercepts (curl HTTP 000).
+HELM_COMMON=(--namespace "$NAMESPACE" --version "$TELEPRESENCE_VERSION"
+  --set agent.appProtocolStrategy=http)
 if helm status traffic-manager -n "$NAMESPACE" >/dev/null 2>&1; then
   echo "  Upgrading existing traffic-manager..."
-  helm upgrade --namespace "$NAMESPACE" --reuse-values \
-    --version "$TELEPRESENCE_VERSION" \
-    traffic-manager "$CHART_OCI"
+  helm upgrade "${HELM_COMMON[@]}" traffic-manager "$CHART_OCI"
 else
   echo "  Installing traffic-manager..."
-  helm install --create-namespace --namespace "$NAMESPACE" \
-    --version "$TELEPRESENCE_VERSION" \
-    traffic-manager "$CHART_OCI"
+  helm install --create-namespace "${HELM_COMMON[@]}" traffic-manager "$CHART_OCI"
 fi
 
 echo "  Waiting for Traffic Manager to be ready..."
