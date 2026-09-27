@@ -4,7 +4,7 @@
 FROM bitnami/kubectl:latest
 
 USER root
-ARG TELEPRESENCE_VERSION=2.20.0
+ARG TELEPRESENCE_VERSION=2.25.0
 RUN curl -fsSL "https://github.com/telepresenceio/telepresence/releases/download/v${TELEPRESENCE_VERSION}/telepresence-linux-amd64" -o /usr/local/bin/telepresence \
   && chmod +x /usr/local/bin/telepresence \
   && telepresence version

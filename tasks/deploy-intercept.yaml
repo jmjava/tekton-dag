@@ -203,9 +203,12 @@ spec:
           echo "  Pod:       $POD_NAME"
           echo "  Baggage:   role=$BAGGAGE_ROLE header=$HEADER_NAME"
 
-          # OSS 2.20 has no HTTP filter flags (--http-match is unknown).
-          # A TCP intercept still delivers headered requests to the PR pod.
-          HTTP_MATCH=""
+          if [ -z "$INTERCEPT" ]; then
+            echo "ERROR: intercept header is required so unmatched traffic stays on baseline" >&2
+            exit 1
+          fi
+          HTTP_HEADER="${INTERCEPT%%:*}=${INTERCEPT#*:}"
+          HTTP_MATCH="--http-header '${HTTP_HEADER}'"
 
           cat <<PRPOD | kubectl apply -f -
         apiVersion: v1
@@ -317,7 +320,10 @@ spec:
 
           echo "  Waiting until telepresence reports the intercept is active"
           deadline=$((SECONDS + 180))
-          until kubectl logs "pod/${CLIENT_NAME}" -n "$NS" 2>/dev/null | grep -q "Intercept active for ${APP}!"; do
+          until kubectl logs "pod/${CLIENT_NAME}" -n "$NS" 2>/dev/null \
+              | grep -q "Intercept active for ${APP}!" \
+            && kubectl logs "pod/${CLIENT_NAME}" -n "$NS" 2>/dev/null \
+              | grep -qiE 'HTTP requests with|Intercepting.*[Hh]eader'; do
             if [ "$SECONDS" -ge "$deadline" ]; then
               echo "ERROR: intercept for ${APP} did not become active" >&2
               echo "=== client status ===" >&2
