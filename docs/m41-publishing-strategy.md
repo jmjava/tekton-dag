@@ -1,6 +1,6 @@
 # Milestone 4.1 — Library publishing and consumption strategy
 
-This document covers how each standalone baggage library is published, consumed, and excluded from production builds.
+This document covers how each standalone baggage library is published, consumed, and excluded from production builds. Behavior is defined by [BAGGAGE-CONTRACT.md](BAGGAGE-CONTRACT.md): every client copies the original override header unchanged.
 
 ## Library inventory
 

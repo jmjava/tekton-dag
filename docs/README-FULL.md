@@ -358,7 +358,7 @@ def call_downstream(url):
 
 **Terminal (any language)**: just accept the header — no code needed beyond what the framework/OTel agent already does for routing.
 
-The `validate-propagation` task sends a request through the entry point (originator), verifies the header reaches every downstream hop, and checks that each app behaved according to its role. For single-app stacks this degrades to a health check.
+The `validate-propagation` task sends a request through the entry point (originator) and **fails closed** if the original override is missing or rewritten on a required hop. Apps should echo a hop report on `GET /propagation`. For single-app stacks this degrades to a health check.
 
 ## Directory Structure
 

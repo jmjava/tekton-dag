@@ -1,24 +1,30 @@
 # tekton-dag-baggage
 
-Role-aware W3C baggage / `x-dev-session` middleware for Flask applications.
+Transfers the **original override header** (`x-dev-session` / W3C baggage) hop-to-hop so intercepts can find a PR container somewhere in the stack.
+
+Do not write your own header code. Call `install(app)`. Spec: [docs/BAGGAGE-CONTRACT.md](../../docs/BAGGAGE-CONTRACT.md).
 
 ## Installation
 
 ```bash
 pip install -e /path/to/tekton-dag/libs/baggage-python
-# or from git:
-pip install "tekton-dag-baggage @ git+https://github.com/jmjava/tekton-dag.git#subdirectory=libs/baggage-python"
 ```
 
-## Configuration (environment variables)
+## Configuration (environment)
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `BAGGAGE_ENABLED` | (unset) | Must be `true` to activate middleware |
+| `BAGGAGE_ENABLED` | (unset) | Must be `true` to activate |
 | `BAGGAGE_ROLE` | `forwarder` | `originator`, `forwarder`, or `terminal` |
-| `BAGGAGE_HEADER_NAME` | `x-dev-session` | Custom header name |
+| `BAGGAGE_HEADER_NAME` | `x-dev-session` | Override header |
 | `BAGGAGE_KEY` | `dev-session` | W3C baggage key |
-| `BAGGAGE_SESSION_VALUE` | (empty) | Session value for originator role |
+| `BAGGAGE_SESSION_VALUE` | (empty) | Originator mint **only** when nothing incoming |
+
+Emit from the stack:
+
+```bash
+./scripts/emit-baggage-env.sh --stack stacks/stack-one.yaml --app demo-api
+```
 
 ## Usage
 
@@ -27,21 +33,14 @@ from flask import Flask
 import tekton_dag_baggage
 
 app = Flask(__name__)
-tekton_dag_baggage.init_app(app)
+tekton_dag_baggage.install(app)  # incoming + instruments requests.Session
 ```
 
-For outgoing requests:
-```python
-session = tekton_dag_baggage.BaggageSession()
-session.get("http://downstream-service/api")
-```
+Originators **adopt** an incoming `pr-42` and copy it downstream. They do not replace it with `BAGGAGE_SESSION_VALUE`.
 
 ## Production safety
 
-- **Build-time**: add as an extras group (`pip install myapp[baggage]`). Production installs without the extra.
-- **Runtime**: middleware is inert unless `BAGGAGE_ENABLED=true`.
-
-## Testing
+Inert unless `BAGGAGE_ENABLED=true`. Prefer a dev extra so production installs omit the package.
 
 ```bash
 pip install -e ".[test]"

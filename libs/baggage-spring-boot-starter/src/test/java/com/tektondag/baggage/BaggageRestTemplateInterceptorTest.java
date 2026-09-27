@@ -21,6 +21,20 @@ class BaggageRestTemplateInterceptorTest {
   }
 
   @Test
+  void originatorPrefersContextOriginalOverride() throws Exception {
+    BaggageProperties props = new BaggageProperties();
+    props.setRole(BaggageRole.ORIGINATOR);
+    props.setSessionValue("orig-session");
+    BaggageContextHolder.set("pr-42");
+
+    var interceptor = new BaggageRestTemplateInterceptor(props);
+    var request = new MockClientHttpRequest(HttpMethod.GET, URI.create("http://downstream/api"));
+    interceptor.intercept(request, EMPTY, mockExecution());
+
+    assertEquals("pr-42", request.getHeaders().getFirst("x-dev-session"));
+  }
+
+  @Test
   void originatorSetsHeaders() throws Exception {
     BaggageProperties props = new BaggageProperties();
     props.setRole(BaggageRole.ORIGINATOR);

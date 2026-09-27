@@ -76,18 +76,18 @@ class BaggageContextFilterTest {
   }
 
   @Test
-  void originatorIgnoresIncomingHeader() throws Exception {
+  void originatorPreservesOriginalOverrideHeader() throws Exception {
     BaggageProperties props = originatorProps("configured-value");
     BaggageContextFilter filter = new BaggageContextFilter(props);
 
     MockHttpServletRequest request = new MockHttpServletRequest();
-    request.addHeader("x-dev-session", "should-be-ignored");
+    request.addHeader("x-dev-session", "pr-42");
     MockHttpServletResponse response = new MockHttpServletResponse();
 
     FilterChain chain = mock(FilterChain.class);
     doAnswer(
             inv -> {
-              assertEquals("configured-value", BaggageContextHolder.get());
+              assertEquals("pr-42", BaggageContextHolder.get());
               return null;
             })
         .when(chain)

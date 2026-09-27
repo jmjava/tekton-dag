@@ -181,11 +181,27 @@ spec:
 
           POD_NAME="pr-${APP}-$(date +%s)"
 
+          BAGGAGE_ROLE=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '
+            (.apps[] | select(.name==$a)) as $app |
+            ($app.downstream // []) as $down |
+            $app."propagation-role" // (
+              if ($down|length)==0 then "terminal"
+              elif (($app.role // "")|ascii_downcase)=="frontend" then "originator"
+              else "forwarder" end)
+          ')
+          HEADER_NAME=$(echo "$STACK_JSON" | jq -r '.propagation."header-name" // "x-dev-session"')
+          BAGGAGE_KEY=$(echo "$STACK_JSON" | jq -r '.propagation."baggage-key" // "dev-session"')
+          DOWNSTREAM_URL=$(echo "$STACK_JSON" | jq -r --arg a "$APP" '
+            (.apps[] | select(.name==$a) | .downstream // []) as $down |
+            if ($down|length)>0 then "http://" + ($down[0]|tostring) else empty end
+          ')
+
           echo "  Image:     $IMAGE"
           echo "  Namespace: $NS"
           echo "  Ports:     container=$CPORT  service=$SPORT"
           echo "  Intercept: $INTERCEPT"
           echo "  Pod:       $POD_NAME"
+          echo "  Baggage:   role=$BAGGAGE_ROLE header=$HEADER_NAME"
 
           INTERCEPT_ARGS=""
           if [ -n "$INTERCEPT" ]; then
@@ -212,6 +228,21 @@ spec:
             args: ["-c", "while true; do echo 'PR build for ${APP}'; sleep 30; done"]
             ports:
             - containerPort: ${CPORT}
+            env:
+            - name: BAGGAGE_ENABLED
+              value: "true"
+            - name: BAGGAGE_ROLE
+              value: "${BAGGAGE_ROLE}"
+            - name: BAGGAGE_HEADER_NAME
+              value: "${HEADER_NAME}"
+            - name: BAGGAGE_KEY
+              value: "${BAGGAGE_KEY}"
+            - name: APP_NAME
+              value: "${APP}"
+            - name: DOWNSTREAM_URL
+              value: "${DOWNSTREAM_URL}"
+            - name: BFF_UPSTREAM
+              value: "${DOWNSTREAM_URL}"
           - name: telepresence
             image: $(params.telepresence-image)
             command: ["/bin/sh"]

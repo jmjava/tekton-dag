@@ -2,7 +2,7 @@
 
 This guide is for **teams adopting tekton-dag** who need to:
 
-1. **Propagate the dev-session header** (`x-dev-session` by default) and W3C Baggage through their services so PR intercepts and validation tasks work.
+1. **Transfer the original override header** (`x-dev-session: pr-42` by default) hop-to-hop so intercepts can find the PR container somewhere in the stack. Do not write your own header code — use the contract libraries. See [BAGGAGE-CONTRACT.md](BAGGAGE-CONTRACT.md).
 2. **Define a new stack** (DAG of repos) and wire it into a team deployment.
 
 **Prerequisites:** read [DAG-AND-PROPAGATION.md](DAG-AND-PROPAGATION.md) for propagation roles and intercept behavior, and [CUSTOMIZATION.md](CUSTOMIZATION.md) for Helm, registries, and pipeline hooks. For environment naming (validation vs production), see [ENVIRONMENTS-AND-CLUSTERS.md](ENVIRONMENTS-AND-CLUSTERS.md).
@@ -11,7 +11,12 @@ This guide is for **teams adopting tekton-dag** who need to:
 
 ## 1. Baggage / header-forwarding libraries (by runtime)
 
-Each app in the propagation chain must **read** incoming baggage (or the plain header), keep it in request context, and **attach** it on outbound calls—except **terminals**, which only consume it. The platform ships **standalone libraries** under `libs/`; sample apps in sibling repos (e.g. `tekton-dag-vue-fe`) also demonstrate integration.
+Each app must **copy the original incoming override** onto outbound calls—except **terminals**, which only consume it. A present `pr-42` (or whatever the pipeline sent) **must not be rewritten**. The platform ships **standalone libraries** under `libs/`. Call `install()` / add the Spring starter. Bootstrap and intercept deploys inject `BAGGAGE_*` from the stack; emit env for local/Vite builds so names match:
+
+```bash
+./scripts/emit-baggage-env.sh --stack stacks/<stack>.yaml --app <app>
+./scripts/baggage-doctor.sh --stack stacks/<stack>.yaml
+```
 
 | Runtime / stack | Library (Maven npm pip composer) | Code in this repo | Documentation |
 |-----------------|----------------------------------|-------------------|---------------|
@@ -31,11 +36,11 @@ Each app in the propagation chain must **read** incoming baggage (or the plain h
 
 | Library | Incoming requests | Outgoing requests |
 |---------|-------------------|-------------------|
-| **Spring Boot starter** | Auto-configured filter | `RestTemplate` interceptor (auto) |
-| **Servlet filter** | `web.xml` or programmatic filter | Your code must copy context to outbound clients |
-| **Flask** | `init_app` middleware | `BaggageSession` helper for HTTP calls |
-| **Node** | Config + fetch wrapper or **Axios** interceptor | `createBaggageFetch` / `createAxiosInterceptor` |
-| **PHP** | `BaggageMiddleware` | `GuzzleMiddleware` on `HandlerStack` |
+| **Spring Boot starter** | Auto-configured filter (header, cookie, query) | `RestTemplate` interceptor (auto); `BaggagePropagator.apply` for other clients |
+| **Servlet filter** | `web.xml` or programmatic filter | `BaggageOutgoing.apply` — do not copy headers by hand |
+| **Flask** | `install(app)` | `requests.Session` is instrumented automatically |
+| **Node** | `adoptIncoming` / URL query / cookie | `install()` patches `fetch`; Axios interceptor still available |
+| **PHP** | `Baggage::install()` | `Baggage::guzzleClient()` |
 
 ### Historical note
 
@@ -91,7 +96,7 @@ The orchestrator must map **GitHub repo → stack + app**. If you add new repos,
 
 1. Ensure **compile images** exist for your toolchains ([CUSTOMIZATION.md §3](CUSTOMIZATION.md), [§7](CUSTOMIZATION.md)).
 2. Apply **tasks and pipelines** to the team namespace (or use the chart).
-3. Run a **bootstrap** then a **PR** pipeline against the validation cluster; confirm **validate-propagation** and **validate-original-traffic** pass.
+3. Run a **bootstrap** then a **PR** pipeline against the validation cluster; confirm **validate-propagation** and **validate-original-traffic** pass. `validate-propagation` is **fail-closed**: a missing or rewritten original override (`pr-42`) fails the task. Each app should echo a hop report on `GET /propagation` — see [BAGGAGE-CONTRACT.md](BAGGAGE-CONTRACT.md) and [sample-repos/CONVERT-BAGGAGE.md](../sample-repos/CONVERT-BAGGAGE.md).
 
 ### Step G — Docs and ownership
 
@@ -103,6 +108,7 @@ Document your stack name, entry URL, and who owns each repo. Link runbooks to [P
 
 | Topic | Document |
 |-------|----------|
+| Override header contract | [BAGGAGE-CONTRACT.md](BAGGAGE-CONTRACT.md) |
 | Role semantics & intercepts | [DAG-AND-PROPAGATION.md](DAG-AND-PROPAGATION.md) |
 | Teams, Helm, hooks, tool versions | [CUSTOMIZATION.md](CUSTOMIZATION.md) |
 | Multi-team Helm layout | [m10-multi-team-architecture.md](m10-multi-team-architecture.md) |

@@ -7,7 +7,10 @@ metadata:
     app.kubernetes.io/version: "1.0.0"
 spec:
   description: >
-    Validates that the baggage header reaches the intercepted app(s).
+    Fail-closed check that the original override header is transferred
+    hop-to-hop up to the intercepted app(s). A rewritten or dropped
+    value (e.g. pr-42 → local-debug) fails the task: intercepts only
+    match the original session.
 
     The header only needs to propagate from the entry point UP TO
     the intercepted app. Beyond the intercept, downstream calls are
@@ -154,7 +157,7 @@ spec:
             '(.defaults.namespace // $d) as $dn | .apps[]|select(.name==$a)|.namespace // $dn')
           SPORT=$(echo "$STACK_JSON" | jq -r --arg a "$ENTRY" \
             '(.defaults."service-port" // "80") as $dp | .apps[]|select(.name==$a)|."service-port" // $dp')
-          URL="http://${ENTRY}.${NS}.svc.cluster.local:${SPORT}/"
+          URL="http://${ENTRY}.${NS}.svc.cluster.local:${SPORT}/propagation"
 
           echo "  Health check: $URL"
           HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
@@ -179,25 +182,69 @@ spec:
           '(.defaults.namespace // $d) as $dn | .apps[]|select(.name==$a)|.namespace // $dn')
         SPORT=$(echo "$STACK_JSON" | jq -r --arg a "$ENTRY" \
           '(.defaults."service-port" // "80") as $dp | .apps[]|select(.name==$a)|."service-port" // $dp')
-        URL="http://${ENTRY}.${NS}.svc.cluster.local:${SPORT}/"
+        BASE="http://${ENTRY}.${NS}.svc.cluster.local:${SPORT}"
+        TRACEPARENT="00-$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c 32)-$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c 16)-01"
 
+        fetch_originator() {
+          curl -s \
+            -H "${HEADER_NAME}: ${HEADER_VAL}" \
+            -H "baggage: ${BAGGAGE_KEY}=${HEADER_VAL}" \
+            -H "traceparent: ${TRACEPARENT}" \
+            --connect-timeout 10 --max-time 60 \
+            "$1" 2>/dev/null || echo '{"error":"unreachable"}'
+        }
+
+        URL="${BASE}/propagation"
         echo "Sending test request to originator: $URL"
         echo "  Headers: ${HEADER_NAME}=${HEADER_VAL}, baggage=${BAGGAGE_KEY}=${HEADER_VAL}"
         echo ""
 
-        RESULT=$(curl -s \
-          -H "${HEADER_NAME}: ${HEADER_VAL}" \
-          -H "baggage: ${BAGGAGE_KEY}=${HEADER_VAL}" \
-          -H "traceparent: 00-$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c 32)-$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c 16)-01" \
-          --connect-timeout 10 --max-time 60 \
-          "$URL" 2>/dev/null || echo '{"error":"unreachable"}')
+        RESULT=$(fetch_originator "$URL")
+        if echo "$RESULT" | grep -Eq '"error"[[:space:]]*:[[:space:]]*"unreachable"' \
+          || echo "$RESULT" | grep -qi '404'; then
+          URL="${BASE}/"
+          echo "  /propagation unavailable — retrying $URL"
+          RESULT=$(fetch_originator "$URL")
+        fi
 
         echo "Response:"
         echo "$RESULT" | jq '.' 2>/dev/null || echo "$RESULT"
         echo ""
 
-        # Hop-by-hop verification
-        echo "Hop-by-hop verification:"
+        FAILED=0
+
+        if echo "$RESULT" | grep -Eq '"error"[[:space:]]*:[[:space:]]*"unreachable"'; then
+          echo "FAIL: originator unreachable — cannot prove hop-to-hop copy"
+          FAILED=1
+        fi
+
+        HEADER_FOUND=false
+        if [ -n "$HEADER_VAL" ] && printf '%s' "$RESULT" | grep -Fq "$HEADER_VAL"; then
+          HEADER_FOUND=true
+        fi
+
+        REWRITTEN=false
+        REWRITE_VALS=$(printf '%s' "$RESULT" | jq -r '
+          .. | objects
+          | (.session // .devSession // .headerValue // empty)
+          | select(type=="string" and . != "")
+        ' 2>/dev/null || true)
+        if [ -n "$HEADER_VAL" ] && [ -n "$REWRITE_VALS" ]; then
+          for SV in $REWRITE_VALS; do
+            if [ "$SV" != "$HEADER_VAL" ]; then
+              REWRITTEN=true
+              echo "FAIL: original override '$HEADER_VAL' was rewritten to '$SV'"
+              FAILED=1
+            fi
+          done
+        fi
+
+        if [ -n "$HEADER_VAL" ] && ! $HEADER_FOUND; then
+          echo "FAIL: original override '$HEADER_VAL' missing from response"
+          FAILED=1
+        fi
+
+        echo "Hop-by-hop verification (fail-closed):"
         HOP=0
         for APP in $CHAIN; do
           HOP=$((HOP + 1))
@@ -212,29 +259,51 @@ spec:
           MARKER=""
           $IS_INTERCEPTED && MARKER=" [INTERCEPTED]"
 
+          REPO_BASE=$(echo "$STACK_JSON" | jq -r --arg a "$APP" \
+            '.apps[]|select(.name==$a)|.repo // ""' | awk -F/ '{print $NF}')
           REACHED=false
           echo "$RESULT" | grep -qi "$APP" && REACHED=true
+          if [ -n "$REPO_BASE" ]; then
+            echo "$RESULT" | grep -qi "$REPO_BASE" && REACHED=true
+          fi
 
-          # Header is only REQUIRED up to the deepest intercept
+          HOP_SESSION=$(printf '%s' "$RESULT" | jq -r --arg a "$APP" '
+            [.. | objects | select((.app // .name // .service // "") | ascii_downcase | contains($a | ascii_downcase))]
+            | map(.session // .devSession // .headerValue // empty)
+            | map(select(. != ""))
+            | first // empty
+          ' 2>/dev/null || true)
+
           HEADER_REQUIRED=true
           if [ $HOP -gt $DEEPEST_INTERCEPT_POS ] && [ $DEEPEST_INTERCEPT_POS -gt 0 ]; then
             HEADER_REQUIRED=false
           fi
 
-          if $REACHED; then
-            echo "  HOP $HOP $APP ($PROP_ROLE)${MARKER}: REACHED"
-          elif $HEADER_REQUIRED; then
-            echo "  HOP $HOP $APP ($PROP_ROLE)${MARKER}: NOT CONFIRMED (header required at this hop)"
+          if ! $HEADER_REQUIRED; then
+            echo "  HOP $HOP $APP ($PROP_ROLE): OK (beyond intercept — original override not required)"
+          elif ! $REACHED; then
+            echo "  HOP $HOP $APP ($PROP_ROLE)${MARKER}: FAIL — NOT REACHED (header required at this hop)"
+            FAILED=1
+          elif [ -n "$HOP_SESSION" ] && [ -n "$HEADER_VAL" ] && [ "$HOP_SESSION" != "$HEADER_VAL" ]; then
+            echo "  HOP $HOP $APP ($PROP_ROLE)${MARKER}: FAIL — rewritten session='$HOP_SESSION' (expected '$HEADER_VAL')"
+            FAILED=1
+          elif [ -n "$HEADER_VAL" ] && ! $HEADER_FOUND && [ -z "$HOP_SESSION" ]; then
+            echo "  HOP $HOP $APP ($PROP_ROLE)${MARKER}: FAIL — original override not confirmed"
+            FAILED=1
           else
-            echo "  HOP $HOP $APP ($PROP_ROLE): OK (beyond intercept — normal call, header not required)"
+            echo "  HOP $HOP $APP ($PROP_ROLE)${MARKER}: PASS — REACHED session=${HOP_SESSION:-$HEADER_VAL}"
           fi
         done
 
-        # Check header value in response
-        if echo "$RESULT" | grep -qi "$HEADER_VAL"; then
-          echo ""
-          echo "  Header value '$HEADER_VAL' found in response — propagation confirmed"
+        echo ""
+        if [ "$FAILED" -ne 0 ]; then
+          echo "FAIL: original override was not transferred hop-to-hop"
+          exit 1
         fi
-
+        if $HEADER_FOUND; then
+          echo "PASS: original override '$HEADER_VAL' transferred hop-to-hop"
+        else
+          echo "PASS: hop-to-hop verification complete"
+        fi
         echo ""
         echo "Propagation validation complete."

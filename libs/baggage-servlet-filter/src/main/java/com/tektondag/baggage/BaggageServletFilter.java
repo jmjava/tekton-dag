@@ -7,11 +7,12 @@ import javax.servlet.FilterConfig;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 
 /**
  * Role-aware baggage filter for Servlet-based (non-Boot) apps.
- * Configured via init-params in web.xml or programmatic registration.
+ * Stores the original override header for {@link BaggageOutgoing}.
  *
  * Production safety: no-op unless BAGGAGE_ENABLED=true env var is set.
  */
@@ -21,7 +22,7 @@ public class BaggageServletFilter implements Filter {
   private String headerName = "x-dev-session";
   private String baggageKey = "dev-session";
   private String sessionValue = "";
-  private Boolean enabledOverride; // null = read from env; non-null = use this value
+  private Boolean enabledOverride;
 
   @Override
   public void init(FilterConfig config) throws ServletException {
@@ -61,14 +62,16 @@ public class BaggageServletFilter implements Filter {
   @Override
   public void destroy() {}
 
-  // --- package-private for testing ---
-
   BaggageRole getRole() {
     return role;
   }
 
   String getHeaderName() {
     return headerName;
+  }
+
+  String getBaggageKey() {
+    return baggageKey;
   }
 
   void setRole(BaggageRole role) {
@@ -89,13 +92,24 @@ public class BaggageServletFilter implements Filter {
   }
 
   private String resolveValue(HttpServletRequest request) {
-    return switch (role) {
-      case ORIGINATOR -> nonBlank(sessionValue);
-      case FORWARDER, TERMINAL -> nonBlank(request.getHeader(headerName));
-    };
+    return BaggagePolicy.incomingSession(
+        role,
+        request.getHeader(headerName),
+        cookieValue(request, headerName),
+        request.getParameter(headerName),
+        sessionValue);
   }
 
-  private static String nonBlank(String s) {
-    return (s != null && !s.isBlank()) ? s.trim() : null;
+  static String cookieValue(HttpServletRequest request, String name) {
+    Cookie[] cookies = request.getCookies();
+    if (cookies == null) {
+      return null;
+    }
+    for (Cookie cookie : cookies) {
+      if (name.equalsIgnoreCase(cookie.getName())) {
+        return cookie.getValue();
+      }
+    }
+    return null;
   }
 }

@@ -31,15 +31,15 @@ Traffic is tagged with a **session header** (e.g. `x-dev-session: pr-42`) and op
 
 | Role | Who they are | Responsibility with baggage/header |
 |------|----------------|------------------------------------|
-| **Originator** | Entry app (usually the frontend). No other app lists it as downstream. | **Sets** the header (and baggage) on **all outgoing** requests. The first hop that attaches the dev-session so downstream calls can be identified. |
-| **Forwarder** | Middle apps that have both upstream and downstream (e.g. BFF, middleware). | **Accepts** the header/baggage on incoming requests, stores it in context, and **forwards** it on outgoing requests to downstreams. Needed so that when a **terminal** or another forwarder downstream is the one being intercepted, the header still reaches it. |
-| **Terminal** | Apps that have no downstream (leaf nodes: APIs, backends). | **Accepts** the header/baggage for routing/logging but **does not forward** (no outgoing service calls). |
+| **Originator** | Entry app (usually the frontend). No other app lists it as downstream. | **Adopts** the original incoming override (header, then cookie, then query) and attaches **that same value** on all outgoing requests. Mints a configured session only when nothing incoming exists (local debug). Never overwrite a present `pr-42`. |
+| **Forwarder** | Middle apps that have both upstream and downstream (e.g. BFF, middleware). | **Accepts** the original header/baggage, stores it, and **copies it unchanged** on outgoing requests. If this hop drops or rewrites the value, an intercepted container further down the stack never matches. |
+| **Terminal** | Apps that have no downstream (leaf nodes: APIs, backends). | **Accepts** the header/baggage for routing/logging but **does not forward**. |
 
 Roles can be set explicitly in the stack YAML with `propagation-role: originator | forwarder | terminal`. If omitted, resolve-stack infers them: no downstream → `terminal`; frontend role → `originator`; else → `forwarder`.
 
 **Example (stack-one):**
 
-- `demo-fe` (frontend) → **originator**: sets `x-dev-session` (and baggage) on requests to `release-lifecycle-demo`.
+- `demo-fe` (frontend) → **originator**: transfers the original `x-dev-session` (and baggage) on requests to `release-lifecycle-demo`.
 - `release-lifecycle-demo` (BFF) → **forwarder**: receives header, stores in context, forwards when calling `demo-api`.
 - `demo-api` (API) → **terminal**: receives header, uses it for routing/logging, does not call other apps.
 
@@ -63,7 +63,7 @@ So: **“intercepted”** = “this app’s traffic, when it carries the PR head
 
 - The **same header** (e.g. `x-dev-session: pr-42`) is used for:
   - Telepresence intercept matching (route to PR pod when request has this header).
-  - Validation: **validate-stack-propagation** sends a request from the entry with this header and checks it flows along the propagation chain and appears where expected.
+  - Validation: **validate-stack-propagation** sends a request from the entry with this header and **fails** if a required hop dropped or rewrote the original value.
   - Your own testing: you hit the entry with this header so the whole path uses “this PR’s” code where intercepts are active.
 - So that **one header value** ties together: “which run,” “which PR’s build,” and “which traffic gets routed to PR pods.”
 
@@ -95,4 +95,4 @@ So:
 
 For sequence diagrams that show intercept scenarios (originator only, forwarder only, terminal only, or multiple intercepted), see [docs/c4-diagrams.md](c4-diagrams.md) (“Dynamic Diagram: PR Intercept Scenarios”).
 
-To implement propagation in application code and onboard a new stack, see [TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md](TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md).
+To implement propagation in application code and onboard a new stack, see [BAGGAGE-CONTRACT.md](BAGGAGE-CONTRACT.md) and [TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md](TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md).

@@ -352,7 +352,7 @@ Dedicated build images (one per tool) eliminate in-pod tool installation:
 
 ## Baggage libraries
 
-Standalone middleware extracted into publishable libraries under `libs/`. Apps consume these as dependencies.
+Standalone middleware under `libs/`. Apps consume these as dependencies and **must transfer the original override header** (`x-dev-session: pr-42`) hop-to-hop — see [docs/BAGGAGE-CONTRACT.md](docs/BAGGAGE-CONTRACT.md). Call `install()` / add the Spring starter; do not write per-app header code.
 
 | Library | Package | Framework | Location |
 |---------|---------|-----------|----------|

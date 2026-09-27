@@ -3,6 +3,7 @@
 from tekton_dag_common.api_auth import bearer_token_matches
 from tekton_dag_common.deploy_injection import (
     build_env_from,
+    build_pod_env,
     build_volume_mounts_and_volumes,
     injection_summary,
     referenced_configmap_names,
@@ -54,6 +55,7 @@ __all__ = [
     "base_pipelinerun",
     "bearer_token_matches",
     "build_env_from",
+    "build_pod_env",
     "build_stackrun",
     "build_volume_mounts_and_volumes",
     "classify_failure",
