@@ -2,11 +2,11 @@
 # Install Telepresence Traffic Manager in the cluster so PR pipeline intercepts can work.
 # Run after the cluster is up (e.g. after kind-with-registry.sh). Requires helm and kubectl.
 # Usage: ./install-telepresence-traffic-manager.sh [--version VERSION]
-# Example: ./install-telepresence-traffic-manager.sh --version 2.25.0
+# Example: ./install-telepresence-traffic-manager.sh --version 2.32.1
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TELEPRESENCE_VERSION="${TELEPRESENCE_VERSION:-2.25.0}"
+TELEPRESENCE_VERSION="${TELEPRESENCE_VERSION:-2.32.1}"
 NAMESPACE="${TELEPRESENCE_NAMESPACE:-ambassador}"
 CHART_OCI="oci://ghcr.io/telepresenceio/telepresence-oss"
 
