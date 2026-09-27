@@ -1,0 +1,116 @@
+# Five maintainability gates. Cluster regression stays in its own workflow.
+# These jobs also run when a v* tag is pushed.
+name: Maintainability ratchets
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - verify/tekton-ratchets
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: maintainability-ratchets-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  clean-as-you-code:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch origin/main
+        run: git fetch origin main:refs/remotes/origin/main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Ruff on changed lines
+        run: |
+          python -m pip install ruff
+          python3 scripts/ruff-ratchet.py cayc
+
+  hotspot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch origin/main
+        run: git fetch origin main:refs/remotes/origin/main
+
+      - name: Hotspot gate
+        run: |
+          python3 scripts/hotspot-gate.py --self-test
+          python3 scripts/hotspot-gate.py
+
+  fitness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Original override is not replaced
+        run: |
+          python -m pip install -e libs/tekton-dag-common pytest
+          python -m pytest libs/tekton-dag-common/tests/test_fitness_original_override.py -q
+
+      - name: Ratchet proofs
+        run: |
+          python -m pip install ruff
+          chmod +x scripts/maintainability-ratchets-assert.sh
+          ./scripts/maintainability-ratchets-assert.sh
+
+  static-baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch origin/main
+        run: git fetch origin main:refs/remotes/origin/main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Frozen ruff baseline
+        run: |
+          python -m pip install ruff
+          python3 scripts/ruff-ratchet.py baseline
+          git diff --exit-code -- config/ruff/baseline.txt
+
+  mutation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Mutate bearer token matching
+        working-directory: libs/tekton-dag-common
+        run: |
+          python -m pip install -e . pytest 'mutmut==2.5.1'
+          python -m mutmut run --CI --no-progress \
+            --paths-to-mutate=tekton_dag_common/api_auth.py \
+            --tests-dir=tests \
+            --runner="python -m pytest tests/test_api_auth.py -q --tb=line"
+          python ../../scripts/mutation-floor.py \
+            --cache .mutmut-cache \
+            --floor-file ../../config/mutation/python-floor.txt
