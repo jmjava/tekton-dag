@@ -1,0 +1,9 @@
+# Diff and baseline ruff config for the maintainability ratchets.
+# E501 is ignored so line length is not a reason to open a patch.
+line-length = 100
+target-version = "py312"
+extend-exclude = [".git", ".worktrees", "**/tests/**", ".venv", "venv"]
+
+[lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
