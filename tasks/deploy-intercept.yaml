@@ -221,7 +221,6 @@ spec:
             component: ${APP}
             managed-by: tekton-job-standardization
         spec:
-          serviceAccountName: telepresence-intercept
           containers:
           - name: pr-component
             image: ${IMAGE}
@@ -242,6 +241,28 @@ spec:
               value: "${DOWNSTREAM_URL}"
             - name: BFF_UPSTREAM
               value: "${DOWNSTREAM_URL}"
+        PRPOD
+
+          kubectl wait --for=condition=Ready "pod/${POD_NAME}" \
+            --namespace "$NS" --timeout=300s
+          PR_POD_IP=$(kubectl get pod "$POD_NAME" -n "$NS" -o jsonpath='{.status.podIP}')
+          echo "  Pod ready: $POD_NAME (IP: $PR_POD_IP)"
+
+          CLIENT_NAME="tp-client-${APP}-$(date +%s)"
+          echo "  Deploying telepresence client: $CLIENT_NAME"
+          cat <<CLIENTPOD | kubectl apply -f -
+        apiVersion: v1
+        kind: Pod
+        metadata:
+          name: ${CLIENT_NAME}
+          namespace: ${NS}
+          labels:
+            app: telepresence-client
+            component: ${APP}
+            managed-by: tekton-job-standardization
+        spec:
+          serviceAccountName: telepresence-intercept
+          containers:
           - name: telepresence
             image: $(params.telepresence-image)
             env:
@@ -286,10 +307,19 @@ spec:
               /usr/local/bin/telepresence version
               echo "connecting to traffic-manager..."
               /usr/local/bin/telepresence connect --manager-namespace ambassador --mapped-namespaces ${NS}
-              echo "forwarding localhost:18080 -> 127.0.0.1:${CPORT}"
-              socat TCP-LISTEN:18080,fork,reuseaddr TCP:127.0.0.1:${CPORT} &
-              echo "creating intercept ${APP} on localhost:18080..."
-              /usr/local/bin/telepresence intercept ${APP} --port 18080 ${HTTP_MATCH} --plaintext
+              echo "waiting for telepresence daemons..."
+              i=0
+              until /usr/local/bin/telepresence status 2>/dev/null | grep -qiE 'Status[[:space:]]*:[[:space:]]*Connected|Connected to context'; do
+                i=\$((i+1))
+                if [ "\$i" -gt 30 ]; then
+                  echo "telepresence status after connect:"
+                  /usr/local/bin/telepresence status || true
+                  break
+                fi
+                sleep 2
+              done
+              echo "creating intercept ${APP} -> ${PR_POD_IP}:${CPORT}..."
+              /usr/local/bin/telepresence intercept ${APP} --address ${PR_POD_IP} --port ${CPORT} ${HTTP_MATCH} --plaintext
               echo "Intercept active for ${APP}!"
               tail -f /dev/null
             securityContext:
@@ -297,23 +327,23 @@ spec:
               privileged: true
               capabilities:
                 add: [NET_ADMIN, NET_RAW]
-        PRPOD
+        CLIENTPOD
 
-          kubectl wait --for=condition=Ready "pod/${POD_NAME}" \
-            --namespace "$NS" --timeout=300s
-          echo "  Pod ready: $POD_NAME"
           echo "  Waiting until telepresence reports the intercept is active"
           deadline=$((SECONDS + 180))
-          until kubectl logs "pod/${POD_NAME}" -n "$NS" -c telepresence 2>/dev/null \
+          until kubectl logs "pod/${CLIENT_NAME}" -n "$NS" 2>/dev/null \
               | grep -q "Intercept active for ${APP}!" \
-            && kubectl logs "pod/${POD_NAME}" -n "$NS" -c telepresence 2>/dev/null \
+            && kubectl logs "pod/${CLIENT_NAME}" -n "$NS" 2>/dev/null \
               | grep -qiE 'HTTP requests with|Intercepting.*[Hh]eader'; do
             if [ "$SECONDS" -ge "$deadline" ]; then
               echo "ERROR: intercept for ${APP} did not become active" >&2
-              echo "=== previous sidecar logs ===" >&2
-              kubectl logs "pod/${POD_NAME}" -n "$NS" -c telepresence --previous >&2 || true
-              echo "=== current sidecar logs ===" >&2
-              kubectl logs "pod/${POD_NAME}" -n "$NS" -c telepresence >&2 || true
+              echo "=== client status ===" >&2
+              kubectl get pod "${CLIENT_NAME}" -n "$NS" -o jsonpath='{.status.phase} {.status.containerStatuses}' >&2 || true
+              echo >&2
+              echo "=== previous client logs ===" >&2
+              kubectl logs "pod/${CLIENT_NAME}" -n "$NS" --previous >&2 || true
+              echo "=== current client logs ===" >&2
+              kubectl logs "pod/${CLIENT_NAME}" -n "$NS" >&2 || true
               exit 1
             fi
             sleep 5
