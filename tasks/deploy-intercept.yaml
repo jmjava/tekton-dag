@@ -263,6 +263,16 @@ spec:
             --namespace "$NS" --timeout=300s
 
           echo "  Pod ready: $POD_NAME"
+          echo "  Waiting until telepresence reports the intercept is active"
+          deadline=$((SECONDS + 180))
+          until kubectl logs "pod/${POD_NAME}" -n "$NS" -c telepresence 2>/dev/null | grep -q "Intercept active for ${APP}!"; do
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              echo "ERROR: intercept for ${APP} did not become active" >&2
+              kubectl logs "pod/${POD_NAME}" -n "$NS" -c telepresence >&2 || true
+              exit 1
+            fi
+            sleep 5
+          done
           echo "  Traffic to $APP matching '$INTERCEPT' now routes to PR pod"
           echo ""
 

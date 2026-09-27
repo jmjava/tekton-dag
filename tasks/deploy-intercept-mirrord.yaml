@@ -201,7 +201,7 @@ spec:
               name: ${CM_NAME}
         PROXYPOD
 
-          kubectl wait --for=condition=Ready "pod/${PROXY_NAME}" --namespace "$NS" --timeout=120s || true
+          kubectl wait --for=condition=Ready "pod/${PROXY_NAME}" --namespace "$NS" --timeout=120s
           echo "  Intercept active for $APP (traffic with header -> PR pod $POD_NAME)"
           echo ""
 

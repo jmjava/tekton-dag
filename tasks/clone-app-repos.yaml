@@ -78,7 +78,12 @@ spec:
           local APP="$1" REPO="$2" REVISION="$3" URL="$4"
           echo "  Cloning $APP from $URL (revision: $REVISION) -> $WORKSPACE/$APP"
           git clone --depth 1 "$URL" "$WORKSPACE/$APP" 2>&1 | sed "s/^/  [$APP] /"
-          (cd "$WORKSPACE/$APP" && git fetch --depth 1 origin "$REVISION" 2>/dev/null && git checkout "$REVISION" 2>/dev/null || true)
+          if ! git -C "$WORKSPACE/$APP" fetch --depth 1 origin "$REVISION"; then
+            echo "ERROR: could not fetch $REVISION for $APP" >&2
+            exit 1
+          fi
+          git -C "$WORKSPACE/$APP" checkout --detach FETCH_HEAD
+          echo "  [$APP] at $(git -C "$WORKSPACE/$APP" rev-parse --short HEAD) ($REVISION)"
           echo "  Done: $APP"
         }
 
