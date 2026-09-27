@@ -224,8 +224,6 @@ spec:
           containers:
           - name: pr-component
             image: ${IMAGE}
-            command: ["/bin/sh"]
-            args: ["-c", "while true; do echo 'PR build for ${APP}'; sleep 30; done"]
             ports:
             - containerPort: ${CPORT}
             env:

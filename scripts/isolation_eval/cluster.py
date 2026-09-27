@@ -267,25 +267,51 @@ def _free_port() -> int:
     return port
 
 
+def _start_port_forward(ns: str) -> tuple[subprocess.Popen, str]:
+    port = _free_port()
+    proc = subprocess.Popen(
+        ["kubectl", "-n", ns, "port-forward", "svc/entry", f"{port}:80"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+    return proc, f"http://127.0.0.1:{port}/"
+
+
+def _port_forward_output(proc: subprocess.Popen) -> str:
+    if proc.stdout is None:
+        return ""
+    try:
+        return proc.stdout.read() or ""
+    except Exception:
+        return ""
+
+
 def curl_entry(ns: str, header: bool) -> str:
     """Hit svc/entry via kubectl port-forward.
 
     Nested Kind (Cloud Agent Docker-in-Docker) often cannot program ClusterIP
     iptables (missing xt_statistic). Port-forward goes through the API server
     to the pod and still exercises the intercept router on that pod.
+
+    kubectl exits on the first refused connection (the router container can
+    be Ready before Python binds 8080). Restart the forward until the deadline
+    instead of recording that first refusal as the cell result.
     """
-    port = _free_port()
-    pf = subprocess.Popen(
-        ["kubectl", "-n", ns, "port-forward", "svc/entry", f"{port}:80"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-    )
-    url = f"http://127.0.0.1:{port}/"
+    deadline = time.time() + 20
     last_err = "port-forward never accepted a connection"
+    saw_dead_forward = False
+    pf: subprocess.Popen | None = None
+    url = ""
     try:
-        deadline = time.time() + 20
         while time.time() < deadline:
+            if pf is None or pf.poll() is not None:
+                if pf is not None:
+                    saw_dead_forward = True
+                    out = _port_forward_output(pf)
+                    if out.strip():
+                        last_err = out
+                pf, url = _start_port_forward(ns)
             try:
                 req = urllib.request.Request(url)
                 if header:
@@ -295,13 +321,17 @@ def curl_entry(ns: str, header: bool) -> str:
             except Exception as exc:
                 last_err = str(exc)
                 if pf.poll() is not None:
-                    out = pf.stdout.read() if pf.stdout else ""
-                    return f"probe-error:port-forward:{out or last_err}"
+                    saw_dead_forward = True
+                    out = _port_forward_output(pf)
+                    if out.strip():
+                        last_err = out
                 time.sleep(0.2)
-        return f"probe-error:{last_err}"
+        prefix = "probe-error:port-forward:" if saw_dead_forward else "probe-error:"
+        return f"{prefix}{last_err}"
     finally:
-        pf.terminate()
-        try:
-            pf.wait(timeout=5)
-        except Exception:
-            pf.kill()
+        if pf is not None and pf.poll() is None:
+            pf.terminate()
+            try:
+                pf.wait(timeout=5)
+            except Exception:
+                pf.kill()

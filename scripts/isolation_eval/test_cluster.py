@@ -41,6 +41,7 @@ class CurlEntryTests(unittest.TestCase):
         proc = MagicMock()
         proc.poll.return_value = 1
         proc.stdout = io.StringIO("forward failed\n")
+        clock = iter([0, 0, 100])
 
         with (
             patch("cluster.subprocess.Popen", return_value=proc),
@@ -49,10 +50,45 @@ class CurlEntryTests(unittest.TestCase):
                 "cluster.urllib.request.urlopen",
                 side_effect=OSError("connection refused"),
             ),
+            patch("cluster.time.time", side_effect=lambda: next(clock)),
+            patch("cluster.time.sleep"),
         ):
             out = curl_entry("demo-ns", False)
         self.assertTrue(out.startswith("probe-error:port-forward:"))
-        proc.terminate.assert_called()
+        self.assertIn("forward failed", out)
+
+    def test_port_forward_restarts_after_refused_connection(self) -> None:
+        dead = MagicMock()
+        dead.poll.return_value = 1
+        dead.stdout = io.StringIO("lost connection to pod\n")
+        live = MagicMock()
+        live.poll.return_value = None
+        live.stdout = io.StringIO("")
+
+        class FakeResp:
+            def read(self) -> bytes:
+                return b"pr/inventory-api/app-0\n"
+
+            def __enter__(self) -> "FakeResp":
+                return self
+
+            def __exit__(self, *args: object) -> None:
+                return None
+
+        with (
+            patch("cluster.subprocess.Popen", side_effect=[dead, live]) as popen,
+            patch("cluster._free_port", side_effect=[18081, 18082]),
+            patch(
+                "cluster.urllib.request.urlopen",
+                side_effect=[OSError("connection refused"), FakeResp()],
+            ),
+            patch("cluster.time.time", return_value=0),
+            patch("cluster.time.sleep"),
+        ):
+            out = curl_entry("demo-ns", False)
+        self.assertEqual(out, "pr/inventory-api/app-0")
+        self.assertEqual(popen.call_count, 2)
+        live.terminate.assert_called()
 
 
 class WaitReadyTests(unittest.TestCase):

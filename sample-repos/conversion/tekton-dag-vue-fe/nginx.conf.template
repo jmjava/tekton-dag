@@ -12,12 +12,10 @@ server {
     add_header Set-Cookie $dev_session_cookie always;
 
     location /propagation {
-        proxy_pass ${BFF_UPSTREAM};
+        proxy_pass http://127.0.0.1:8081;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header x-dev-session $http_x_dev_session;
-        proxy_set_header baggage $http_baggage;
         proxy_pass_request_headers on;
     }
 

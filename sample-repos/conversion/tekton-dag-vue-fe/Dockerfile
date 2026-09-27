@@ -14,12 +14,20 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# Serve with nginx. /propagation is proxied to the BFF so curl validation
-# (and the SPA) see the original override header hop-to-hop.
+# Serve with nginx. /propagation is answered on localhost by
+# propagation_proxy.py, which copies the incoming override into the hop
+# report and nests the BFF response.
 FROM nginx:alpine
 ENV BFF_UPSTREAM=http://release-lifecycle-demo
-ENV NGINX_ENVSUBST_FILTER=BFF_UPSTREAM
-COPY nginx.conf.template /etc/nginx/templates/default.conf.template
+ENV APP_NAME=demo-fe
+ENV BAGGAGE_HEADER_NAME=x-dev-session
+ENV BAGGAGE_KEY=dev-session
+RUN apk add --no-cache python3
+COPY propagation_proxy.py /usr/local/bin/propagation_proxy.py
+COPY nginx.conf.template /etc/nginx/conf.d/default.conf
+COPY docker-entrypoint-wrap.sh /docker-entrypoint-wrap.sh
+RUN chmod +x /docker-entrypoint-wrap.sh
 COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 80
+ENTRYPOINT ["/docker-entrypoint-wrap.sh"]
 CMD ["nginx", "-g", "daemon off;"]
