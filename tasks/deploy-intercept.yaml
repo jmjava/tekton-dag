@@ -286,8 +286,10 @@ spec:
               /usr/local/bin/telepresence version
               echo "connecting to traffic-manager..."
               /usr/local/bin/telepresence connect --manager-namespace ambassador --mapped-namespaces ${NS}
-              echo "creating intercept ${APP} on localhost:${CPORT}..."
-              /usr/local/bin/telepresence intercept ${APP} --port ${CPORT}:${SPORT} ${HTTP_MATCH}
+              echo "forwarding localhost:18080 -> 127.0.0.1:${CPORT}"
+              socat TCP-LISTEN:18080,fork,reuseaddr TCP:127.0.0.1:${CPORT} &
+              echo "creating intercept ${APP} on localhost:18080 (http)..."
+              /usr/local/bin/telepresence intercept ${APP} --port 18080:http ${HTTP_MATCH}
               echo "Intercept active for ${APP}!"
               tail -f /dev/null
             securityContext:
