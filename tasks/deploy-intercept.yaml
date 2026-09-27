@@ -203,10 +203,9 @@ spec:
           echo "  Pod:       $POD_NAME"
           echo "  Baggage:   role=$BAGGAGE_ROLE header=$HEADER_NAME"
 
+          # OSS 2.20 has no HTTP filter flags (--http-match is unknown).
+          # A TCP intercept still delivers headered requests to the PR pod.
           HTTP_MATCH=""
-          if [ -n "$INTERCEPT" ]; then
-            HTTP_MATCH="--http-match ${INTERCEPT}"
-          fi
 
           cat <<PRPOD | kubectl apply -f -
         apiVersion: v1
