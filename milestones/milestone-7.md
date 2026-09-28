@@ -1,6 +1,8 @@
 # Milestone 7: Prototype `deploy-intercept-mirrord` Tekton task (run either backend)
 
-> **Active milestone.** Follows [milestone 6](milestone-6.md) (mirrord validated for all PR pipeline scenarios). **Delayed migration:** do not replace Telepresence yet; add mirrord as an option and support **running either** via a pipeline parameter. Default remains Telepresence so existing behavior is unchanged until you opt in to mirrord.
+> **Status 2026-09-27 — superseded in part.** The "run either backend" plan below is historical. In-cluster Telepresence was removed (it had never routed a header request to a PR pod in CI; see [docs/intercept-backends.md](../docs/intercept-backends.md) for the evidence) and **mirrord is the only backend**. `intercept-backend` defaults to `mirrord` and is kept for API compatibility. The routing proof in `validate-stack-propagation` (PR-pod access log, matched + unmatched probes) is now the exit criterion for 7.1/7.2 and passes on kind.
+>
+> Original framing: Follows [milestone 6](milestone-6.md) (mirrord validated for all PR pipeline scenarios). **Delayed migration:** do not replace Telepresence yet; add mirrord as an option and support **running either** via a pipeline parameter. Default remains Telepresence so existing behavior is unchanged until you opt in to mirrord.
 
 ## Goal
 
@@ -120,6 +122,7 @@ Add to `scripts/publish-build-images.sh`.
 ## References
 
 - [Milestone 6](milestone-6.md) — mirrord validation results (all scenarios pass)
-- [tasks/deploy-intercept.yaml](../tasks/deploy-intercept.yaml) — current Telepresence-based task (to be replaced)
+- `tasks/deploy-intercept.yaml` — former Telepresence-based task, removed 2026-09-27 (git history; see [docs/intercept-backends.md](../docs/intercept-backends.md))
+- [tasks/deploy-intercept-mirrord.yaml](../tasks/deploy-intercept-mirrord.yaml) — the mirrord task, now the only backend
 - [docs/mirrord-poc-results.md](../docs/mirrord-poc-results.md) — M5 PoC, config format, security notes
 - [docs/mirrord-m6-test-scenarios.md](../docs/mirrord-m6-test-scenarios.md) — validated test scenarios
