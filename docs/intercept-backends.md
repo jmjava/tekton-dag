@@ -1,11 +1,13 @@
-# Intercept backends: mirrord in CI, Telepresence on the laptop
+# Intercept backend: mirrord (in-cluster Telepresence removed)
 
-**Status (2026-09-27):** mirrord is the only intercept backend the PR pipeline
-runs in CI and the default everywhere (`intercept-backend=mirrord`). Until this
-change neither backend had ever routed a header request to a PR pod in CI;
-section 4 explains how mirrord's green was a race and what now proves routing. The
-in-cluster Telepresence sidecar task is kept as **experimental** and is not
-exercised by CI. Telepresence remains supported as a **laptop** workflow.
+**Status (2026-09-27):** mirrord is the only intercept backend. The in-cluster
+Telepresence task, its image, its traffic-manager install script and its
+pipeline branch were **removed** (approved 2026-09-27). Until this change
+neither backend had ever routed a header request to a PR pod in CI; section 4
+explains how mirrord's green was a race and what now proves routing.
+Telepresence is not part of this repository any more; developers may still use
+it from a laptop with their own install, exactly as they would use `mirrord
+exec` locally.
 
 This page records why, with the evidence, so the decision can be revisited
 with facts rather than memory.
@@ -113,55 +115,46 @@ step 2 fails. The pipeline passes `deployed-pods` (app → PR pod name) from
 ## 5. What changed in the repository
 
 - `.github/workflows/intercept-e2e.yml`: matrix is `[mirrord]`; the
-  Telepresence traffic-manager install step is gone.
-- Default `intercept-backend` is `mirrord` in `pipeline/stack-pr-pipeline.yaml`,
-  `pipeline/stack-pr-continue-pipeline.yaml`, `scripts/run-product-intercept-e2e.sh`,
-  `scripts/run-e2e-with-intercepts.sh`, the orchestrator (`app.py`,
-  `pipelinerun_builder.py`, `k8s-deployment.yaml`), the operator
-  (`internal/pipeline/builder.go`), and the Helm chart (`interceptBackend`).
+  Telepresence traffic-manager step is gone.
+- **Removed:** `tasks/deploy-intercept.yaml` (`deploy-stack-intercepts`),
+  `build-images/Dockerfile.telepresence` (and the `telepresence` entry in
+  `build-images/build-and-push.sh`), `scripts/install-telepresence-traffic-manager.sh`,
+  `PR-TELEPRESENCE-INTERCEPT-CONFIRMATION.md`, the `deploy-intercepts-telepresence`
+  branch in `pipeline/stack-pr-pipeline.yaml` and
+  `pipeline/stack-pr-continue-pipeline.yaml` (`deploy-intercepts-mirrord` now
+  runs unconditionally), and the Telepresence ServiceAccount block in
+  `scripts/run-product-intercept-e2e.sh`.
+- `intercept-backend` / `INTERCEPT_BACKEND` / Helm `interceptBackend` are kept
+  for API compatibility; the only accepted value is `mirrord`.
+- `tasks/deploy-intercept-mirrord.yaml`: proxy pod runs as `mirrord-intercept`
+  (`scripts/install-mirrord-intercept-rbac.sh`, called by both runner scripts),
+  `restartPolicy: Never`, fail-closed serving gate.
 - `tasks/validate-propagation.yaml`: new `deployed-pods` param and the routing
   proof above.
 - `scripts/run-product-intercept-e2e.sh`: `--tail=-1` on log collection so
   artifacts carry full step output.
 
-Kept, marked experimental, not run by CI:
+## 6. Telepresence on a laptop (outside this repository)
 
-- `tasks/deploy-intercept.yaml` (in-cluster Telepresence client pod, 2.25.0,
-  `--http-header ... --plaintext`).
-- `build-images/Dockerfile.telepresence`,
-  `scripts/install-telepresence-traffic-manager.sh`.
-
-Selecting it explicitly (`--intercept-backend telepresence` or the pipeline
-param) still works and now fails closed at the deploy step if routing is not
-live.
-
-## 6. Telepresence on the laptop (supported)
-
-This is the workflow Telepresence is designed for and the one people remember
-working:
+If a developer prefers Telepresence to `mirrord exec` for local debugging, they
+install it themselves per the Telepresence docs (traffic manager via the
+`telepresence-oss` Helm chart) and run:
 
 ```bash
-./scripts/install-telepresence-traffic-manager.sh          # once per cluster
 telepresence connect --namespace staging
-telepresence intercept demo-fe --port 8080:80 \
-  --http-header x-dev-session=pr-42
-# run demo-fe locally on :8080, attach a debugger,
-# send a request with x-dev-session: pr-42 through the cluster entry point
-telepresence leave demo-fe
-telepresence quit
+telepresence intercept demo-fe --port 8080:80 --http-header x-dev-session=pr-42
+# run demo-fe locally on :8080, attach a debugger, send a request with
+# x-dev-session: pr-42 through the cluster entry point
+telepresence leave demo-fe && telepresence quit
 ```
 
-See `.vscode/README.md` and `docs/demo-playbook.md` for the step-debug flow;
-mirrord works the same way from the laptop (`mirrord exec`).
+Nothing in the pipeline depends on it.
 
-## 7. Reopening the in-cluster Telepresence path
+## 7. If anyone wants in-cluster Telepresence back
 
-The last known blocker is small: the client image lacks `iptables`, so the
-Telepresence root session exits at connect time (section 3, last row). The
-next step is to add `iptables` to `build-images/Dockerfile.telepresence`
-(the client already runs privileged as root with a tun device), re-run
-`--intercept-backend telepresence`, and read the deploy step's smoke probe
-and daemon log dump (`/tmp/.cache/telepresence/logs/*.log`). Prefer a local
-kind cluster over 15-minute CI cycles. Any fix must pass the routing proof in
-section 4 for both matched and unmatched traffic before the matrix entry is
-restored.
+The history is in git (`git log -- tasks/deploy-intercept.yaml
+build-images/Dockerfile.telepresence`). The last known blocker was small: the
+client image lacked `iptables`, so the Telepresence root session exited at
+connect time (section 3, last row). Any revival must run as its own
+ServiceAccount, fail closed at deploy, and pass the routing proof in section 4
+for both matched and unmatched traffic before a matrix entry is added.

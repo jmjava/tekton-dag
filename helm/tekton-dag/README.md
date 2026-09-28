@@ -1,6 +1,6 @@
 # tekton-dag Helm chart
 
-Tekton-based CI/CD for multi-app stacks: stack resolution, Kaniko builds, PR intercept testing (Telepresence or mirrord), and an optional in-cluster orchestration service (GitHub webhooks, manual runs).
+Tekton-based CI/CD for multi-app stacks: stack resolution, Kaniko builds, PR intercept testing (mirrord), and an optional in-cluster orchestration service (GitHub webhooks, manual runs).
 
 ## Prerequisites
 
@@ -61,7 +61,7 @@ Packaged content under `raw/` is **not** committed by default; `package.sh` copi
 | `imageRegistry` | string | `"localhost:5000"` | Container registry base for runtime images; passed to orchestrator as `IMAGE_REGISTRY` |
 | `buildImageTag` | string | `"latest"` | Tag convention for build images (document alongside `compileImages`) |
 | `cacheRepo` | string | `"localhost:5000/kaniko-cache"` | Kaniko cache repository; passed to orchestrator as `CACHE_REPO` |
-| `interceptBackend` | string | `"mirrord"` | Default intercept backend: `mirrord` (CI-verified) or `telepresence` (experimental in-cluster) (`INTERCEPT_BACKEND` env) |
+| `interceptBackend` | string | `"mirrord"` | Intercept backend (`INTERCEPT_BACKEND` env). Only `mirrord` is implemented. |
 | `maxParallelBuilds` | int | `5` | Max concurrent Kaniko-style builds for bootstrap-style runs (`MAX_PARALLEL_BUILDS` env) |
 | `compileImages.npm` | string | see `values.yaml` | Default compile image for npm |
 | `compileImages.maven` | string | … | Default compile image for Maven |

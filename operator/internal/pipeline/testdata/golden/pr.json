@@ -45,7 +45,7 @@
       },
       {
         "name": "intercept-backend",
-        "value": "telepresence"
+        "value": "mirrord"
       },
       {
         "name": "dashboard-url",

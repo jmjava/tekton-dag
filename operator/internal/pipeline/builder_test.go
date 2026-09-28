@@ -30,7 +30,7 @@ func TestBuildersMatchGolden(t *testing.T) {
 	prOpt.ChangedApp = "demo-fe"
 	prOpt.PRNumber = 42
 	prOpt.AppRevisions = `{"demo-fe":"abc123"}`
-	prOpt.InterceptBackend = "telepresence"
+	prOpt.InterceptBackend = "mirrord"
 
 	mergeOpt := optBase
 	mergeOpt.ChangedApp = "demo-fe"

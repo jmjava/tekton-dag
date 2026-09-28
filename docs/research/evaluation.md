@@ -35,7 +35,7 @@ On 2026-09-07, `bash scripts/run-regression-stream.sh --local-only --require-lan
 |----------|------|
 | `local-regression.yml` | Every PR / `main` push: `--local-only --require-lang-tests` |
 | `cluster-regression.yml` | Nightly + tags + Helm/cluster-script PRs |
-| `intercept-e2e.yml` | Weekly mirrord product path (Telepresence in-cluster dropped 2026-09-27, see `docs/intercept-backends.md`) |
+| `intercept-e2e.yml` | Weekly mirrord product path with PR-pod routing proof (in-cluster Telepresence removed 2026-09-27, see `docs/intercept-backends.md`) |
 | `results-regression.yml` | Weekly Results/Postgres + `run-regression-agent-full.sh` |
 | `operator.yml` | `operator/**` PRs: unit/envtest + Kind domain E2E |
 
@@ -70,7 +70,7 @@ C2 (polyglot baggage **unit** tests) is PR-gated for Python, Node, Java, and PHP
 | No `x-dev-session` header (5 rounds) | baseline `tekton-dag-spring-boot` | 5/5 |
 | `x-dev-session: pr-test` (5 rounds) | intercept / local PR process | 5/5 |
 
-Same header-filter idea is documented as parity with Telepresence `--http-header`. Only mirrord is CI-verified; the in-cluster Telepresence task is experimental (`docs/intercept-backends.md`):
+mirrord `header_filter` is the implemented backend; the in-cluster Telepresence task was removed (`docs/intercept-backends.md`):
 
 ```bash
 ./scripts/run-product-intercept-e2e.sh --intercept-backend mirrord

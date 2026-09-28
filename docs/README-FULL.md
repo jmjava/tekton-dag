@@ -82,7 +82,7 @@ On PRs, the pipeline builds images, then **deploys one pod per built app** and c
    `resolve-stack` sets `intercept-header-value` (e.g. `x-dev-session:pr-42`) from the stack’s `propagation.header-name` and the PR number. The same value is used for intercepts and for validation/tests.
 
 2. **Per-app PR pods**  
-   The **deploy-intercept-mirrord** task (default; `deploy-stack-intercepts` is the experimental Telepresence variant), for each app in `build-apps`:
+   The **deploy-intercept-mirrord** task, for each app in `build-apps`:
    - Reads from `stack-json` and `built-images`: image, namespace, container port, service port.
    - Creates a **Pod** running the built image (PR build) and a mirrord proxy pod that runs `mirrord exec` with an `http_filter.header_filter` steal on the live deployment, relaying matched requests to the PR pod.
    - So any request that matches the header (e.g. `x-dev-session: pr-42`) to the **existing** Kubernetes Service for that app is intercepted and sent to this PR pod instead of the normal deployment.
@@ -374,8 +374,7 @@ tekton-job-standardization/
 ├── tasks/
 │   ├── resolve-stack.yaml       # Parse graph, topo sort, resolve versions
 │   ├── build-app.yaml           # Compile (npm/maven/gradle/composer/pip) + Kaniko
-│   ├── deploy-intercept-mirrord.yaml  # PR pods + mirrord header-steal intercepts (default)
-│   ├── deploy-intercept.yaml    # Experimental in-cluster Telepresence intercepts (not CI-gated)
+│   ├── deploy-intercept-mirrord.yaml  # PR pods + mirrord header-steal intercepts
 │   ├── validate-propagation.yaml    # Header flow validation + PR-pod routing proof
 │   ├── run-stack-tests.yaml     # Postman / Playwright / Artillery per app
 │   ├── version-bump.yaml        # RC bump (PR) or release promote (merge)
@@ -393,7 +392,7 @@ tekton-job-standardization/
     ├── verify-dag-phase2.sh     # Phase 2 DAG verification (Tekton resolve vs CLI)
     ├── kind-with-registry.sh    # Create kind cluster + local registry (localhost:5000)
     ├── install-tekton.sh        # Install Tekton Pipelines + git-clone + stack tasks/pipelines
-    └── install-telepresence-traffic-manager.sh  # Install Traffic Manager for PR intercepts
+    └── install-mirrord-intercept-rbac.sh  # ServiceAccount + Role for the mirrord proxy pod
 ```
 
 ## Pipeline Flows
@@ -487,17 +486,17 @@ Then install Tekton and this repo’s tasks/pipelines:
 ./scripts/install-tekton.sh
 ```
 
-mirrord needs no cluster-side install beyond the proxy pod identity (`./scripts/install-mirrord-intercept-rbac.sh`, once per namespace). Optionally install the **Telepresence Traffic Manager** for laptop intercepts or the experimental in-cluster Telepresence backend:
+mirrord needs no cluster-side install beyond the proxy pod identity, once per namespace:
 
 ```bash
-./scripts/install-telepresence-traffic-manager.sh
+./scripts/install-mirrord-intercept-rbac.sh
 ```
 
 (Optional: `--version 2.20.0` to match the sidecar image in `deploy-intercept`; default is 2.20.0.)
 
 **1b. Other local clusters (minikube, k3d)**
 
-Create a cluster with [minikube](https://minikube.sigs.k8s.io/) or [k3d](https://k3d.io/). Install Tekton Pipelines and run `./scripts/install-mirrord-intercept-rbac.sh` (the Telepresence Traffic Manager is only needed for laptop intercepts). Apply this repo’s tasks and pipelines (and the git-clone task from the Tekton catalog if needed):
+Create a cluster with [minikube](https://minikube.sigs.k8s.io/) or [k3d](https://k3d.io/). Install Tekton Pipelines and run `./scripts/install-mirrord-intercept-rbac.sh`. Apply this repo’s tasks and pipelines (and the git-clone task from the Tekton catalog if needed):
 
 ```bash
 kubectl apply -f tasks/

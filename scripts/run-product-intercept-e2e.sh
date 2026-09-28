@@ -40,8 +40,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-[[ "$INTERCEPT_BACKEND" == "telepresence" || "$INTERCEPT_BACKEND" == "mirrord" ]] \
-  || die "--intercept-backend must be mirrord or telepresence"
+[[ "$INTERCEPT_BACKEND" == "mirrord" ]] \
+  || die "--intercept-backend must be mirrord (Telepresence in-cluster was removed; see docs/intercept-backends.md)"
 [[ "$PR_NUMBER" =~ ^[0-9]+$ ]] || die "--pr must be numeric"
 
 need kubectl
@@ -203,19 +203,9 @@ verify_pr_evidence() {
 resolve_api_token
 start_port_forward
 
-# The pipeline SA cannot create ServiceAccounts. The mirrord proxy pod (and,
-# for the experimental backend, the Telepresence client pod) needs an API
-# identity the runner creates here.
+# The pipeline SA cannot create ServiceAccounts. The mirrord proxy pod needs
+# an API identity the runner creates here.
 "$(dirname "$0")/install-mirrord-intercept-rbac.sh" --namespace staging
-if [[ "$INTERCEPT_BACKEND" == "telepresence" ]]; then
-  kubectl create namespace staging --dry-run=client -o yaml | kubectl apply -f -
-  kubectl create serviceaccount telepresence-intercept -n staging \
-    --dry-run=client -o yaml | kubectl apply -f -
-  kubectl create clusterrolebinding telepresence-intercept-staging \
-    --clusterrole=cluster-admin \
-    --serviceaccount=staging:telepresence-intercept \
-    --dry-run=client -o yaml | kubectl apply -f -
-fi
 
 echo ">>> Trigger bootstrap through authenticated orchestrator API"
 bootstrap_payload="$(jq -nc --arg stack "stacks/$STACK_FILE" \

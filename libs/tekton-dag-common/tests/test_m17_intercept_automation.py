@@ -21,7 +21,9 @@ def test_intercept_workflow_has_explicit_backend_cadence_and_evidence():
     assert '"scripts/bootstrap-namespace.sh"' in workflow
     assert "workflow_dispatch:" in workflow
     assert "schedule:" in workflow
-    assert "backend: [telepresence, mirrord]" in workflow
+    # 2026-09-27: in-cluster Telepresence removed; mirrord is the only backend.
+    assert "backend: [mirrord]" in workflow
+    assert "telepresence" not in workflow.lower()
     assert "E2E_GIT_SSH_PRIVATE_KEY" in workflow
     assert "Require E2E SSH credential" not in workflow
     assert "public application repositories will use HTTPS" in workflow

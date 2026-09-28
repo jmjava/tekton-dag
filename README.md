@@ -96,7 +96,7 @@ Each row links to the **in-browser player** on Pages (`#seg-…`) and to the **c
 | [M4.1](milestones/milestone-4.1.md) | **Completed** | Standalone baggage libraries (Spring Boot, Node, Flask, PHP) |
 | [M5](milestones/milestone-5.md) | **Completed** | Original traffic validation + mirrord evaluation |
 | [M6](milestones/milestone-6.md) | **Completed** | Full MetalBear testing (all intercept scenarios) |
-| [M7](milestones/milestone-7.md) | **Completed** | Dual intercept backend via `intercept-backend` param; mirrord is the CI-verified default since 2026-09-27 ([why](docs/intercept-backends.md)) |
+| [M7](milestones/milestone-7.md) | **Completed** | Dual intercept backend via `intercept-backend` param. Superseded 2026-09-27: in-cluster Telepresence removed, mirrord only ([why](docs/intercept-backends.md)) |
 | [M7.1](milestones/milestone-7-1.md) | **Completed** | Pipeline speed: parallel containerize, Kaniko cache, parallel clone |
 | [M8](milestones/milestone-8.md) | **Partial** | Demo assets: Manim + TTS + composed segments + [GitHub Pages](https://jmjava.github.io/tekton-dag/); VHS terminal recordings, Slidev PDF, full concat still open |
 | [M9](milestones/milestone-9.md) | **Completed** | Test-trace regression graph + minimal test selection (Neo4j, mock Datadog). 10 Newman requests, 36 assertions. Test filtering in PR pipeline. |
@@ -171,7 +171,7 @@ flowchart LR
 | **Merge** (`stack-merge-release`) | Promote RC to release, build, tag release images, push next dev cycle version commit. |
 | **Promote** (`stack-promote`) | Copy release-tagged images to a target registry/environment (`registries.yaml` or API overrides); optional approval gate. |
 
-**Intercept backends:** mirrord (default, the only backend CI verifies) or Telepresence (experimental in-cluster; supported on the laptop), selected via pipeline param `intercept-backend`. See [docs/intercept-backends.md](docs/intercept-backends.md) for why the in-cluster Telepresence path was dropped from CI and how routing is now proven from PR pod access logs. Weekly/manual CI is [`.github/workflows/intercept-e2e.yml`](.github/workflows/intercept-e2e.yml) (`scripts/run-product-intercept-e2e.sh`). Treat only a recent successful matrix job and its retained traffic artifact as verification ([M17.3](milestones/milestone-17.md)).
+**Intercept backend:** mirrord (header steal, routing proven from the PR pod access log). The in-cluster Telepresence backend was removed on 2026-09-27; Telepresence remains a laptop tool only. See [docs/intercept-backends.md](docs/intercept-backends.md). Weekly/manual CI is [`.github/workflows/intercept-e2e.yml`](.github/workflows/intercept-e2e.yml) (`scripts/run-product-intercept-e2e.sh`). Treat only a recent successful matrix job and its retained traffic artifact as verification ([M17.3](milestones/milestone-17.md)).
 
 **Orchestration service** (M10): In-cluster Flask service that receives GitHub webhooks, resolves repo-to-stack dynamically, and creates **StackRun** CRs. The Go operator reconciles each StackRun into a Tekton PipelineRun. Packaged via Helm (`operator.enabled` defaults **true**) with an ArgoCD ApplicationSet for multi-team provisioning. Mutation APIs require a bearer token. See [docs/m10-multi-team-architecture.md](docs/m10-multi-team-architecture.md) and [orchestrator/README.md](orchestrator/README.md).
 
@@ -198,9 +198,6 @@ kubectl apply -f pipeline/
 
 # 5. mirrord intercept proxy identity (ServiceAccount + Role in staging)
 ./scripts/install-mirrord-intercept-rbac.sh
-
-# 5b. Optional: Telepresence Traffic Manager (laptop intercepts / experimental in-cluster backend)
-./scripts/install-telepresence-traffic-manager.sh
 
 # 6. Optional: Postgres + Tekton Results (persist run history)
 ./scripts/install-postgres-kind.sh
@@ -234,7 +231,6 @@ kubectl port-forward svc/el-stack-event-listener 8080:8080 -n tekton-pipelines &
 ```bash
 # Product path against a cluster that already has the control plane
 ./scripts/run-product-intercept-e2e.sh --intercept-backend mirrord
-./scripts/run-product-intercept-e2e.sh --intercept-backend telepresence   # experimental, not CI-gated
 
 # Full local helper (bootstrap + PR pipeline)
 ./scripts/run-e2e-with-intercepts.sh --intercept-backend mirrord

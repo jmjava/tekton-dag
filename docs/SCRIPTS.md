@@ -83,17 +83,17 @@ Shared helpers live in [`scripts/common.sh`](../scripts/common.sh) (sourced by m
 | [`merge-pr.sh`](../scripts/merge-pr.sh) | Merge helper for test PRs. |
 | [`rerun-pr-from.sh`](../scripts/rerun-pr-from.sh) | Create a StackRun with `spec.continueFrom` to re-run `stack-pr-continue` from a failed PR. |
 | [`configure-github-webhooks.sh`](../scripts/configure-github-webhooks.sh) | Wire GitHub webhooks to EventListener. |
-| [`run-e2e-with-intercepts.sh`](../scripts/run-e2e-with-intercepts.sh) | Local Kind helper: bootstrap (optional) + PR pipeline with **telepresence** or **mirrord**. |
+| [`run-e2e-with-intercepts.sh`](../scripts/run-e2e-with-intercepts.sh) | Local Kind helper: bootstrap (optional) + PR pipeline with **mirrord** intercepts. |
 | [`run-product-intercept-e2e.sh`](../scripts/run-product-intercept-e2e.sh) | Authenticated trigger → StackRun → operator → PR PipelineRun → intercept traffic. Used by [intercept-e2e.yml](../.github/workflows/intercept-e2e.yml). |
 | [`run-all-setup-and-test.sh`](../scripts/run-all-setup-and-test.sh) | Broad setup + test orchestration (legacy-style “do a lot”). |
 
 ---
 
-## Intercept tooling (Telepresence, mirrord)
+## Intercept tooling (mirrord)
 
 | Script | Purpose |
 |--------|---------|
-| [`install-telepresence-traffic-manager.sh`](../scripts/install-telepresence-traffic-manager.sh) | Install Telepresence traffic manager in cluster. |
+| [`install-mirrord-intercept-rbac.sh`](../scripts/install-mirrord-intercept-rbac.sh) | ServiceAccount + Role the in-cluster mirrord proxy pod runs as (once per namespace). |
 | [`install-mirrord.sh`](../scripts/install-mirrord.sh) | Install mirrord CLI / related setup. |
 | [`run-mirrord-poc.sh`](../scripts/run-mirrord-poc.sh) | Early mirrord PoC scenarios. |
 | [`run-mirrord-m6-scenarios.sh`](../scripts/run-mirrord-m6-scenarios.sh) | M6 mirrord test scenario driver. |

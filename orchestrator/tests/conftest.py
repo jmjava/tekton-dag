@@ -31,7 +31,7 @@ def flask_app():
         TEAM_NAME="alpha",
         IMAGE_REGISTRY="registry.example.com:5000",
         CACHE_REPO="registry.example.com:5000/kaniko-cache",
-        INTERCEPT_BACKEND="telepresence",
+        INTERCEPT_BACKEND="mirrord",
         MAX_PARALLEL_BUILDS=5,
         GIT_URL="https://github.com/org/tekton-dag.git",
         GIT_REVISION="main",

@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Run full E2E with live Telepresence intercepts: bootstrap (build + deploy full stack),
+# Run full E2E with live mirrord intercepts: bootstrap (build + deploy full stack),
 # then PR pipeline (build changed-app, deploy intercepts, run E2E through entry).
 # NOTE: This script uses a PR number (e.g. --pr 1) with default git-revision (main).
 # That is a pipeline sanity check only — it does NOT test the PR feature (no real PR).
 # For the valid PR test, use create-test-pr.sh → generate-run pr → merge-pr.sh → generate-run merge.
 # See docs/PR-TEST-FLOW.md.
-# Prerequisites: Kind, Tekton, Postgres, Results, Telepresence Traffic Manager.
+# Prerequisites: Kind, Tekton, Postgres, Results (mirrord proxy RBAC is created by this script).
 # Required: Kubernetes secret with SSH key for cloning app repos, e.g.:
 #   kubectl create secret generic git-ssh-key --from-file=id_ed25519=$HOME/.ssh/id_ed25519 -n $NAMESPACE
 # Override name with GIT_SSH_SECRET_NAME.
 #
-# Usage: ./run-e2e-with-intercepts.sh [--stack STACK] [--changed-app APP] [--pr N] [--registry URL] [--namespace NS] [--intercept-backend telepresence|mirrord] [--skip-bootstrap] [--skip-install-check] [--no-verify-db]
+# Usage: ./run-e2e-with-intercepts.sh [--stack STACK] [--changed-app APP] [--pr N] [--registry URL] [--namespace NS] [--intercept-backend mirrord] [--skip-bootstrap] [--skip-install-check] [--no-verify-db]
 # Require bash (script uses [[ ]], etc.); re-exec if run with sh
 if [ -z "${BASH_VERSION:-}" ]; then
   exec bash "$0" "$@"
@@ -57,9 +57,6 @@ need jq
 if [[ "$SKIP_INSTALL_CHECK" != "true" ]]; then
   kubectl cluster-info &>/dev/null || { echo "No cluster. Run kind-with-registry.sh and install-tekton.sh." >&2; exit 1; }
   kubectl get deployment tekton-results-api -n "$NAMESPACE" &>/dev/null || { echo "Tekton Results not found. Run install-postgres-kind.sh and install-tekton-results.sh." >&2; exit 1; }
-  if [[ "$INTERCEPT_BACKEND" == "telepresence" ]]; then
-    kubectl get deployment traffic-manager -n ambassador &>/dev/null || { echo "Telepresence Traffic Manager not found. Run install-telepresence-traffic-manager.sh." >&2; exit 1; }
-  fi
   kubectl get secret "$GIT_SSH_SECRET_NAME" -n "$NAMESPACE" &>/dev/null || { echo "Secret $GIT_SSH_SECRET_NAME not found. Create it with: kubectl create secret generic $GIT_SSH_SECRET_NAME --from-file=id_ed25519=\$HOME/.ssh/id_ed25519 -n $NAMESPACE" >&2; exit 1; }
 fi
 
@@ -72,7 +69,7 @@ kubectl create clusterrolebinding tekton-pr-sa-admin --clusterrole=cluster-admin
 "$SCRIPT_DIR/install-mirrord-intercept-rbac.sh" --namespace staging
 
 echo "=============================================="
-echo "  E2E with live Telepresence intercepts"
+echo "  E2E with live mirrord intercepts"
 echo "  Stack: $STACK_FILE  changed-app: $CHANGED_APP  pr: $PR_NUMBER  intercept-backend: $INTERCEPT_BACKEND"
 echo "  Registry: $IMAGE_REGISTRY"
 echo "=============================================="

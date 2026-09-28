@@ -32,7 +32,7 @@ def test_pr_golden(monkeypatch):
         image_registry="localhost:5000",
         cache_repo="localhost:5000/kaniko-cache",
         app_revisions='{"demo-fe":"abc123"}',
-        intercept_backend="telepresence",
+        intercept_backend="mirrord",
         namespace="tekton-pipelines",
         timeout="2h",
         max_retries=2,

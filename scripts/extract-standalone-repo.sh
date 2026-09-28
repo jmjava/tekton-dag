@@ -56,8 +56,8 @@ Standalone Tekton pipeline system for **local development and proof-of-concept**
 # 2. Tekton + stack tasks/pipelines (labels namespace for Pod Security)
 ./scripts/install-tekton.sh
 
-# 3. Optional: Telepresence Traffic Manager (for full PR pipeline with intercepts)
-./scripts/install-telepresence-traffic-manager.sh
+# 3. mirrord intercept proxy identity (for the full PR pipeline with intercepts)
+./scripts/install-mirrord-intercept-rbac.sh
 
 # 4. Prove the DAG
 ./scripts/verify-dag-phase1.sh
@@ -73,7 +73,7 @@ For manual pipeline runs, use `--registry localhost:5000 --storage-class ""`. Se
 - **stacks/** — Stack YAML (DAG), registry, versions
 - **tasks/** — Tekton tasks (resolve, build, deploy-intercept, validate, test, version, cleanup)
 - **pipeline/** — stack-pr-test, stack-merge-release, stack-dag-verify
-- **scripts/** — kind-with-registry, install-tekton, install-telepresence-traffic-manager, verify-dag-phase1/2, generate-run, stack-graph
+- **scripts/** — kind-with-registry, install-tekton, install-mirrord-intercept-rbac, verify-dag-phase1/2, generate-run, stack-graph
 - **docs/** — C4 diagrams, local DAG verification plan
 
 ## Sharing back to reference-architecture

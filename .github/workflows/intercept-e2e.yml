@@ -1,5 +1,5 @@
 # Weekly (and path-filtered) product-path evidence: trigger → StackRun →
-# operator → PR PipelineRun → intercept (Telepresence or mirrord) → tests.
+# operator → PR PipelineRun → mirrord intercept → routing proof → tests.
 # Not the everyday PR gate — local-regression.yml is. Path filters still
 # start Kind when Helm/tasks/operator/orchestrator/pipeline/stacks or the
 # listed scripts change.
@@ -56,8 +56,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # mirrord is the only in-cluster intercept backend exercised by CI.
-        # Telepresence is supported as a laptop workflow only (see docs/intercept-backends.md).
+        # mirrord is the only in-cluster intercept backend (see docs/intercept-backends.md).
         backend: [mirrord]
     env:
       E2E_ARTIFACT_DIR: ${{ github.workspace }}/artifacts/${{ matrix.backend }}

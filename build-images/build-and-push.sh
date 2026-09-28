@@ -52,7 +52,7 @@ build_image() {
   echo "  -> $image"
 }
 
-TOOLS=(node maven gradle python php mirrord telepresence)
+TOOLS=(node maven gradle python php mirrord)
 
 echo "=== tekton-dag build images ==="
 echo "  Registry: $REGISTRY"
