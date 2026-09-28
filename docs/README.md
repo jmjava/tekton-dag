@@ -10,6 +10,7 @@ This folder contains design, operations, and verification docs for the tekton-da
 | **Milestones (historical)** | [../milestones/completed/](../milestones/completed/) — M2, M3 |
 | **Archive (not maintained)** | [archive/](archive/) — obsolete session plans and similar |
 | **Customization & ops** | [CUSTOMIZATION.md](CUSTOMIZATION.md), [MAINTENANCE.md](MAINTENANCE.md) |
+| **Intercept backends** | [intercept-backends.md](intercept-backends.md) — mirrord in CI (with PR-pod routing proof), Telepresence laptop-only; why the in-cluster Telepresence path was dropped |
 | **Teams: stacks + baggage libs** | [BAGGAGE-CONTRACT.md](BAGGAGE-CONTRACT.md) — original override header hop-to-hop; [TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md](TEAM-ONBOARDING-STACKS-AND-BAGGAGE.md) — libraries + new stack checklist |
 | **Demo toolchain (M8)** | [demos/](demos/) — [demos/README.md](demos/README.md) (`docgen` CLI; `generate-all.sh` is a thin wrapper); [milestones/milestone-8.md](../milestones/milestone-8.md) |
 | **GitHub Actions** | [REGRESSION.md](REGRESSION.md) — which workflows run on every PR vs schedule/path filters |

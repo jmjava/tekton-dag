@@ -7,8 +7,13 @@ metadata:
     app.kubernetes.io/version: "1.0.0"
 spec:
   description: >
-    Deploys PR pods with Telepresence intercepts ONLY for the app(s)
-    that changed. The rest of the stack runs as-is in the cluster.
+    EXPERIMENTAL — not exercised by CI. Deploys PR pods and creates
+    in-cluster Telepresence header intercepts ONLY for the app(s) that
+    changed. The rest of the stack runs as-is in the cluster. The
+    CI-verified backend is deploy-intercept-mirrord; see
+    docs/intercept-backends.md for the history and how to reopen this path.
+    This task fails closed: the deploy step probes matched and unmatched
+    traffic before reporting success.
 
     For a stack A→B→C→D where C changed:
       - A, B, D: normal deployed services (untouched)

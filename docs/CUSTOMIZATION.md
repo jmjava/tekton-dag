@@ -235,13 +235,13 @@ Ensure a **compile image** exists that matches that toolchain (build and push wi
 
 ## 8. Add intercept backend support
 
-**Goal:** Use **mirrord** instead of **Telepresence** (or switch per environment).
+**Goal:** Switch the intercept backend per environment. mirrord is the default and the only CI-verified backend; the in-cluster Telepresence task is experimental (see [intercept-backends.md](intercept-backends.md)).
 
 1. **Cluster** — install the components your chosen backend needs (e.g. Telepresence Traffic Manager or mirrord operator per vendor docs).
 
-2. **Helm** — set `interceptBackend: "mirrord"` in values; the orchestrator sets `INTERCEPT_BACKEND` for webhook-created runs.
+2. **Helm** — `interceptBackend` defaults to `"mirrord"`; set `"telepresence"` to opt into the experimental task; the orchestrator sets `INTERCEPT_BACKEND` for webhook-created runs.
 
-3. **Pipeline param** — `stack-pr-test` already exposes `intercept-backend` (`telepresence` | `mirrord`). `generate-run.sh` supports:
+3. **Pipeline param** — `stack-pr-test` already exposes `intercept-backend` (`mirrord` | `telepresence`). `generate-run.sh` supports:
 
 ```bash
 ./scripts/generate-run.sh --mode pr --repo demo-fe --pr 1 --intercept-backend mirrord --apply

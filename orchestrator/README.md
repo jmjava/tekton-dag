@@ -35,7 +35,7 @@ Defined in `app.py` (with defaults). Common ones:
 | `TEAM_NAME` | Team identifier (logging / config context). |
 | `IMAGE_REGISTRY` | Container registry base passed into runs. |
 | `CACHE_REPO` | Kaniko cache repository. |
-| `INTERCEPT_BACKEND` | `telepresence` or `mirrord` (default `telepresence`). |
+| `INTERCEPT_BACKEND` | `mirrord` (default, CI-verified) or `telepresence` (experimental in-cluster). |
 | `MAX_PARALLEL_BUILDS` | Parallelism hint (default `5`). |
 | `GIT_URL` | Platform repo URL. |
 | `GIT_REVISION` | Default branch/tag/SHA. |

@@ -74,7 +74,7 @@ So: **one stack file → one DAG → one resolved JSON → same pipeline for all
 
 ### Intercepts for debugging (PR flow)
 
-On PRs, the pipeline builds images, then **deploys one pod per built app** and configures **Telepresence intercepts** so that traffic carrying the PR’s header is routed to those PR pods instead of the normal staging deployment. That gives you “this PR’s code path” end-to-end for debugging.
+On PRs, the pipeline builds images, then **deploys one pod per built app** and configures **mirrord intercepts** (header steal; see [intercept-backends.md](intercept-backends.md)) so that traffic carrying the PR’s header is routed to those PR pods instead of the normal staging deployment. That gives you “this PR’s code path” end-to-end for debugging.
 
 **How it works**
 
@@ -82,10 +82,9 @@ On PRs, the pipeline builds images, then **deploys one pod per built app** and c
    `resolve-stack` sets `intercept-header-value` (e.g. `x-dev-session:pr-42`) from the stack’s `propagation.header-name` and the PR number. The same value is used for intercepts and for validation/tests.
 
 2. **Per-app PR pods**  
-   The **deploy-stack-intercepts** task, for each app in `build-apps`:
+   The **deploy-intercept-mirrord** task (default; `deploy-stack-intercepts` is the experimental Telepresence variant), for each app in `build-apps`:
    - Reads from `stack-json` and `built-images`: image, namespace, container port, service port.
-   - Creates a **Pod** with (1) the built image (PR build) and (2) a Telepresence sidecar.
-   - The sidecar runs `telepresence intercept <app> --namespace <ns> --port <container>:<service> --http-match <intercept-header-value>`.
+   - Creates a **Pod** running the built image (PR build) and a mirrord proxy pod that runs `mirrord exec` with an `http_filter.header_filter` steal on the live deployment, relaying matched requests to the PR pod.
    - So any request that matches the header (e.g. `x-dev-session: pr-42`) to the **existing** Kubernetes Service for that app is intercepted and sent to this PR pod instead of the normal deployment.
 
 3. **Arbitrary config support**  
@@ -97,7 +96,7 @@ On PRs, the pipeline builds images, then **deploys one pod per built app** and c
 **End-to-end for a developer**
 
 - Open the app (e.g. frontend) with a header `x-dev-session: pr-<PR#>`.  
-- That request hits the entry service; Telepresence sends it to the PR pod for the entry app.  
+- That request hits the entry service; the intercept sends it to the PR pod for the entry app.  
 - The entry app calls its downstreams (from the DAG); those requests carry the same header, so they are intercepted to the corresponding PR pods.  
 - So the entire path from entry through the DAG runs the PR build, enabling debugging of the full stack for that PR.
 
@@ -105,7 +104,7 @@ On PRs, the pipeline builds images, then **deploys one pod per built app** and c
 
 - **DAG**: One stack YAML defines nodes (apps) and edges (`downstream`). Resolve computes topo order, entry, and propagation chain.  
 - **Arbitrary config**: All behavior is driven by stack-json and params; pipelines stay generic.  
-- **Intercepts**: One PR pod per built app, Telepresence sidecar, header-based routing so “this PR” traffic hits PR pods end-to-end for debugging.
+- **Intercepts**: One PR pod per built app, mirrord header steal, header-based routing so “this PR” traffic hits PR pods end-to-end for debugging.
 
 ### Stack Graph — Arbitrary DAG (examples)
 
@@ -285,20 +284,20 @@ Browser → demo-fe (originator: SETS baggage=dev-session=pr-42, x-dev-session=p
                   → demo-api (terminal: ACCEPTS header, end of chain)
 ```
 
-**The header only needs to propagate up to the intercepted app.** Beyond the intercept, downstream calls are normal -- there's no Telepresence intercept on those services, so the header doesn't need to be there.
+**The header only needs to propagate up to the intercepted app.** Beyond the intercept, downstream calls are normal -- there's no intercept on those services, so the header doesn't need to be there.
 
 **Intercepted originator** (FE PR): the PR build must set headers on outgoing requests. If there are other intercepted apps downstream, they need the header to route correctly. If the FE is the only intercepted app, the header still needs to reach it (but that's handled by the test harness sending it in).
 
-**Intercepted forwarder** (middleware PR): Telepresence routes matching traffic to the PR pod of B. B's downstream calls to C and D go to their normal deployments — no intercept to match on, so **B does not need to forward the header**. Exception: if both B and C are intercepted in the same PR, B must forward so C's intercept catches it.
+**Intercepted forwarder** (middleware PR): the intercept routes matching traffic to the PR pod of B. B's downstream calls to C and D go to their normal deployments — no intercept to match on, so **B does not need to forward the header**. Exception: if both B and C are intercepted in the same PR, B must forward so C's intercept catches it.
 
-**Intercepted terminal** (API PR): the header reached it via Telepresence, end of the line. No forwarding needed.
+**Intercepted terminal** (API PR): the header reached it via the intercept, end of the line. No forwarding needed.
 
 ```
 A(originator) → B(forwarder) → C(terminal)
                               → D(terminal)
 
 If B is intercepted:
-  header: test → A → B(PR) ✓    (Telepresence routes to PR B)
+  header: test → A → B(PR) ✓    (intercept routes to PR B)
   B → C: normal call            (C has no intercept, header not needed)
   B → D: normal call            (D has no intercept, header not needed)
 
@@ -375,8 +374,9 @@ tekton-job-standardization/
 ├── tasks/
 │   ├── resolve-stack.yaml       # Parse graph, topo sort, resolve versions
 │   ├── build-app.yaml           # Compile (npm/maven/gradle/composer/pip) + Kaniko
-│   ├── deploy-intercept.yaml    # PR pods with Telepresence intercepts
-│   ├── validate-propagation.yaml    # Header flow validation
+│   ├── deploy-intercept-mirrord.yaml  # PR pods + mirrord header-steal intercepts (default)
+│   ├── deploy-intercept.yaml    # Experimental in-cluster Telepresence intercepts (not CI-gated)
+│   ├── validate-propagation.yaml    # Header flow validation + PR-pod routing proof
 │   ├── run-stack-tests.yaml     # Postman / Playwright / Artillery per app
 │   ├── version-bump.yaml        # RC bump (PR) or release promote (merge)
 │   ├── tag-release-images.yaml  # crane re-tag with clean semver
@@ -409,7 +409,7 @@ tekton-job-standardization/
        │
   build-apps         ← compile per toolchain, Kaniko pushes v0.1.0-rc.4
        │
-  deploy-intercepts  ← PR pods + Telepresence for each built app
+  deploy-intercepts  ← PR pods + mirrord intercept for each built app
        │
   validate-propagation  ← verifies header flows through all hops
        │
@@ -466,7 +466,7 @@ You can run **both** the build pipelines and the **full PR pipeline** (deploy in
 
 **Standalone local repo:** To work in a new git repo with no AWS and paths at repo root (easier for local runs and Phase 2 clone), run `./scripts/extract-standalone-repo.sh [OUTPUT_DIR]`. This copies the milestone into a new tree with `stacks/`, `tasks/`, etc. at root and a README + SHARING-BACK.md for contributing back when it works. See the script for next steps (`git init`, remote, push).
 
-- **Full PR pipeline** (`stack-pr-test`): clone → resolve → bump RC → build apps → deploy PR pods + Telepresence intercepts → validate header propagation → run tests (Postman/Playwright/Artillery) → push version → cleanup. Use this for full local testing.
+- **Full PR pipeline** (`stack-pr-test`): clone → resolve → bump RC → build apps → deploy PR pods + mirrord intercepts → validate header propagation + routing proof → run tests (Postman/Playwright/Artillery) → push version → cleanup. Use this for full local testing.
 - **Merge pipeline** (`stack-merge-release`): clone → resolve → release version → build apps → tag and push images. Use this for build-only validation or release simulation.
 
 **1. Kind cluster + local registry (recommended for local builds)**
@@ -487,7 +487,7 @@ Then install Tekton and this repo’s tasks/pipelines:
 ./scripts/install-tekton.sh
 ```
 
-Install the **Telepresence Traffic Manager** so the full PR pipeline (deploy intercepts, validate propagation, run tests) can route traffic to PR pods:
+mirrord needs no cluster-side install. Optionally install the **Telepresence Traffic Manager** for laptop intercepts or the experimental in-cluster Telepresence backend:
 
 ```bash
 ./scripts/install-telepresence-traffic-manager.sh
@@ -497,7 +497,7 @@ Install the **Telepresence Traffic Manager** so the full PR pipeline (deploy int
 
 **1b. Other local clusters (minikube, k3d)**
 
-Create a cluster with [minikube](https://minikube.sigs.k8s.io/) or [k3d](https://k3d.io/). Install Tekton Pipelines and the **Telepresence Traffic Manager** (so the full PR pipeline can run intercepts). Apply this repo’s tasks and pipelines (and the git-clone task from the Tekton catalog if needed):
+Create a cluster with [minikube](https://minikube.sigs.k8s.io/) or [k3d](https://k3d.io/). Install Tekton Pipelines (mirrord intercepts need no cluster-side install; the Telepresence Traffic Manager is only needed for laptop intercepts). Apply this repo’s tasks and pipelines (and the git-clone task from the Tekton catalog if needed):
 
 ```bash
 kubectl apply -f tasks/

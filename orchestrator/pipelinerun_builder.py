@@ -46,7 +46,7 @@ def build_pr_pipelinerun(
     git_revision,
     image_registry,
     cache_repo="",
-    intercept_backend="telepresence",
+    intercept_backend="mirrord",
     app_revisions=None,
     namespace="tekton-pipelines",
     compile_images=None,

@@ -26,7 +26,7 @@ These are the **only** claims the workshop/tool **paper** is allowed to make unt
 
 ### C3 — Header-matched intercepts with original-traffic safety
 
-**Claim.** On a PR, only `changed-app`(s) are built and intercepted. Matching is the same session header used for propagation. Two backends are implemented and E2E-exercised: Telepresence (`--http-match`) and mirrord (`header_filter`). A separate **validate-original-traffic** path checks that requests *without* the header still hit baseline pods.
+**Claim.** On a PR, only `changed-app`(s) are built and intercepted. Matching is the same session header used for propagation. Two backends are implemented; mirrord (`header_filter`) is E2E-exercised with a fail-closed routing proof read from the PR pod access log. The in-cluster Telepresence task (`--http-header`) is experimental and not CI-gated (`docs/intercept-backends.md`). A separate **validate-original-traffic** path checks that requests *without* the header still hit baseline pods.
 
 **Not claimed.** That Telepresence or mirrord are novel. The contribution is *CI-orchestrated, graph-aware placement* of intercepts plus an explicit safety check, not the intercept dataplane.
 

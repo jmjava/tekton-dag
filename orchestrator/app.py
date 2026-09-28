@@ -30,7 +30,7 @@ def create_app():
         TEAM_NAME=os.environ.get("TEAM_NAME", "default"),
         IMAGE_REGISTRY=os.environ.get("IMAGE_REGISTRY", "localhost:5000"),
         CACHE_REPO=os.environ.get("CACHE_REPO", "localhost:5000/kaniko-cache"),
-        INTERCEPT_BACKEND=os.environ.get("INTERCEPT_BACKEND", "telepresence"),
+        INTERCEPT_BACKEND=os.environ.get("INTERCEPT_BACKEND", "mirrord"),
         MAX_PARALLEL_BUILDS=int(os.environ.get("MAX_PARALLEL_BUILDS", "5")),
         GIT_URL=os.environ.get("GIT_URL", "https://github.com/jmjava/tekton-dag.git"),
         GIT_REVISION=os.environ.get("GIT_REVISION", "main"),

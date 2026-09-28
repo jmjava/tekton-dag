@@ -117,7 +117,7 @@ chmod +x scripts/run-regression.sh   # once, if needed
 ./scripts/run-regression.sh --local-only --kind-e2e
 
 # On an already prepared cluster: trigger -> StackRun -> operator -> PR PipelineRun
-./scripts/run-product-intercept-e2e.sh --intercept-backend telepresence
+./scripts/run-product-intercept-e2e.sh --intercept-backend mirrord
 ```
 
 Environment:
@@ -132,7 +132,7 @@ Environment:
 1. **Often (fast, no cluster):** `./scripts/run-regression.sh --local-only` — Phase 1 + pytest + vitest; good for frequent pushes; safe to wire into lightweight CI.
 2. **System bar (cluster):** **`./scripts/run-regression.sh --cluster --require-dag-verify`** when you need a real **Succeeded** `stack-dag-verify` and orchestrator Newman — treat as **integration / system** work: before releases, after big platform changes, on a schedule, or when agents/docs require proof — **not** as “must pass on every GitHub PR” unless you explicitly configure that.
 3. **With Tekton Results:** `results-regression.yml` installs pinned Results/Postgres weekly and runs the strict agent entrypoint; locally use `--with-results-verify` or rely on **auto** when the API exists.
-4. **Intercept E2E:** the weekly matrix exercises Telepresence and mirrord independently and retains StackRun, PipelineRun, TaskRun, pod-log, and test-traffic evidence for 30 days.
+4. **Intercept E2E:** the weekly job exercises the mirrord backend (Telepresence in-cluster was dropped from the matrix on 2026-09-27; see [intercept-backends.md](intercept-backends.md)) and retains StackRun, PipelineRun, TaskRun, pod-log, and test-traffic evidence for 30 days.
 
 After the tiers you care about are green, update [milestones/milestone-8.md](../milestones/milestone-8.md) and related testing docs.
 

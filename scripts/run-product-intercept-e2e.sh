@@ -11,7 +11,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=common.sh
 source "$SCRIPT_DIR/common.sh"
 
-INTERCEPT_BACKEND="${INTERCEPT_BACKEND:-telepresence}"
+INTERCEPT_BACKEND="${INTERCEPT_BACKEND:-mirrord}"
 STACK_FILE="${STACK_FILE:-stack-one.yaml}"
 CHANGED_APP="${CHANGED_APP:-demo-fe}"
 PR_NUMBER="${PR_NUMBER:-900001}"
@@ -41,7 +41,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ "$INTERCEPT_BACKEND" == "telepresence" || "$INTERCEPT_BACKEND" == "mirrord" ]] \
-  || die "--intercept-backend must be telepresence or mirrord"
+  || die "--intercept-backend must be mirrord or telepresence"
 [[ "$PR_NUMBER" =~ ^[0-9]+$ ]] || die "--pr must be numeric"
 
 need kubectl

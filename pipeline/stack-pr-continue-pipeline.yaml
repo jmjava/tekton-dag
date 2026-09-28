@@ -36,8 +36,8 @@ spec:
       description: "JSON map of app → image URI (from build-apps result)"
     - name: intercept-backend
       type: string
-      description: "Which intercept backend was used: telepresence or mirrord"
-      default: "telepresence"
+      description: "Which intercept backend was used: mirrord or telepresence"
+      default: "mirrord"
     - name: bumped-versions
       type: string
       description: "JSON map of app → version (from bump-rc-version result)"
@@ -129,6 +129,8 @@ spec:
           value: $(params.build-apps)
         - name: intercept-header-value
           value: $(params.intercept-header-value)
+        - name: deployed-pods
+          value: $(tasks.deploy-intercepts-result.results.deployed-pods)
       runAfter:
         - deploy-intercepts-result
 
