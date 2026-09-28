@@ -99,8 +99,10 @@ collect_run_evidence() {
       }' >"$ARTIFACT_DIR/$prefix-pipeline-results.json" || true
   kubectl get taskrun -n "$NAMESPACE" -l "tekton.dev/pipelineRun=$pipeline_run" -o yaml \
     >"$ARTIFACT_DIR/$prefix-taskruns.yaml" 2>&1 || true
+  # --tail=-1: with a label selector kubectl defaults to the last 10 lines
+  # per container, which hides every step's diagnostics.
   kubectl logs -n "$NAMESPACE" -l "tekton.dev/pipelineRun=$pipeline_run" \
-    --all-containers=true --prefix=true \
+    --all-containers=true --prefix=true --tail=-1 \
     >"$ARTIFACT_DIR/$prefix-pod-logs.txt" 2>&1 || true
 }
 
@@ -192,7 +194,7 @@ verify_pr_evidence() {
     || die "PR PipelineRun run-tests TaskRun did not succeed"
   kubectl logs -n "$NAMESPACE" -l \
     "tekton.dev/pipelineRun=$pipeline_run,tekton.dev/pipelineTask=run-tests" \
-    --all-containers=true --prefix=true \
+    --all-containers=true --prefix=true --tail=-1 \
     >"$ARTIFACT_DIR/pr-traffic-evidence.log"
   [[ -s "$ARTIFACT_DIR/pr-traffic-evidence.log" ]] \
     || die "run-tests traffic evidence log is empty"
