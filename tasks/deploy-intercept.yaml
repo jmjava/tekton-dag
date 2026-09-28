@@ -328,7 +328,20 @@ spec:
               echo "starting header router ${HEADER_NAME}=${HEADER_VALUE} -> PR ${PR_POD_IP}:${CPORT} else 127.0.0.1:18081"
               /usr/local/bin/tp-header-router &
               echo "creating TCP intercept ${APP} on localhost:18080..."
+              set +e
               /usr/local/bin/telepresence intercept ${APP} --port 18080
+              irc=\$?
+              set -e
+              if [ "\$irc" -ne 0 ]; then
+                echo "intercept exited \$irc — listing current intercepts"
+                /usr/local/bin/telepresence list || true
+                if /usr/local/bin/telepresence list 2>/dev/null | grep -qi "${APP}"; then
+                  echo "continuing with existing intercept for ${APP}"
+                else
+                  echo "ERROR: intercept failed and ${APP} is not listed" >&2
+                  exit 1
+                fi
+              fi
               echo "waiting for ${APP} rollout after agent inject..."
               kubectl rollout status "deploy/${APP}" -n ${NS} --timeout=120s || true
               LIVE_POD=\$(kubectl get pod -n ${NS} -l app=${APP} --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')
