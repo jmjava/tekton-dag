@@ -52,7 +52,7 @@ Commits on `fix/post-deploy-checks`, in order, each verified by a full CI run
 | Downgrade to 2.25.0 (matching the traffic manager). | Intercept created. Header-matched request to the Service hung (`HTTP 000`); unmatched request passed. |
 | `--never-proxy <PR pod IP>/32` and a local `socat` relay to the PR pod. | Same hang. |
 | Whole-port TCP intercept (`--mechanism tcp`) with a header router in front. | Steals *all* traffic to the port, which violates contract item 2, and Telepresence reported `container port 80 is already intercepted`. Rejected. |
-| `--plaintext` (HTTP intercepts default to TLS toward the handler; the PR pod is plaintext nginx). | The traffic-agent logged `Allowing non-conflicting intercept ...:demo-fe to become active`, then the fail-fast smoke probe in the deploy step failed. The reason was not recoverable from the artifact because log collection used `kubectl logs -l ...`, which defaults to the last 10 lines per container (fixed in `368b117`). |
+| `--plaintext` (HTTP intercepts default to TLS toward the handler; the PR pod is plaintext nginx). | Intercept `ACTIVE`, filter `HTTP requests with header 'X-Dev-Session: pr-95'`. Smoke probe: headered request `HTTP 000` then `502`, unmatched `200`. Root cause visible only once log collection stopped truncating to 10 lines (`368b117`): `connector/session : root session exited with error: exec: "iptables": executable file not found in $PATH`. The client image (`bitnami/kubectl`) has no `iptables`, so the client's root session (the tunnel that carries intercepted requests back to the handler) never started. |
 
 Other costs of the in-cluster sidecar design that mirrord does not have:
 
@@ -136,10 +136,12 @@ mirrord works the same way from the laptop (`mirrord exec`).
 
 ## 7. Reopening the in-cluster Telepresence path
 
-If someone wants to make the sidecar variant real, the remaining unknown is
-the smoke-probe failure after `--plaintext` on 2.25.0. Start from a run with
-full logs (`368b117` or later), read the deploy step's dump of the client
-daemon logs (`/tmp/.cache/telepresence/logs/*.log`) and the traffic-agent log,
-and reproduce on a local kind cluster rather than in 15-minute CI cycles. Any
-fix must pass the routing proof in section 4 for both matched and unmatched
-traffic before the matrix entry is restored.
+The last known blocker is small: the client image lacks `iptables`, so the
+Telepresence root session exits at connect time (section 3, last row). The
+next step is to add `iptables` to `build-images/Dockerfile.telepresence`
+(the client already runs privileged as root with a tun device), re-run
+`--intercept-backend telepresence`, and read the deploy step's smoke probe
+and daemon log dump (`/tmp/.cache/telepresence/logs/*.log`). Prefer a local
+kind cluster over 15-minute CI cycles. Any fix must pass the routing proof in
+section 4 for both matched and unmatched traffic before the matrix entry is
+restored.
