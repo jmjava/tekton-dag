@@ -197,6 +197,13 @@ spec:
             env:
             - name: HOME
               value: /tmp
+            # No analytics: without this mirrord logs a benign
+            # "ERROR mirrord::connection: failed to obtain machine ID" that
+            # looks like a failure in the gate below.
+            - name: MIRRORD_TELEMETRY
+              value: "false"
+            - name: MIRRORD_PROGRESS_MODE
+              value: "off"
             - name: PR_POD_IP
               value: "${PR_POD_IP}"
             - name: CPORT
@@ -230,8 +237,11 @@ spec:
             RESTARTS=$(kubectl get "pod/${PROXY_NAME}" -n "$NS" -o jsonpath='{.status.containerStatuses[0].restartCount}' 2>/dev/null || echo "0")
             PROXY_IP=$(kubectl get "pod/${PROXY_NAME}" -n "$NS" -o jsonpath='{.status.podIP}' 2>/dev/null || echo "")
             PROXY_LOG=$(kubectl logs "pod/${PROXY_NAME}" -n "$NS" 2>/dev/null || true)
+            # Fatal log lines only. A generic "ERROR mirrord::..." is not
+            # fatal (e.g. the machine-ID telemetry lookup); a real crash ends
+            # the process and, with restartPolicy Never, moves the pod to Failed.
             if [ "$PHASE" = "Failed" ] || [ "$PHASE" = "Succeeded" ] || [ "${RESTARTS:-0}" != "0" ] \
-              || printf '%s' "$PROXY_LOG" | grep -Eq 'ERROR mirrord|Failed to create mirrord-agent|Forbidden|^Error:'; then
+              || printf '%s' "$PROXY_LOG" | grep -Eq 'Failed to create mirrord-agent|Forbidden|^Error:|agent (connection|creation) (failed|timed out)'; then
               break
             fi
             if [ "$PHASE" = "Running" ] && [ -n "$PROXY_IP" ]; then
@@ -264,7 +274,11 @@ spec:
             kubectl get jobs,pods -n "$NS" -l app=mirrord 2>&1 >&2 || true
             exit 1
           fi
-          echo "  Proxy ${PROXY_NAME} serving via socat -> PR pod (HTTP 200, 0 restarts)"
+          if [ "$CODE" = "200" ]; then
+            echo "  Proxy ${PROXY_NAME} serving via socat -> PR pod (HTTP 200, 0 restarts)"
+          else
+            echo "  Proxy ${PROXY_NAME} Running clean for 30s, 0 restarts (direct probe HTTP ${CODE}; routing is proven in validate-propagation)"
+          fi
           echo "  Intercept active for $APP (traffic with header -> PR pod $POD_NAME)"
           echo ""
 
