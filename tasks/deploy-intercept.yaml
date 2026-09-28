@@ -306,7 +306,7 @@ spec:
               echo "telepresence version:"
               /usr/local/bin/telepresence version
               echo "connecting to traffic-manager..."
-              /usr/local/bin/telepresence connect --manager-namespace ambassador --mapped-namespaces ${NS}
+              /usr/local/bin/telepresence connect --manager-namespace ambassador --namespace ${NS} --mapped-namespaces ${NS} --never-proxy ${PR_POD_IP}/32
               echo "waiting for telepresence daemons..."
               i=0
               until /usr/local/bin/telepresence status 2>/dev/null | grep -qiE 'Status[[:space:]]*:[[:space:]]*Connected|Connected to context'; do
@@ -318,8 +318,10 @@ spec:
                 fi
                 sleep 2
               done
-              echo "creating intercept ${APP} -> ${PR_POD_IP}:${CPORT}..."
-              /usr/local/bin/telepresence intercept ${APP} --address ${PR_POD_IP} --port ${CPORT} ${HTTP_MATCH} --plaintext
+              echo "forwarding localhost:18080 -> ${PR_POD_IP}:${CPORT} (never-proxy, no TUN hairpin)"
+              socat TCP-LISTEN:18080,fork,reuseaddr,bind=127.0.0.1 TCP:${PR_POD_IP}:${CPORT} &
+              echo "creating intercept ${APP} on localhost:18080..."
+              /usr/local/bin/telepresence intercept ${APP} --port 18080 ${HTTP_MATCH} --plaintext
               echo "Intercept active for ${APP}!"
               tail -f /dev/null
             securityContext:
