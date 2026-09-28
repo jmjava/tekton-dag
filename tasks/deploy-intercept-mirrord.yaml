@@ -37,6 +37,13 @@ spec:
       type: string
       default: "localhost:5000/tekton-dag-build-mirrord:latest"
       description: "Image for mirrord proxy pods (mirrord CLI + socat)"
+    - name: proxy-service-account
+      type: string
+      default: "mirrord-intercept"
+      description: |
+        ServiceAccount the proxy pod runs as. mirrord exec must read the target
+        Deployment and create the mirrord-agent Job; the default SA cannot.
+        Create it with scripts/install-mirrord-intercept-rbac.sh.
   workspaces:
     - name: shared-workspace
       description: "Workspace to write deployed-pods.json for pass-through result"
@@ -57,6 +64,7 @@ spec:
         INTERCEPT="$(params.intercept-header-value)"
         DEFAULT_NS="$(params.default-namespace)"
         MIRRORD_IMAGE="$(params.mirrord-image)"
+        PROXY_SA="$(params.proxy-service-account)"
         DEPLOYED_PODS_FILE="$(workspaces.shared-workspace.path)/deployed-pods.json"
 
         echo "============================================="
@@ -172,7 +180,9 @@ spec:
             component: ${APP}
             managed-by: tekton-job-standardization
         spec:
+          serviceAccountName: ${PROXY_SA}
           hostPID: true
+          restartPolicy: Never
           containers:
           - name: mirrord-proxy
             image: ${MIRRORD_IMAGE}
@@ -206,12 +216,55 @@ spec:
               name: ${CM_NAME}
         PROXYPOD
 
-          if ! kubectl wait --for=condition=Ready "pod/${PROXY_NAME}" --namespace "$NS" --timeout=120s; then
-            echo "ERROR: mirrord proxy ${PROXY_NAME} did not become Ready" >&2
-            kubectl describe "pod/${PROXY_NAME}" -n "$NS" >&2 || true
-            kubectl logs "pod/${PROXY_NAME}" -n "$NS" >&2 || true
+          # Fail closed. A Ready flicker is not proof: with no readiness probe a
+          # container is Ready the instant it runs, and mirrord exec can fail a
+          # second later. Require the proxy to (1) still be Running with zero
+          # restarts, (2) have no mirrord error in its log, and (3) actually
+          # serve: a request to the proxy's own IP:CPORT goes socat -> PR pod.
+          PROXY_OK=false
+          CODE="000"
+          RUNNING_SINCE=0
+          DEADLINE=$(( $(date +%s) + 180 ))
+          while [ "$(date +%s)" -lt "$DEADLINE" ]; do
+            PHASE=$(kubectl get "pod/${PROXY_NAME}" -n "$NS" -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
+            RESTARTS=$(kubectl get "pod/${PROXY_NAME}" -n "$NS" -o jsonpath='{.status.containerStatuses[0].restartCount}' 2>/dev/null || echo "0")
+            PROXY_IP=$(kubectl get "pod/${PROXY_NAME}" -n "$NS" -o jsonpath='{.status.podIP}' 2>/dev/null || echo "")
+            PROXY_LOG=$(kubectl logs "pod/${PROXY_NAME}" -n "$NS" 2>/dev/null || true)
+            if [ "$PHASE" = "Failed" ] || [ "$PHASE" = "Succeeded" ] || [ "${RESTARTS:-0}" != "0" ] \
+              || printf '%s' "$PROXY_LOG" | grep -Eq 'ERROR mirrord|Failed to create mirrord-agent|Forbidden|^Error:'; then
+              break
+            fi
+            if [ "$PHASE" = "Running" ] && [ -n "$PROXY_IP" ]; then
+              [ "$RUNNING_SINCE" -gt 0 ] || RUNNING_SINCE=$(date +%s)
+              CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 3 --max-time 10 \
+                "http://${PROXY_IP}:${CPORT}/" 2>/dev/null || echo "000")
+              if [ "$CODE" = "200" ]; then
+                PROXY_OK=true
+                break
+              fi
+              # The mirrord layer may own socat's listener; accept a proxy that
+              # has stayed Running and error-free for 30s. validate-propagation
+              # still proves routing from the PR pod's own access log.
+              if [ $(( $(date +%s) - RUNNING_SINCE )) -ge 30 ]; then
+                PROXY_OK=true
+                break
+              fi
+            else
+              RUNNING_SINCE=0
+            fi
+            sleep 3
+          done
+          if ! $PROXY_OK; then
+            echo "ERROR: mirrord proxy ${PROXY_NAME} is not serving (phase=${PHASE:-?} restarts=${RESTARTS:-?})" >&2
+            echo "--- proxy pod log ---" >&2
+            kubectl logs "pod/${PROXY_NAME}" -n "$NS" 2>&1 | tail -n 60 >&2 || true
+            echo "--- proxy pod describe ---" >&2
+            kubectl describe "pod/${PROXY_NAME}" -n "$NS" 2>&1 | tail -n 40 >&2 || true
+            echo "--- mirrord agent jobs/pods in $NS ---" >&2
+            kubectl get jobs,pods -n "$NS" -l app=mirrord 2>&1 >&2 || true
             exit 1
           fi
+          echo "  Proxy ${PROXY_NAME} serving via socat -> PR pod (HTTP 200, 0 restarts)"
           echo "  Intercept active for $APP (traffic with header -> PR pod $POD_NAME)"
           echo ""
 

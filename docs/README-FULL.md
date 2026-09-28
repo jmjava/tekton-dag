@@ -487,7 +487,7 @@ Then install Tekton and this repo’s tasks/pipelines:
 ./scripts/install-tekton.sh
 ```
 
-mirrord needs no cluster-side install. Optionally install the **Telepresence Traffic Manager** for laptop intercepts or the experimental in-cluster Telepresence backend:
+mirrord needs no cluster-side install beyond the proxy pod identity (`./scripts/install-mirrord-intercept-rbac.sh`, once per namespace). Optionally install the **Telepresence Traffic Manager** for laptop intercepts or the experimental in-cluster Telepresence backend:
 
 ```bash
 ./scripts/install-telepresence-traffic-manager.sh
@@ -497,7 +497,7 @@ mirrord needs no cluster-side install. Optionally install the **Telepresence Tra
 
 **1b. Other local clusters (minikube, k3d)**
 
-Create a cluster with [minikube](https://minikube.sigs.k8s.io/) or [k3d](https://k3d.io/). Install Tekton Pipelines (mirrord intercepts need no cluster-side install; the Telepresence Traffic Manager is only needed for laptop intercepts). Apply this repo’s tasks and pipelines (and the git-clone task from the Tekton catalog if needed):
+Create a cluster with [minikube](https://minikube.sigs.k8s.io/) or [k3d](https://k3d.io/). Install Tekton Pipelines and run `./scripts/install-mirrord-intercept-rbac.sh` (the Telepresence Traffic Manager is only needed for laptop intercepts). Apply this repo’s tasks and pipelines (and the git-clone task from the Tekton catalog if needed):
 
 ```bash
 kubectl apply -f tasks/

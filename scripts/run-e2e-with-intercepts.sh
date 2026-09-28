@@ -68,6 +68,8 @@ fi
 # Ensure SA and RBAC for pipeline (deploy in staging, etc.)
 kubectl create serviceaccount tekton-pr-sa -n "$NAMESPACE" 2>/dev/null || true
 kubectl create clusterrolebinding tekton-pr-sa-admin --clusterrole=cluster-admin --serviceaccount="$NAMESPACE":tekton-pr-sa 2>/dev/null || true
+# Identity for the in-cluster mirrord proxy pod (reads the target Deployment, creates the agent Job)
+"$SCRIPT_DIR/install-mirrord-intercept-rbac.sh" --namespace staging
 
 echo "=============================================="
 echo "  E2E with live Telepresence intercepts"

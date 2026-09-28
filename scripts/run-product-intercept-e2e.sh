@@ -203,8 +203,10 @@ verify_pr_evidence() {
 resolve_api_token
 start_port_forward
 
-# The pipeline SA cannot create ServiceAccounts. Telepresence connect runs
-# inside the PR pod and needs an API client the runner creates here.
+# The pipeline SA cannot create ServiceAccounts. The mirrord proxy pod (and,
+# for the experimental backend, the Telepresence client pod) needs an API
+# identity the runner creates here.
+"$(dirname "$0")/install-mirrord-intercept-rbac.sh" --namespace staging
 if [[ "$INTERCEPT_BACKEND" == "telepresence" ]]; then
   kubectl create namespace staging --dry-run=client -o yaml | kubectl apply -f -
   kubectl create serviceaccount telepresence-intercept -n staging \

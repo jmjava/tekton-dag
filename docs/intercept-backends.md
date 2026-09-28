@@ -1,7 +1,9 @@
 # Intercept backends: mirrord in CI, Telepresence on the laptop
 
 **Status (2026-09-27):** mirrord is the only intercept backend the PR pipeline
-runs in CI and the default everywhere (`intercept-backend=mirrord`). The
+runs in CI and the default everywhere (`intercept-backend=mirrord`). Until this
+change neither backend had ever routed a header request to a PR pod in CI;
+section 4 explains how mirrord's green was a race and what now proves routing. The
 in-cluster Telepresence sidecar task is kept as **experimental** and is not
 exercised by CI. Telepresence remains supported as a **laptop** workflow.
 
@@ -69,15 +71,33 @@ latter.
 
 `tasks/deploy-intercept-mirrord.yaml` runs the built image as the real app in
 the PR pod and uses `mirrord exec` with `http_filter.header_filter` in steal
-mode, relaying matched requests through `socat` to the PR pod IP. It has been
-green on every run of PR #109 since its proxy pod's crash loop (non-root home
-directory) was fixed.
+mode, relaying matched requests through `socat` to the PR pod IP.
 
-That green was also audited for false positives. The `/propagation` endpoint
-is served identically by the baseline and the PR pod and simply echoes the
-header it received, so `PASS — REACHED session=pr-N` alone does not prove
-which pod answered. `validate-stack-propagation` therefore now adds a
-**routing proof**, fail-closed, per intercepted app:
+Its green runs were audited too, and they were **also false positives** until
+this change. The proxy pod ran as the namespace `default` ServiceAccount, and
+`mirrord exec` died within a second on
+`deployments.apps "demo-fe" is forbidden: User "system:serviceaccount:staging:default"`.
+The deploy step only checked `kubectl wait --for=condition=Ready`; a container
+with no readiness probe is Ready the instant it runs, so the wait usually
+caught that one-second window and printed `Intercept active`. Run
+`36367430488` lost the race (`Restart Count: 4`) and exposed it. Downstream,
+`/propagation` is served identically by the baseline and the PR pod and simply
+echoes the header it received, so `PASS — REACHED session=pr-N` alone never
+proved which pod answered.
+
+So as of 2026-09-27 **neither backend had ever routed a header request to a
+PR pod in CI**. mirrord is the one worth finishing because its failure is a
+plain RBAC gap and it needs no privileged client, no restart of the live
+Deployment, and no version coupling. Fixes in this PR:
+
+- The proxy pod runs as `mirrord-intercept` (ServiceAccount + namespace Role:
+  read pods/deployments/replicasets, create the agent Job), created by
+  `scripts/install-mirrord-intercept-rbac.sh`, which the runners call.
+- The deploy step fails closed on the first mirrord error line, any restart,
+  or a proxy that is not serving (`restartPolicy: Never`; direct probe through
+  socat to the PR pod, or 30 s Running and error-free).
+- `validate-stack-propagation` adds a **routing proof**, fail-closed, per
+  intercepted app:
 
 1. `GET <service>/propagation?probehit<id>` **with** the header. The id must
    appear in the PR pod's access log (nginx logs every request line to stdout;

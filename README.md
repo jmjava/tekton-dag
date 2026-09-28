@@ -196,7 +196,10 @@ flowchart LR
 kubectl apply -f tasks/
 kubectl apply -f pipeline/
 
-# 5. Optional: Telepresence Traffic Manager (laptop intercepts / experimental in-cluster backend)
+# 5. mirrord intercept proxy identity (ServiceAccount + Role in staging)
+./scripts/install-mirrord-intercept-rbac.sh
+
+# 5b. Optional: Telepresence Traffic Manager (laptop intercepts / experimental in-cluster backend)
 ./scripts/install-telepresence-traffic-manager.sh
 
 # 6. Optional: Postgres + Tekton Results (persist run history)
