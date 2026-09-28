@@ -5,12 +5,9 @@ FROM bitnami/kubectl:latest
 
 USER root
 ARG TELEPRESENCE_VERSION=2.25.0
-RUN install_packages socat python3 2>/dev/null || (apt-get update -qq && apt-get install -y -qq --no-install-recommends socat python3 && rm -rf /var/lib/apt/lists/*)
-COPY tp-header-router.py /usr/local/bin/tp-header-router
-RUN chmod +x /usr/local/bin/tp-header-router \
-  && curl -fsSL "https://github.com/telepresenceio/telepresence/releases/download/v${TELEPRESENCE_VERSION}/telepresence-linux-amd64" -o /usr/local/bin/telepresence \
+RUN install_packages socat 2>/dev/null || (apt-get update -qq && apt-get install -y -qq --no-install-recommends socat && rm -rf /var/lib/apt/lists/*)
+RUN curl -fsSL "https://github.com/telepresenceio/telepresence/releases/download/v${TELEPRESENCE_VERSION}/telepresence-linux-amd64" -o /usr/local/bin/telepresence \
   && chmod +x /usr/local/bin/telepresence \
   && telepresence version \
-  && socat -V \
-  && python3 -m py_compile /usr/local/bin/tp-header-router
+  && socat -V
 USER 1001
