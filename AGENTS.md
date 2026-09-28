@@ -15,6 +15,33 @@ Do **not** stop after a single partial test run. Follow **[docs/AGENT-REGRESSION
 - Run **`bash scripts/run-regression-agent.sh`** (or **`run-regression-agent-full.sh`** if Results + DB must pass).
 - **Loop**: fix failures → re-run until **`regression exit code: 0`** and done criteria in the doc are met.
 
+## Local kind first — CI is confirmation, not the debugger
+
+`intercept-e2e.yml` costs ~20 min per cycle (runner queue + `kind create` + image build + pipeline) and only hands back log zips after the cluster is gone. On 2026-09-27 four consecutive mirrord-intercept fixes were debugged that way; each was a two-minute `kubectl logs` question on a live cluster.
+
+When changing `tasks/**`, `pipeline/**`, `scripts/run-product-intercept-e2e.sh`, `scripts/run-e2e-with-intercepts.sh`, `operator/`, or `orchestrator/`:
+
+1. Bring up (or reuse) the persistent local cluster once — check `MemAvailable` in `/proc/meminfo` is above 8 GiB first:
+
+   ```bash
+   bash scripts/run-cluster-ci.sh --skip-isolation      # kind "tekton-stack" + registry + Tekton
+   kubectl create namespace staging --dry-run=client -o yaml | kubectl apply -f -
+   kubectl label namespace staging pod-security.kubernetes.io/enforce=privileged \
+     pod-security.kubernetes.io/audit=privileged pod-security.kubernetes.io/warn=privileged --overwrite
+   kubectl create secret generic ssh-key-secret -n tekton-pipelines --dry-run=client -o yaml | kubectl apply -f -
+   bash build-images/build-and-push.sh localhost:5000 latest
+   ```
+
+2. Iterate against it. Re-apply only what changed (`kubectl apply -f tasks/`, `kubectl apply -f pipeline/`, rebuild one tool image) and rerun
+   `bash scripts/run-product-intercept-e2e.sh --intercept-backend mirrord --pr <N> 2>&1 | tee /tmp/intercept-local.log`.
+   Watch live: `kubectl get pods -n staging -w`, `kubectl logs -n staging <mirrord-proxy-pod>`, `kubectl logs -n staging -l app=mirrord --tail=-1`.
+
+3. Do **not** `kind delete cluster --name tekton-stack` between iterations. Delete only when the cluster itself is suspect. Never touch other kind clusters on the machine.
+
+4. Push to CI when the local run is green. CI then confirms on a clean VM.
+
+Log-grep gates in tasks match **specific fatal messages**, never a generic `ERROR <tool>` (mirrord emits a non-fatal telemetry `ERROR` line). See [docs/intercept-backends.md](docs/intercept-backends.md).
+
 ## Quick commands
 
 | Intent | Command |

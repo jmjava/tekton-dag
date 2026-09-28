@@ -4,7 +4,7 @@ namespace: "tekton-pipelines"
 imageRegistry: "localhost:5000"
 buildImageTag: "latest"
 cacheRepo: "localhost:5000/kaniko-cache"
-interceptBackend: "telepresence"
+interceptBackend: "mirrord"
 maxParallelBuilds: 5
 
 # Default compile images (used when stack YAML does not specify a version).

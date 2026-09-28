@@ -35,7 +35,7 @@ On 2026-09-07, `bash scripts/run-regression-stream.sh --local-only --require-lan
 |----------|------|
 | `local-regression.yml` | Every PR / `main` push: `--local-only --require-lang-tests` |
 | `cluster-regression.yml` | Nightly + tags + Helm/cluster-script PRs |
-| `intercept-e2e.yml` | Weekly Telepresence + mirrord product path |
+| `intercept-e2e.yml` | Weekly mirrord product path with PR-pod routing proof (in-cluster Telepresence removed 2026-09-27, see `docs/intercept-backends.md`) |
 | `results-regression.yml` | Weekly Results/Postgres + `run-regression-agent-full.sh` |
 | `operator.yml` | `operator/**` PRs: unit/envtest + Kind domain E2E |
 
@@ -70,13 +70,12 @@ C2 (polyglot baggage **unit** tests) is PR-gated for Python, Node, Java, and PHP
 | No `x-dev-session` header (5 rounds) | baseline `tekton-dag-spring-boot` | 5/5 |
 | `x-dev-session: pr-test` (5 rounds) | intercept / local PR process | 5/5 |
 
-Same header-filter idea is documented as parity with Telepresence `--http-match`. E2E scripts exist for **both** backends:
+mirrord `header_filter` is the implemented backend; the in-cluster Telepresence task was removed (`docs/intercept-backends.md`):
 
 ```bash
-./scripts/run-product-intercept-e2e.sh --intercept-backend telepresence
 ./scripts/run-product-intercept-e2e.sh --intercept-backend mirrord
 # local Kind helper:
-./scripts/run-e2e-with-intercepts.sh --intercept-backend telepresence --skip-bootstrap
+./scripts/run-e2e-with-intercepts.sh --intercept-backend mirrord --skip-bootstrap
 ```
 
 **How to report:** “In a controlled Kind deployment of the three-app exemplar, unmatched requests remained on the baseline replica; matched requests were stolen (5/5 each).” Cite [`docs/mirrord-poc-results.md`](../mirrord-poc-results.md) for that smoke, and `run-isolation-eval.sh --cluster` for dummy-stack probes (this Cloud Agent: 6/6 `isolation_ok`). Neither is a site measurement (S21).

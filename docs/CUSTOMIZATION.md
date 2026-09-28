@@ -20,7 +20,7 @@ namespace: tekton-pipelines
 cluster: prod-us-east
 imageRegistry: registry.internal/squad-b
 cacheRepo: registry.internal/squad-b/kaniko-cache
-interceptBackend: telepresence
+interceptBackend: mirrord
 maxConcurrentRuns: 5
 maxParallelBuilds: 8
 stacks:
@@ -34,7 +34,7 @@ teamName: "squad-b"
 namespace: "tekton-pipelines"
 imageRegistry: "registry.internal/squad-b"
 cacheRepo: "registry.internal/squad-b/kaniko-cache"
-interceptBackend: "telepresence"
+interceptBackend: "mirrord"
 maxParallelBuilds: 8
 stackFile: "stacks/squad-b-core.yaml"
 gitUrl: "https://github.com/myorg/platform.git"
@@ -235,13 +235,13 @@ Ensure a **compile image** exists that matches that toolchain (build and push wi
 
 ## 8. Add intercept backend support
 
-**Goal:** Use **mirrord** instead of **Telepresence** (or switch per environment).
+**Goal:** Understand the intercept backend setting. mirrord is the only implemented backend; the in-cluster Telepresence task was removed (see [intercept-backends.md](intercept-backends.md)).
 
-1. **Cluster** — install the components your chosen backend needs (e.g. Telepresence Traffic Manager or mirrord operator per vendor docs).
+1. **Cluster** — run `./scripts/install-mirrord-intercept-rbac.sh` once per target namespace (ServiceAccount + Role for the proxy pod).
 
-2. **Helm** — set `interceptBackend: "mirrord"` in values; the orchestrator sets `INTERCEPT_BACKEND` for webhook-created runs.
+2. **Helm** — `interceptBackend` is `"mirrord"`; the orchestrator sets `INTERCEPT_BACKEND` for webhook-created runs.
 
-3. **Pipeline param** — `stack-pr-test` already exposes `intercept-backend` (`telepresence` | `mirrord`). `generate-run.sh` supports:
+3. **Pipeline param** — `stack-pr-test` exposes `intercept-backend` (`mirrord`; kept for API compatibility). `generate-run.sh` supports:
 
 ```bash
 ./scripts/generate-run.sh --mode pr --repo demo-fe --pr 1 --intercept-backend mirrord --apply

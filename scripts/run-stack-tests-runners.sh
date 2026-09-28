@@ -278,7 +278,7 @@ for APP in $APP_LIST; do
     [ "$BA" = "$APP" ] && IS_INTERCEPTED=true
   done
   if [ "$IS_INTERCEPTED" = "true" ]; then
-    echo "  (INTERCEPTED — hitting PR build via Telepresence)"
+    echo "  (INTERCEPTED — hitting PR build via mirrord)"
   else
     echo "  (normal cluster deployment)"
   fi

@@ -93,11 +93,49 @@ def test_deploy_full_stack_has_validate_secrets_param():
 
 
 def test_intercept_tasks_inject_baggage_env():
-    for rel in ("tasks/deploy-intercept.yaml", "tasks/deploy-intercept-mirrord.yaml"):
+    for rel in ("tasks/deploy-intercept-mirrord.yaml",):
         script = _load(rel)["spec"]["steps"][0]["script"]
         assert "BAGGAGE_ENABLED" in script, rel
         assert "BAGGAGE_ROLE" in script, rel
         assert "APP_NAME" in script, rel
+
+
+def test_mirrord_proxy_runs_as_own_service_account_and_fails_closed():
+    """2026-09-27: the proxy ran as staging:default (403 on the target
+    Deployment) and the deploy step only waited for a Ready flicker."""
+    task = _load("tasks/deploy-intercept-mirrord.yaml")
+    params = {p["name"]: p for p in task["spec"]["params"]}
+    assert params["proxy-service-account"]["default"] == "mirrord-intercept"
+    script = task["spec"]["steps"][0]["script"]
+    assert "serviceAccountName: ${PROXY_SA}" in script
+    assert "restartPolicy: Never" in script
+    assert "Failed to create mirrord-agent|Failed to connect to the created mirrord-agent|Forbidden" in script
+    assert "kubectl wait --for=condition=Ready \"pod/${PROXY_NAME}\"" not in script
+    # Positive marker: the agent pod named in the proxy log must be Running
+    # 40 s later. A generic 'ERROR mirrord' must NOT be treated as fatal
+    # (mirrord prints a non-fatal machine-ID telemetry ERROR).
+    assert "Created agent pod" in script
+    assert "-ge 40" in script
+    assert "grep -Eq 'ERROR mirrord" not in script
+    rbac = (ROOT / "scripts/install-mirrord-intercept-rbac.sh").read_text()
+    assert '"pods/portforward"' in rbac, "mirrord OSS connects to its agent via port-forward"
+
+
+def test_validate_propagation_proves_routing_from_pr_pod_log():
+    """/propagation echoes the header on baseline and PR pod alike, so the
+    validator must read the PR pod's own access log (fail-closed)."""
+    task = _load("tasks/validate-propagation.yaml")
+    params = {p["name"]: p for p in task["spec"]["params"]}
+    assert "deployed-pods" in params
+    script = task["spec"]["steps"][0]["script"]
+    assert "Routing proof (fail-closed)" in script
+    assert "probehit" in script and "probemiss" in script
+    assert "/pods/$2/log" in script
+    assert "intercept steals all traffic" in script
+    for rel in ("pipeline/stack-pr-pipeline.yaml", "pipeline/stack-pr-continue-pipeline.yaml"):
+        pipeline = (ROOT / rel).read_text()
+        assert "value: $(tasks.deploy-intercepts-result.results.deployed-pods)" in pipeline, rel
+        assert "deploy-intercepts-telepresence" not in pipeline, rel
 
 
 def test_resolve_stack_installs_jq_and_yq_without_swallowing_errors():

@@ -11,7 +11,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=common.sh
 source "$SCRIPT_DIR/common.sh"
 
-INTERCEPT_BACKEND="${INTERCEPT_BACKEND:-telepresence}"
+INTERCEPT_BACKEND="${INTERCEPT_BACKEND:-mirrord}"
 STACK_FILE="${STACK_FILE:-stack-one.yaml}"
 CHANGED_APP="${CHANGED_APP:-demo-fe}"
 PR_NUMBER="${PR_NUMBER:-900001}"
@@ -40,8 +40,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-[[ "$INTERCEPT_BACKEND" == "telepresence" || "$INTERCEPT_BACKEND" == "mirrord" ]] \
-  || die "--intercept-backend must be telepresence or mirrord"
+[[ "$INTERCEPT_BACKEND" == "mirrord" ]] \
+  || die "--intercept-backend must be mirrord (Telepresence in-cluster was removed; see docs/intercept-backends.md)"
 [[ "$PR_NUMBER" =~ ^[0-9]+$ ]] || die "--pr must be numeric"
 
 need kubectl
@@ -99,8 +99,10 @@ collect_run_evidence() {
       }' >"$ARTIFACT_DIR/$prefix-pipeline-results.json" || true
   kubectl get taskrun -n "$NAMESPACE" -l "tekton.dev/pipelineRun=$pipeline_run" -o yaml \
     >"$ARTIFACT_DIR/$prefix-taskruns.yaml" 2>&1 || true
+  # --tail=-1: with a label selector kubectl defaults to the last 10 lines
+  # per container, which hides every step's diagnostics.
   kubectl logs -n "$NAMESPACE" -l "tekton.dev/pipelineRun=$pipeline_run" \
-    --all-containers=true --prefix=true \
+    --all-containers=true --prefix=true --tail=-1 \
     >"$ARTIFACT_DIR/$prefix-pod-logs.txt" 2>&1 || true
 }
 
@@ -192,7 +194,7 @@ verify_pr_evidence() {
     || die "PR PipelineRun run-tests TaskRun did not succeed"
   kubectl logs -n "$NAMESPACE" -l \
     "tekton.dev/pipelineRun=$pipeline_run,tekton.dev/pipelineTask=run-tests" \
-    --all-containers=true --prefix=true \
+    --all-containers=true --prefix=true --tail=-1 \
     >"$ARTIFACT_DIR/pr-traffic-evidence.log"
   [[ -s "$ARTIFACT_DIR/pr-traffic-evidence.log" ]] \
     || die "run-tests traffic evidence log is empty"
@@ -200,6 +202,10 @@ verify_pr_evidence() {
 
 resolve_api_token
 start_port_forward
+
+# The pipeline SA cannot create ServiceAccounts. The mirrord proxy pod needs
+# an API identity the runner creates here.
+"$(dirname "$0")/install-mirrord-intercept-rbac.sh" --namespace staging
 
 echo ">>> Trigger bootstrap through authenticated orchestrator API"
 bootstrap_payload="$(jq -nc --arg stack "stacks/$STACK_FILE" \

@@ -148,7 +148,7 @@ spec:
         echo ""
         echo "  This request should flow through ALL original deployments."
         echo "  Even intercepted apps should respond from their original pods"
-        echo "  because no header matches the Telepresence intercept rule."
+        echo "  because no header matches the mirrord intercept filter."
         echo ""
 
         PASSTHROUGH_RESULT=$(curl -s \

@@ -45,6 +45,14 @@ spec:
     - name: default-namespace
       type: string
       default: "staging"
+    - name: deployed-pods
+      type: string
+      default: ""
+      description: |
+        JSON map app -> PR pod name from deploy-intercepts. When non-empty the
+        task also proves routing: a header-matched request must be served by
+        that PR pod and an unmatched request must not be (read from the pod's
+        access log through the Kubernetes API).
   steps:
     - name: validate
       image: alpine:3.19
@@ -186,12 +194,17 @@ spec:
         TRACEPARENT="00-$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c 32)-$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c 16)-01"
 
         fetch_originator() {
-          curl -s \
+          body_file=$(mktemp)
+          http_code=$(curl -s -o "$body_file" -w "%{http_code}" \
             -H "${HEADER_NAME}: ${HEADER_VAL}" \
             -H "baggage: ${BAGGAGE_KEY}=${HEADER_VAL}" \
             -H "traceparent: ${TRACEPARENT}" \
             --connect-timeout 10 --max-time 60 \
-            "$1" 2>/dev/null || echo '{"error":"unreachable"}'
+            "$1" 2>/dev/null || true)
+          [ -n "$http_code" ] || http_code="000"
+          printf '%s' "$http_code" > /tmp/originator-http-code
+          cat "$body_file"
+          rm -f "$body_file"
         }
 
         URL="${BASE}/propagation"
@@ -200,10 +213,11 @@ spec:
         echo ""
 
         RESULT=$(fetch_originator "$URL")
-        if echo "$RESULT" | grep -Eq '"error"[[:space:]]*:[[:space:]]*"unreachable"' \
-          || echo "$RESULT" | grep -qi '404'; then
+        HTTP_CODE=$(cat /tmp/originator-http-code 2>/dev/null || echo "000")
+        if [ "$HTTP_CODE" = "404" ] || [ "$HTTP_CODE" = "000" ] \
+          || echo "$RESULT" | grep -Eq '"error"[[:space:]]*:[[:space:]]*"unreachable"'; then
           URL="${BASE}/"
-          echo "  /propagation unavailable — retrying $URL"
+          echo "  /propagation unavailable (HTTP $HTTP_CODE) — retrying $URL"
           RESULT=$(fetch_originator "$URL")
         fi
 
@@ -306,4 +320,90 @@ spec:
           echo "PASS: hop-to-hop verification complete"
         fi
         echo ""
+
+        # ------------------------------------------------------------------
+        # Routing proof (fail-closed). The /propagation echo above is served
+        # identically by the baseline and the PR pod, so it cannot tell which
+        # pod answered. Prove it from the PR pod's own access log: a request
+        # tagged with a unique query string and carrying the header must show
+        # up there; an untagged-header request with a different tag must not.
+        # ------------------------------------------------------------------
+        DEPLOYED_PODS='$(params.deployed-pods)'
+        if [ -n "$HEADER_VAL" ] && [ -n "$BUILD_APPS" ] \
+          && [ -n "$DEPLOYED_PODS" ] && [ "$DEPLOYED_PODS" != "{}" ]; then
+          echo "Routing proof (fail-closed): PR pod must serve matched traffic only"
+          SA_DIR=/var/run/secrets/kubernetes.io/serviceaccount
+          API="https://kubernetes.default.svc"
+          pod_log() {
+            # $1 namespace, $2 pod. Prefer the app container; fall back to the
+            # pod default if that container name does not exist.
+            out=$(curl -s --cacert "$SA_DIR/ca.crt" \
+              -H "Authorization: Bearer $(cat "$SA_DIR/token")" \
+              "$API/api/v1/namespaces/$1/pods/$2/log?container=pr-component&sinceSeconds=600" || true)
+            if printf '%s' "$out" | grep -q '"kind":"Status"'; then
+              out=$(curl -s --cacert "$SA_DIR/ca.crt" \
+                -H "Authorization: Bearer $(cat "$SA_DIR/token")" \
+                "$API/api/v1/namespaces/$1/pods/$2/log?sinceSeconds=600" || true)
+            fi
+            printf '%s' "$out"
+          }
+          for APP in $BUILD_APPS; do
+            POD=$(echo "$DEPLOYED_PODS" | jq -r --arg a "$APP" '.[$a] // empty')
+            if [ -z "$POD" ]; then
+              echo "  $APP: FAIL — no PR pod recorded in deployed-pods"
+              FAILED=1
+              continue
+            fi
+            NS=$(echo "$STACK_JSON" | jq -r --arg a "$APP" --arg d "$DEFAULT_NS" \
+              '(.defaults.namespace // $d) as $dn | .apps[]|select(.name==$a)|.namespace // $dn')
+            SPORT=$(echo "$STACK_JSON" | jq -r --arg a "$APP" \
+              '(.defaults."service-port" // "80") as $dp | .apps[]|select(.name==$a)|."service-port" // $dp')
+            SVC="http://${APP}.${NS}.svc.cluster.local:${SPORT}"
+            TAG=$(cat /dev/urandom | tr -dc 'a-z0-9' | head -c 12)
+            HIT="probehit${TAG}"
+            MISS="probemiss${TAG}"
+
+            HIT_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+              -H "${HEADER_NAME}: ${HEADER_VAL}" \
+              -H "baggage: ${BAGGAGE_KEY}=${HEADER_VAL}" \
+              --connect-timeout 10 --max-time 30 \
+              "${SVC}/propagation?${HIT}" 2>/dev/null || echo "000")
+            MISS_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+              --connect-timeout 10 --max-time 30 \
+              "${SVC}/propagation?${MISS}" 2>/dev/null || echo "000")
+            echo "  $APP -> $POD: matched request HTTP $HIT_CODE, unmatched request HTTP $MISS_CODE"
+
+            LOG=""
+            ATTEMPT=0
+            while [ $ATTEMPT -lt 10 ]; do
+              ATTEMPT=$((ATTEMPT + 1))
+              LOG=$(pod_log "$NS" "$POD")
+              if printf '%s' "$LOG" | grep -q "$HIT"; then break; fi
+              sleep 2
+            done
+
+            if ! printf '%s' "$LOG" | grep -q "$HIT"; then
+              echo "  $APP: FAIL — header-matched request never reached PR pod $POD (intercept is not routing)"
+              echo "  --- last 20 log lines of $POD ---"
+              printf '%s\n' "$LOG" | tail -n 20 | sed 's/^/    /'
+              FAILED=1
+            elif printf '%s' "$LOG" | grep -q "$MISS"; then
+              echo "  $APP: FAIL — unmatched request also reached PR pod $POD (intercept steals all traffic)"
+              FAILED=1
+            else
+              echo "  $APP: PASS — PR pod $POD served the matched request and not the unmatched one"
+            fi
+          done
+          echo ""
+          if [ "$FAILED" -ne 0 ]; then
+            echo "FAIL: intercept routing not proven"
+            exit 1
+          fi
+          echo "PASS: intercept routing proven from PR pod access logs"
+          echo ""
+        elif [ -n "$BUILD_APPS" ]; then
+          echo "Routing proof skipped: deployed-pods not provided"
+          echo ""
+        fi
+
         echo "Propagation validation complete."

@@ -75,10 +75,10 @@ else
   echo ">>> 4. Tekton Results (skipped --skip-results)"
 fi
 
-# 5. Telepresence Traffic Manager (required for intercept E2E)
+# 5. mirrord intercept proxy RBAC (required for intercept E2E)
 echo ""
-echo ">>> 5. Telepresence Traffic Manager"
-run_step "5. Telepresence Traffic Manager" ./scripts/install-telepresence-traffic-manager.sh
+echo ">>> 5. mirrord intercept proxy RBAC"
+run_step "5. mirrord intercept proxy RBAC" ./scripts/install-mirrord-intercept-rbac.sh
 
 # 6. Git SSH key secret (required for clone-app-repos SSH pull; created from ~/.ssh if missing)
 echo ""

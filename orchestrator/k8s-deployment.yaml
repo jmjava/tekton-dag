@@ -33,7 +33,7 @@ spec:
             - name: CACHE_REPO
               value: ""
             - name: INTERCEPT_BACKEND
-              value: telepresence
+              value: mirrord
             - name: MAX_PARALLEL_BUILDS
               value: "5"
             - name: GIT_URL

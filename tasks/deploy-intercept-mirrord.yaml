@@ -37,6 +37,13 @@ spec:
       type: string
       default: "localhost:5000/tekton-dag-build-mirrord:latest"
       description: "Image for mirrord proxy pods (mirrord CLI + socat)"
+    - name: proxy-service-account
+      type: string
+      default: "mirrord-intercept"
+      description: |
+        ServiceAccount the proxy pod runs as. mirrord exec must read the target
+        Deployment and create the mirrord-agent Job; the default SA cannot.
+        Create it with scripts/install-mirrord-intercept-rbac.sh.
   workspaces:
     - name: shared-workspace
       description: "Workspace to write deployed-pods.json for pass-through result"
@@ -57,6 +64,7 @@ spec:
         INTERCEPT="$(params.intercept-header-value)"
         DEFAULT_NS="$(params.default-namespace)"
         MIRRORD_IMAGE="$(params.mirrord-image)"
+        PROXY_SA="$(params.proxy-service-account)"
         DEPLOYED_PODS_FILE="$(workspaces.shared-workspace.path)/deployed-pods.json"
 
         echo "============================================="
@@ -116,8 +124,6 @@ spec:
           containers:
           - name: pr-component
             image: ${IMAGE}
-            command: ["/bin/sh"]
-            args: ["-c", "while true; do echo 'PR build for ${APP}'; sleep 30; done"]
             ports:
             - containerPort: ${CPORT}
             env:
@@ -141,9 +147,20 @@ spec:
           PR_POD_IP=$(kubectl get pod "$POD_NAME" -n "$NS" -o jsonpath='{.status.podIP}')
           echo "  PR pod ready: $POD_NAME (IP: $PR_POD_IP)"
 
-          # mirrord config: steal traffic matching header, target the deployment (original app)
-          HEADER_FILTER="${INTERCEPT}"
-          [ -z "$HEADER_FILTER" ] && HEADER_FILTER=".*"
+          # mirrord config: steal traffic matching header, target the deployment (original app).
+          # mirrord evaluates http_filter.header_filter as a regex against the
+          # string "<name>: <value>" (colon + space). The param is "name:value"
+          # with no space, so passing it verbatim never matched (2026-09-27,
+          # found on local kind). Build an anchored, case-insensitive filter.
+          if [ -n "$INTERCEPT" ]; then
+            HDR_NAME="${INTERCEPT%%:*}"
+            HDR_VAL="${INTERCEPT#*:}"
+            HDR_VAL="${HDR_VAL# }"
+            HEADER_FILTER="(?i)^${HDR_NAME}: ${HDR_VAL}\$"
+          else
+            HEADER_FILTER=".*"
+          fi
+          echo "  mirrord header_filter: ${HEADER_FILTER}"
           MIRRORD_CONFIG=$(jq -n \
             --arg path "deployment/${APP}" \
             --arg ns "$NS" \
@@ -174,7 +191,9 @@ spec:
             component: ${APP}
             managed-by: tekton-job-standardization
         spec:
+          serviceAccountName: ${PROXY_SA}
           hostPID: true
+          restartPolicy: Never
           containers:
           - name: mirrord-proxy
             image: ${MIRRORD_IMAGE}
@@ -183,9 +202,22 @@ spec:
             - -c
             - |
               set -e
+              export HOME=/tmp
               echo "Starting mirrord proxy for ${APP} -> ${PR_POD_IP}:${CPORT}"
-              exec mirrord exec -f /config/config.json -- socat TCP-LISTEN:${CPORT},fork TCP:${PR_POD_IP}:${CPORT}
+              exec /usr/local/bin/mirrord exec -f /config/config.json -- socat TCP-LISTEN:${CPORT},fork TCP:${PR_POD_IP}:${CPORT}
             env:
+            - name: HOME
+              value: /tmp
+            - name: MIRRORD_TELEMETRY
+              value: "false"
+            - name: MIRRORD_PROGRESS_MODE
+              value: "off"
+            # INFO gives the gate below its positive marker:
+            # 'Created agent pod ... pod_name: "mirrord-agent-..."'.
+            # (mirrord still prints a non-fatal
+            # 'ERROR mirrord::connection: failed to obtain machine ID'.)
+            - name: RUST_LOG
+              value: "mirrord=info"
             - name: PR_POD_IP
               value: "${PR_POD_IP}"
             - name: CPORT
@@ -195,6 +227,8 @@ spec:
               mountPath: /config
               readOnly: true
             securityContext:
+              runAsUser: 0
+              privileged: true
               capabilities:
                 add: [SYS_ADMIN, SYS_PTRACE, NET_ADMIN]
           volumes:
@@ -203,7 +237,62 @@ spec:
               name: ${CM_NAME}
         PROXYPOD
 
-          kubectl wait --for=condition=Ready "pod/${PROXY_NAME}" --namespace "$NS" --timeout=120s || true
+          # Fail closed, with a positive marker. A Ready flicker is not proof:
+          # with no readiness probe a container is Ready the instant it runs,
+          # and mirrord exec can fail seconds later. Observed on kind: the
+          # proxy logs 'Created agent pod' at ~1s; without pods/portforward
+          # RBAC the WebSocket upgrade 403s at ~+17s and the agent gives up at
+          # ~+30s. So require: proxy Running, zero restarts, no fatal log
+          # line, the agent pod named in the proxy log Running, and all of
+          # that still true 40s after the agent pod was first seen. The
+          # proxy's own IP:port is NOT probed - under the mirrord layer socat's
+          # listener is virtual; routing is proven in validate-propagation.
+          PROXY_OK=false
+          AGENT_POD=""
+          AGENT_SEEN=0
+          DEADLINE=$(( $(date +%s) + 180 ))
+          while [ "$(date +%s)" -lt "$DEADLINE" ]; do
+            PHASE=$(kubectl get "pod/${PROXY_NAME}" -n "$NS" -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
+            RESTARTS=$(kubectl get "pod/${PROXY_NAME}" -n "$NS" -o jsonpath='{.status.containerStatuses[0].restartCount}' 2>/dev/null || echo "0")
+            PROXY_LOG=$(kubectl logs "pod/${PROXY_NAME}" -n "$NS" 2>/dev/null || true)
+            # Fatal log lines only. A generic "ERROR mirrord::..." is not
+            # fatal (the machine-ID telemetry lookup); a real crash ends the
+            # process and, with restartPolicy Never, moves the pod to Failed.
+            if [ "$PHASE" = "Failed" ] || [ "$PHASE" = "Succeeded" ] || [ "${RESTARTS:-0}" != "0" ] \
+              || printf '%s' "$PROXY_LOG" | grep -Eq 'Failed to create mirrord-agent|Failed to connect to the created mirrord-agent|Forbidden|^Error:|agent (connection|creation) (failed|timed out)'; then
+              break
+            fi
+            if [ -z "$AGENT_POD" ]; then
+              AGENT_POD=$(printf '%s' "$PROXY_LOG" | sed -n 's/.*Created agent pod.*pod_name: "\([^"]*\)".*/\1/p' | head -n 1)
+              [ -z "$AGENT_POD" ] || AGENT_SEEN=$(date +%s)
+            fi
+            if [ "$PHASE" = "Running" ] && [ -n "$AGENT_POD" ]; then
+              AGENT_PHASE=$(kubectl get "pod/${AGENT_POD}" -n "$NS" -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
+              if [ "$AGENT_PHASE" = "Failed" ] || [ "$AGENT_PHASE" = "Succeeded" ]; then
+                break
+              fi
+              if [ "$AGENT_PHASE" = "Running" ] && [ $(( $(date +%s) - AGENT_SEEN )) -ge 40 ]; then
+                PROXY_OK=true
+                break
+              fi
+            fi
+            sleep 3
+          done
+          if ! $PROXY_OK; then
+            echo "ERROR: mirrord proxy ${PROXY_NAME} did not establish an agent connection (proxy phase=${PHASE:-?} restarts=${RESTARTS:-?} agent=${AGENT_POD:-none} agent phase=${AGENT_PHASE:-?})" >&2
+            echo "--- proxy pod log ---" >&2
+            kubectl logs "pod/${PROXY_NAME}" -n "$NS" 2>&1 | tail -n 60 >&2 || true
+            echo "--- proxy pod describe ---" >&2
+            kubectl describe "pod/${PROXY_NAME}" -n "$NS" 2>&1 | tail -n 40 >&2 || true
+            echo "--- mirrord agent jobs/pods in $NS ---" >&2
+            kubectl get jobs,pods -n "$NS" -l app=mirrord 2>&1 >&2 || true
+            if [ -n "$AGENT_POD" ]; then
+              echo "--- mirrord agent log (${AGENT_POD}) ---" >&2
+              kubectl logs "pod/${AGENT_POD}" -n "$NS" --tail=-1 2>&1 | tail -n 60 >&2 || true
+            fi
+            exit 1
+          fi
+          echo "  Proxy ${PROXY_NAME} connected to agent ${AGENT_POD}; both Running 40s, 0 restarts (routing is proven in validate-propagation)"
           echo "  Intercept active for $APP (traffic with header -> PR pod $POD_NAME)"
           echo ""
 

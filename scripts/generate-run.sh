@@ -27,7 +27,7 @@ source "$SCRIPT_DIR/common.sh"
 #   --no-build-images    Use bare ubuntu:22.04
 #   --namespace          Target namespace (default: tekton-pipelines)
 #   --storage-class      PVC storage class
-#   --intercept-backend  telepresence (default) | mirrord (M7)
+#   --intercept-backend  mirrord (only implemented backend)
 #   --apply              kubectl create the StackRun
 #   --dry-run            Print the YAML without applying
 
@@ -48,7 +48,7 @@ VERSION_OVERRIDES="{}"
 APPLY=false
 BUILD_IMAGES="${BUILD_IMAGES:-true}"
 BUILD_IMAGE_TAG="${BUILD_IMAGE_TAG:-latest}"
-INTERCEPT_BACKEND="${INTERCEPT_BACKEND:-telepresence}"
+INTERCEPT_BACKEND="${INTERCEPT_BACKEND:-mirrord}"
 
 if [[ "${GENERATE_PIPELINE_RUN:-false}" == "true" ]]; then
   die "--pipeline-run / GENERATE_PIPELINE_RUN was removed in M16; emit a StackRun (default) instead"

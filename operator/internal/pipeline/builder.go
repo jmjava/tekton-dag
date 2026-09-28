@@ -191,7 +191,7 @@ func BuildPR(opt Options) (*unstructured.Unstructured, error) {
 	}
 	intercept := opt.InterceptBackend
 	if intercept == "" {
-		intercept = "telepresence"
+		intercept = "mirrord"
 	}
 	params := []any{
 		param("git-url", opt.GitURL),
@@ -392,7 +392,7 @@ func BuildPRContinue(opt Options) (*unstructured.Unstructured, error) {
 	}
 	intercept := opt.InterceptBackend
 	if intercept == "" {
-		intercept = "telepresence"
+		intercept = "mirrord"
 	}
 	params := []any{
 		param("stack-json", opt.ContinueStackJSON),
