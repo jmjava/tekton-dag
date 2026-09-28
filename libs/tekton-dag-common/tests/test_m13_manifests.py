@@ -109,8 +109,16 @@ def test_mirrord_proxy_runs_as_own_service_account_and_fails_closed():
     script = task["spec"]["steps"][0]["script"]
     assert "serviceAccountName: ${PROXY_SA}" in script
     assert "restartPolicy: Never" in script
-    assert "Failed to create mirrord-agent|Forbidden" in script
+    assert "Failed to create mirrord-agent|Failed to connect to the created mirrord-agent|Forbidden" in script
     assert "kubectl wait --for=condition=Ready \"pod/${PROXY_NAME}\"" not in script
+    # Positive marker: the agent pod named in the proxy log must be Running
+    # 40 s later. A generic 'ERROR mirrord' must NOT be treated as fatal
+    # (mirrord prints a non-fatal machine-ID telemetry ERROR).
+    assert "Created agent pod" in script
+    assert "-ge 40" in script
+    assert "grep -Eq 'ERROR mirrord" not in script
+    rbac = (ROOT / "scripts/install-mirrord-intercept-rbac.sh").read_text()
+    assert '"pods/portforward"' in rbac, "mirrord OSS connects to its agent via port-forward"
 
 
 def test_validate_propagation_proves_routing_from_pr_pod_log():

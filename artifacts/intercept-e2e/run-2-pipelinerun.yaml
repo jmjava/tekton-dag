@@ -1,0 +1,830 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  annotations:
+    tektondag.io/stackrun-uid: ab4b6aed-79b3-4acc-9c08-2afcdb19bce0
+  creationTimestamp: "2026-09-28T03:14:30Z"
+  generation: 1
+  labels:
+    app.kubernetes.io/part-of: tekton-job-standardization
+    app.kubernetes.io/version: 1.0.0
+    tekton.dev/pipeline: stack-pr-test
+    tektondag.io/stackrun: stackrun-pr-27exw
+  name: stackrun-pr-27exw
+  namespace: tekton-pipelines
+  resourceVersion: "13751"
+  uid: d2f2e66b-d560-4909-b6ad-f89191524e1b
+spec:
+  params:
+  - name: git-url
+    value: https://github.com/jmjava/tekton-dag.git
+  - name: git-revision
+    value: main
+  - name: stack-file
+    value: stacks/stack-one.yaml
+  - name: changed-app
+    value: demo-fe
+  - name: pr-number
+    value: "903"
+  - name: app-revisions
+    value: '{}'
+  - name: image-registry
+    value: localhost:5000
+  - name: cache-repo
+    value: ""
+  - name: intercept-backend
+    value: mirrord
+  - name: dashboard-url
+    value: ""
+  - name: pr-repo-url
+    value: ""
+  - name: max-retries
+    value: "2"
+  pipelineRef:
+    name: stack-pr-test
+  taskRunTemplate:
+    serviceAccountName: tekton-pr-sa
+  timeouts:
+    pipeline: 2h0m0s
+  workspaces:
+  - name: shared-workspace
+    volumeClaimTemplate:
+      metadata:
+        creationTimestamp: null
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 2Gi
+      status: {}
+  - name: ssh-key
+    secret:
+      secretName: ssh-key-secret
+  - name: build-cache
+    persistentVolumeClaim:
+      claimName: build-cache
+status:
+  childReferences:
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: stackrun-pr-27exw-fetch-source
+    pipelineTaskName: fetch-source
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: stackrun-pr-27exw-resolve-stack
+    pipelineTaskName: resolve-stack
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: stackrun-pr-27exw-clone-app-repos
+    pipelineTaskName: clone-app-repos
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: stackrun-pr-27exw-pr-snapshot-tag
+    pipelineTaskName: pr-snapshot-tag
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: stackrun-pr-27exw-build-select-tool-apps
+    pipelineTaskName: build-select-tool-apps
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: stackrun-pr-27exw-build-compile-npm
+    pipelineTaskName: build-compile-npm
+    whenExpressions:
+    - input: "true"
+      operator: in
+      values:
+      - "true"
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: stackrun-pr-27exw-build-containerize
+    pipelineTaskName: build-containerize
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: stackrun-pr-27exw-deploy-intercepts-mirrord
+    pipelineTaskName: deploy-intercepts-mirrord
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: stackrun-pr-27exw-deploy-intercepts-result
+    pipelineTaskName: deploy-intercepts-result
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: stackrun-pr-27exw-validate-propagation
+    pipelineTaskName: validate-propagation
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: stackrun-pr-27exw-validate-original-traffic
+    pipelineTaskName: validate-original-traffic
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: stackrun-pr-27exw-query-test-plan
+    pipelineTaskName: query-test-plan
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: stackrun-pr-27exw-run-tests
+    pipelineTaskName: run-tests
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: stackrun-pr-27exw-cleanup
+    pipelineTaskName: cleanup
+  - apiVersion: tekton.dev/v1
+    kind: TaskRun
+    name: stackrun-pr-27exw-post-pr-comment
+    pipelineTaskName: post-pr-comment
+  completionTime: "2026-09-28T03:18:21Z"
+  conditions:
+  - lastTransitionTime: "2026-09-28T03:18:21Z"
+    message: 'Tasks Completed: 15 (Failed: 0, Cancelled 0), Skipped: 8'
+    reason: Completed
+    status: "True"
+    type: Succeeded
+  finallyStartTime: "2026-09-28T03:18:14Z"
+  pipelineSpec:
+    description: |
+      PR testing pipeline. Uses the currently running apps in the cluster and only builds/replaces the one app being tested (changed-app). Other apps are left as-is; mirrord intercepts route PR traffic only to the new build. Tests one app at a time (changed-app is required when invoking this pipeline). 1. Clones platform repo and resolves the stack graph 2. Clones and builds ONLY the changed app (snapshot tag) — no build of other apps 3. Deploys intercepts only for that app; rest of stack keeps running as-is 4. Validates header propagation, runs test suites 5. Posts a PR comment; does **not** bump `versions.yaml` (snapshot image tags only) 6. Cleans up PR pods (always) PR builds use snapshot tagging so they are never confused with real releases.
+    finally:
+    - name: hook-post-test
+      params:
+      - name: stack-json
+        value: $(tasks.resolve-stack.results.stack-json)
+      - name: build-apps
+        value: $(tasks.resolve-stack.results.build-apps)
+      - name: image-registry
+        value: localhost:5000
+      taskRef:
+        params:
+        - name: kind
+          value: task
+        - name: namespace
+          value: tekton-pipelines
+        - name: name
+          value: tekton-dag-hook-noop
+        resolver: cluster
+      when:
+      - input: tekton-dag-hook-noop
+        operator: notin
+        values:
+        - tekton-dag-hook-noop
+    - name: cleanup
+      params:
+      - name: deployed-pods
+        value: $(tasks.deploy-intercepts-result.results.deployed-pods)
+      - name: stack-json
+        value: $(tasks.resolve-stack.results.stack-json)
+      - name: intercept-backend
+        value: mirrord
+      taskRef:
+        kind: Task
+        name: cleanup-stack-pods
+    - name: post-pr-comment
+      params:
+      - name: git-url
+        value: https://github.com/jmjava/tekton-dag.git
+      - name: pr-repo-url
+        value: ""
+      - name: pr-number
+        value: "903"
+      - name: pipeline-run-name
+        value: stackrun-pr-27exw
+      - name: namespace
+        value: tekton-pipelines
+      - name: status
+        value: Completed
+      - name: test-summary
+        value: $(tasks.run-tests.results.test-summary)
+      - name: dashboard-url
+        value: ""
+      - name: github-secret-name
+        value: github-token
+      taskRef:
+        kind: Task
+        name: post-pr-comment
+    params:
+    - description: Platform repo URL (e.g. tekton-dag) — has stacks/, versions; app
+        repos are cloned separately from stack
+      name: git-url
+      type: string
+    - description: Branch, tag, or SHA for platform repo and (unless overridden) app
+        repos
+      name: git-revision
+      type: string
+    - default: stacks/stack-one.yaml
+      description: Path to the stack YAML relative to repo root
+      name: stack-file
+      type: string
+    - default: ""
+      description: App being tested (required). Only this app is built and given an
+        intercept; other apps use existing cluster deployments.
+      name: changed-app
+      type: string
+    - description: PR number
+      name: pr-number
+      type: string
+    - default: '{}'
+      description: Optional JSON map app → revision for cloning app repos (e.g. {"demo-fe":"pr-branch"}).
+        Used when the PR is in the app repo so the changed app is checked out at its
+        PR branch.
+      name: app-revisions
+      type: string
+    - description: Container registry base (e.g. 123456.dkr.ecr.us-east-1.amazonaws.com)
+      name: image-registry
+      type: string
+    - default: '{}'
+      description: JSON map of app → version overrides (empty = use versions.yaml)
+      name: version-overrides
+      type: string
+    - default: ubuntu:22.04
+      description: Pre-built image for npm compile
+      name: compile-image-npm
+      type: string
+    - default: ubuntu:22.04
+      description: Pre-built image for Maven compile
+      name: compile-image-maven
+      type: string
+    - default: ubuntu:22.04
+      description: Pre-built image for Gradle compile
+      name: compile-image-gradle
+      type: string
+    - default: ubuntu:22.04
+      description: Pre-built image for pip compile
+      name: compile-image-pip
+      type: string
+    - default: ubuntu:22.04
+      description: Pre-built image for Composer/PHP compile
+      name: compile-image-php
+      type: string
+    - default: localhost:5000/tekton-dag-build-mirrord:latest
+      description: Pre-built image for mirrord proxy pods (M7)
+      name: compile-image-mirrord
+      type: string
+    - default: mirrord
+      description: Intercept backend. Only mirrord is implemented; the param is kept
+        for API compatibility.
+      name: intercept-backend
+      type: string
+    - default: ""
+      description: Base URL of Tekton Dashboard; PR comment will include link to this
+        run (optional)
+      name: dashboard-url
+      type: string
+    - default: github-token
+      description: 'Kubernetes secret name for GitHub token (key: token) when posting
+        PR comments'
+      name: github-secret-name
+      type: string
+    - default: ""
+      description: When PR is in the app repo, pass the app repo URL here so the PR
+        comment is posted to the correct repo; empty = use git-url (platform repo)
+      name: pr-repo-url
+      type: string
+    - default: ""
+      description: Kaniko cache repo. Empty disables cache.
+      name: cache-repo
+      type: string
+    - default: "0"
+      description: Max concurrent Kaniko pods for containerize. 0 = unlimited.
+      name: max-parallel-builds
+      type: string
+    - default: tekton-dag-hook-noop
+      description: Optional Tekton Task name to run after clone, before compile (e.g.
+        code-gen, license-scan).
+      name: pre-build-task
+      type: string
+    - default: tekton-dag-hook-noop
+      description: Optional Tekton Task name to run after containerize, before deploy
+        (e.g. image-scan, SBOM).
+      name: post-build-task
+      type: string
+    - default: tekton-dag-hook-noop
+      description: Optional Tekton Task name to run after deploy, before tests (e.g.
+        seed-data).
+      name: pre-test-task
+      type: string
+    - default: tekton-dag-hook-noop
+      description: Optional Tekton Task name to run in finally block after tests (e.g.
+        slack-notify).
+      name: post-test-task
+      type: string
+    - default: "2"
+      description: |
+        Preferred retry count for infrastructure-sensitive tasks (compile/containerize). Pipeline tasks use a fixed retries: 2 for those steps; test tasks stay at 0. Orchestrator sets this param from MAX_RETRIES / request body for auditability.
+      name: max-retries
+      type: string
+    results:
+    - description: ""
+      name: test-summary
+      value: $(tasks.run-tests.results.test-summary)
+    - description: ""
+      name: original-traffic-summary
+      value: $(tasks.validate-original-traffic.results.original-traffic-summary)
+    tasks:
+    - name: fetch-source
+      params:
+      - name: url
+        value: https://github.com/jmjava/tekton-dag.git
+      - name: revision
+        value: main
+      - name: deleteExisting
+        value: "true"
+      taskRef:
+        kind: Task
+        name: git-clone
+      workspaces:
+      - name: output
+        workspace: shared-workspace
+    - name: resolve-stack
+      params:
+      - name: stack-file
+        value: stacks/stack-one.yaml
+      - name: changed-app
+        value: demo-fe
+      - name: pr-number
+        value: "903"
+      - name: version-overrides
+        value: '{}'
+      runAfter:
+      - fetch-source
+      taskRef:
+        kind: Task
+        name: resolve-stack
+      workspaces:
+      - name: source
+        workspace: shared-workspace
+    - name: clone-app-repos
+      params:
+      - name: stack-json
+        value: $(tasks.resolve-stack.results.stack-json)
+      - name: build-apps
+        value: $(tasks.resolve-stack.results.build-apps)
+      - name: git-revision
+        value: main
+      - name: app-revisions
+        value: '{}'
+      runAfter:
+      - resolve-stack
+      taskRef:
+        kind: Task
+        name: clone-app-repos
+      workspaces:
+      - name: source
+        workspace: shared-workspace
+      - name: ssh-key
+        workspace: ssh-key
+    - name: pr-snapshot-tag
+      params:
+      - name: snapshot-tag
+        value: stackrun-pr-27exw
+      - name: build-apps
+        value: $(tasks.resolve-stack.results.build-apps)
+      runAfter:
+      - resolve-stack
+      taskRef:
+        kind: Task
+        name: pr-snapshot-tag
+    - name: build-select-tool-apps
+      params:
+      - name: stack-json
+        value: $(tasks.resolve-stack.results.stack-json)
+      - name: build-apps
+        value: $(tasks.resolve-stack.results.build-apps)
+      runAfter:
+      - clone-app-repos
+      - pr-snapshot-tag
+      taskRef:
+        kind: Task
+        name: build-select-tool-apps
+      workspaces:
+      - name: source
+        workspace: shared-workspace
+    - name: hook-pre-build
+      params:
+      - name: stack-json
+        value: $(tasks.resolve-stack.results.stack-json)
+      - name: build-apps
+        value: $(tasks.resolve-stack.results.build-apps)
+      - name: image-registry
+        value: localhost:5000
+      runAfter:
+      - build-select-tool-apps
+      taskRef:
+        params:
+        - name: kind
+          value: task
+        - name: namespace
+          value: tekton-pipelines
+        - name: name
+          value: tekton-dag-hook-noop
+        resolver: cluster
+      when:
+      - input: tekton-dag-hook-noop
+        operator: notin
+        values:
+        - tekton-dag-hook-noop
+      workspaces:
+      - name: source
+        workspace: shared-workspace
+    - name: build-compile-npm
+      params:
+      - name: stack-json
+        value: $(tasks.resolve-stack.results.stack-json)
+      - name: compile-image-npm
+        value: ubuntu:22.04
+      retries: 2
+      runAfter:
+      - build-select-tool-apps
+      taskRef:
+        kind: Task
+        name: build-compile-npm
+      when:
+      - input: $(tasks.resolve-stack.results.run-compile-npm)
+        operator: in
+        values:
+        - "true"
+      workspaces:
+      - name: source
+        workspace: shared-workspace
+      - name: build-cache
+        workspace: build-cache
+    - name: build-compile-maven
+      params:
+      - name: stack-json
+        value: $(tasks.resolve-stack.results.stack-json)
+      - name: compile-image-maven
+        value: ubuntu:22.04
+      retries: 2
+      runAfter:
+      - build-select-tool-apps
+      taskRef:
+        kind: Task
+        name: build-compile-maven
+      when:
+      - input: $(tasks.resolve-stack.results.run-compile-maven)
+        operator: in
+        values:
+        - "true"
+      workspaces:
+      - name: source
+        workspace: shared-workspace
+      - name: build-cache
+        workspace: build-cache
+    - name: build-compile-gradle
+      params:
+      - name: stack-json
+        value: $(tasks.resolve-stack.results.stack-json)
+      - name: compile-image-gradle
+        value: ubuntu:22.04
+      retries: 2
+      runAfter:
+      - build-select-tool-apps
+      taskRef:
+        kind: Task
+        name: build-compile-gradle
+      when:
+      - input: $(tasks.resolve-stack.results.run-compile-gradle)
+        operator: in
+        values:
+        - "true"
+      workspaces:
+      - name: source
+        workspace: shared-workspace
+      - name: build-cache
+        workspace: build-cache
+    - name: build-compile-pip
+      params:
+      - name: stack-json
+        value: $(tasks.resolve-stack.results.stack-json)
+      - name: compile-image-pip
+        value: ubuntu:22.04
+      retries: 2
+      runAfter:
+      - build-select-tool-apps
+      taskRef:
+        kind: Task
+        name: build-compile-pip
+      when:
+      - input: $(tasks.resolve-stack.results.run-compile-pip)
+        operator: in
+        values:
+        - "true"
+      workspaces:
+      - name: source
+        workspace: shared-workspace
+      - name: build-cache
+        workspace: build-cache
+    - name: build-compile-composer
+      params:
+      - name: stack-json
+        value: $(tasks.resolve-stack.results.stack-json)
+      - name: compile-image-php
+        value: ubuntu:22.04
+      retries: 2
+      runAfter:
+      - build-select-tool-apps
+      taskRef:
+        kind: Task
+        name: build-compile-composer
+      when:
+      - input: $(tasks.resolve-stack.results.run-compile-composer)
+        operator: in
+        values:
+        - "true"
+      workspaces:
+      - name: source
+        workspace: shared-workspace
+      - name: build-cache
+        workspace: build-cache
+    - name: build-containerize
+      params:
+      - name: stack-json
+        value: $(tasks.resolve-stack.results.stack-json)
+      - name: build-apps
+        value: $(tasks.resolve-stack.results.build-apps)
+      - name: image-registry
+        value: localhost:5000
+      - name: image-tag
+        value: $(tasks.pr-snapshot-tag.results.snapshot-versions)
+      - name: tag-prefix
+        value: ""
+      - name: cache-repo
+        value: ""
+      - name: max-parallel-builds
+        value: "0"
+      retries: 2
+      runAfter:
+      - build-compile-npm
+      - build-compile-maven
+      - build-compile-gradle
+      - build-compile-pip
+      - build-compile-composer
+      taskRef:
+        kind: Task
+        name: build-containerize
+      workspaces:
+      - name: source
+        workspace: shared-workspace
+    - name: hook-post-build
+      params:
+      - name: stack-json
+        value: $(tasks.resolve-stack.results.stack-json)
+      - name: build-apps
+        value: $(tasks.resolve-stack.results.build-apps)
+      - name: built-images
+        value: $(tasks.build-containerize.results.built-images)
+      - name: image-registry
+        value: localhost:5000
+      runAfter:
+      - build-containerize
+      taskRef:
+        params:
+        - name: kind
+          value: task
+        - name: namespace
+          value: tekton-pipelines
+        - name: name
+          value: tekton-dag-hook-noop
+        resolver: cluster
+      when:
+      - input: tekton-dag-hook-noop
+        operator: notin
+        values:
+        - tekton-dag-hook-noop
+      workspaces:
+      - name: source
+        workspace: shared-workspace
+    - name: deploy-intercepts-mirrord
+      params:
+      - name: stack-json
+        value: $(tasks.resolve-stack.results.stack-json)
+      - name: build-apps
+        value: $(tasks.resolve-stack.results.build-apps)
+      - name: propagation-chain
+        value: $(tasks.resolve-stack.results.propagation-chain)
+      - name: built-images
+        value: $(tasks.build-containerize.results.built-images)
+      - name: intercept-header-value
+        value: $(tasks.resolve-stack.results.intercept-header-value)
+      - name: mirrord-image
+        value: localhost:5000/tekton-dag-build-mirrord:latest
+      runAfter:
+      - build-containerize
+      taskRef:
+        kind: Task
+        name: deploy-intercept-mirrord
+      workspaces:
+      - name: shared-workspace
+        workspace: shared-workspace
+    - name: deploy-intercepts-result
+      runAfter:
+      - deploy-intercepts-mirrord
+      taskRef:
+        kind: Task
+        name: deploy-intercepts-result
+      workspaces:
+      - name: shared-workspace
+        workspace: shared-workspace
+    - name: validate-propagation
+      params:
+      - name: stack-json
+        value: $(tasks.resolve-stack.results.stack-json)
+      - name: propagation-chain
+        value: $(tasks.resolve-stack.results.propagation-chain)
+      - name: build-apps
+        value: $(tasks.resolve-stack.results.build-apps)
+      - name: intercept-header-value
+        value: $(tasks.resolve-stack.results.intercept-header-value)
+      - name: deployed-pods
+        value: $(tasks.deploy-intercepts-result.results.deployed-pods)
+      runAfter:
+      - deploy-intercepts-result
+      taskRef:
+        kind: Task
+        name: validate-stack-propagation
+    - name: validate-original-traffic
+      params:
+      - name: stack-json
+        value: $(tasks.resolve-stack.results.stack-json)
+      - name: propagation-chain
+        value: $(tasks.resolve-stack.results.propagation-chain)
+      - name: build-apps
+        value: $(tasks.resolve-stack.results.build-apps)
+      - name: entry-app
+        value: $(tasks.resolve-stack.results.entry-app)
+      runAfter:
+      - deploy-intercepts-result
+      taskRef:
+        kind: Task
+        name: validate-original-traffic
+    - name: hook-pre-test
+      params:
+      - name: stack-json
+        value: $(tasks.resolve-stack.results.stack-json)
+      - name: build-apps
+        value: $(tasks.resolve-stack.results.build-apps)
+      - name: image-registry
+        value: localhost:5000
+      runAfter:
+      - validate-propagation
+      - validate-original-traffic
+      taskRef:
+        params:
+        - name: kind
+          value: task
+        - name: namespace
+          value: tekton-pipelines
+        - name: name
+          value: tekton-dag-hook-noop
+        resolver: cluster
+      when:
+      - input: tekton-dag-hook-noop
+        operator: notin
+        values:
+        - tekton-dag-hook-noop
+      workspaces:
+      - name: source
+        workspace: shared-workspace
+    - name: query-test-plan
+      params:
+      - name: changed-app
+        value: demo-fe
+      runAfter:
+      - hook-pre-test
+      taskRef:
+        kind: Task
+        name: query-test-plan
+    - name: run-tests
+      params:
+      - name: stack-json
+        value: $(tasks.resolve-stack.results.stack-json)
+      - name: app-list
+        value: $(tasks.resolve-stack.results.app-list)
+      - name: entry-app
+        value: $(tasks.resolve-stack.results.entry-app)
+      - name: propagation-chain
+        value: $(tasks.resolve-stack.results.propagation-chain)
+      - name: build-apps
+        value: $(tasks.resolve-stack.results.build-apps)
+      - name: intercept-header-value
+        value: $(tasks.resolve-stack.results.intercept-header-value)
+      - name: tests-to-run
+        value: $(tasks.query-test-plan.results.tests-to-run)
+      - name: unmapped-area
+        value: $(tasks.query-test-plan.results.unmapped-area)
+      - name: apps-to-test
+        value: $(tasks.query-test-plan.results.apps-to-test)
+      runAfter:
+      - query-test-plan
+      taskRef:
+        kind: Task
+        name: run-stack-tests
+      workspaces:
+      - name: test-source
+        workspace: shared-workspace
+    workspaces:
+    - description: Shared PVC for source code and test data
+      name: shared-workspace
+    - description: Volume with SSH key (id_ed25519 or id_rsa) for cloning app repos;
+        required for SSH pull
+      name: ssh-key
+    - description: Persistent dependency cache (.m2, .npm, etc.). Create once, reuse
+        across runs.
+      name: build-cache
+      optional: true
+  provenance:
+    featureFlags:
+      awaitSidecarReadiness: true
+      coschedule: disabled
+      enableAPIFields: beta
+      enableProvenanceInStatus: true
+      enforceNonfalsifiability: none
+      maxResultSize: 4096
+      resultExtractionMethod: termination-message
+      runningInEnvWithInjectedSidecars: true
+      verificationNoMatchPolicy: ignore
+  results:
+  - name: test-summary
+    value: |
+      {
+        "e2e-entry-point": "pass",
+        "release-lifecycle-demo": "pass",
+        "demo-api": "pass"
+      }
+  - name: original-traffic-summary
+    value: |
+      {
+        "demo-fe": {
+          "health-check": "pass",
+          "http-code": "200"
+        },
+        "release-lifecycle-demo": {
+          "health-check": "pass",
+          "http-code": "200"
+        },
+        "demo-api": {
+          "health-check": "pass",
+          "http-code": "200"
+        },
+        "e2e-no-header-passthrough": {
+          "status": "pass",
+          "http-code": "200"
+        },
+        "artillery-no-header-burst": "pass",
+        "overall": "pass"
+      }
+  skippedTasks:
+  - name: hook-pre-build
+    reason: When Expressions evaluated to false
+    whenExpressions:
+    - input: tekton-dag-hook-noop
+      operator: notin
+      values:
+      - tekton-dag-hook-noop
+  - name: build-compile-maven
+    reason: When Expressions evaluated to false
+    whenExpressions:
+    - input: "false"
+      operator: in
+      values:
+      - "true"
+  - name: build-compile-gradle
+    reason: When Expressions evaluated to false
+    whenExpressions:
+    - input: "false"
+      operator: in
+      values:
+      - "true"
+  - name: build-compile-pip
+    reason: When Expressions evaluated to false
+    whenExpressions:
+    - input: "false"
+      operator: in
+      values:
+      - "true"
+  - name: build-compile-composer
+    reason: When Expressions evaluated to false
+    whenExpressions:
+    - input: "false"
+      operator: in
+      values:
+      - "true"
+  - name: hook-post-build
+    reason: When Expressions evaluated to false
+    whenExpressions:
+    - input: tekton-dag-hook-noop
+      operator: notin
+      values:
+      - tekton-dag-hook-noop
+  - name: hook-pre-test
+    reason: When Expressions evaluated to false
+    whenExpressions:
+    - input: tekton-dag-hook-noop
+      operator: notin
+      values:
+      - tekton-dag-hook-noop
+  - name: hook-post-test
+    reason: When Expressions evaluated to false
+    whenExpressions:
+    - input: tekton-dag-hook-noop
+      operator: notin
+      values:
+      - tekton-dag-hook-noop
+  startTime: "2026-09-28T03:14:30Z"

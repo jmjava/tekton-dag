@@ -93,11 +93,22 @@ plain RBAC gap and it needs no privileged client, no restart of the live
 Deployment, and no version coupling. Fixes in this PR:
 
 - The proxy pod runs as `mirrord-intercept` (ServiceAccount + namespace Role:
-  read pods/deployments/replicasets, create the agent Job), created by
+  read pods/deployments/replicasets, create the agent Job, **`get`/`create`
+  on `pods/portforward`**), created by
   `scripts/install-mirrord-intercept-rbac.sh`, which the runners call.
-- The deploy step fails closed on the first mirrord error line, any restart,
-  or a proxy that is not serving (`restartPolicy: Never`; direct probe through
-  socat to the PR pod, or 30 s Running and error-free).
+  mirrord OSS reaches its agent through the Kubernetes port-forward API as a
+  WebSocket upgrade; without that verb the agent starts and the proxy dies
+  ~17 s later with `failed to switch protocol: 403 Forbidden`. Found on the
+  local kind cluster in two minutes, after a CI round-trip had missed it.
+- The deploy step fails closed with a positive marker: `RUST_LOG=mirrord=info`
+  makes the proxy log `Created agent pod ... pod_name: "mirrord-agent-…"`; the
+  step requires that agent pod and the proxy to be Running, with zero
+  restarts and no fatal log line (`Failed to create/connect to the created
+  mirrord-agent`, `Forbidden`, `Error:`), still true 40 s after the agent
+  appeared. `restartPolicy: Never`. The proxy's own IP:port is not probed —
+  under the mirrord layer socat's listener is virtual. mirrord's
+  `ERROR mirrord::connection: failed to obtain machine ID` is non-fatal
+  telemetry noise and is ignored on purpose.
 - `validate-stack-propagation` adds a **routing proof**, fail-closed, per
   intercepted app:
 

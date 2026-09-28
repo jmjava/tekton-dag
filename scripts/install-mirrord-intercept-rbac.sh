@@ -44,6 +44,13 @@ rules:
   - apiGroups: [""]
     resources: ["pods", "pods/log", "services", "endpoints"]
     verbs: ["get", "list", "watch"]
+  # mirrord OSS reaches its agent through the Kubernetes port-forward API
+  # (WebSocket upgrade on pods/portforward; the apiserver authorizes a
+  # WebSocket GET as verb "get", SPDY POST as "create"). Without this the
+  # agent starts and the proxy dies with "failed to switch protocol: 403".
+  - apiGroups: [""]
+    resources: ["pods/portforward"]
+    verbs: ["get", "create"]
   - apiGroups: ["apps"]
     resources: ["deployments", "replicasets", "statefulsets"]
     verbs: ["get", "list", "watch"]
