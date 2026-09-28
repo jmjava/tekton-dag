@@ -318,11 +318,34 @@ spec:
                 fi
                 sleep 2
               done
-              echo "forwarding localhost:18080 -> ${PR_POD_IP}:${CPORT} (never-proxy, no TUN hairpin)"
-              socat TCP-LISTEN:18080,fork,reuseaddr,bind=127.0.0.1 TCP:${PR_POD_IP}:${CPORT} &
-              echo "creating intercept ${APP} on localhost:18080..."
-              /usr/local/bin/telepresence intercept ${APP} --port 18080 ${HTTP_MATCH}
+              export PR_HOST=${PR_POD_IP}
+              export PR_PORT=${CPORT}
+              export LIVE_HOST=127.0.0.1
+              export LIVE_PORT=18081
+              export HEADER_NAME=${INTERCEPT%%:*}
+              export HEADER_VALUE=${INTERCEPT#*:}
+              export ROUTER_PORT=18080
+              echo "starting header router ${HEADER_NAME}=${HEADER_VALUE} -> PR ${PR_POD_IP}:${CPORT} else 127.0.0.1:18081"
+              /usr/local/bin/tp-header-router &
+              echo "creating TCP intercept ${APP} on localhost:18080..."
+              /usr/local/bin/telepresence intercept ${APP} --port 18080
+              echo "waiting for ${APP} rollout after agent inject..."
+              kubectl rollout status "deploy/${APP}" -n ${NS} --timeout=120s || true
+              LIVE_POD=\$(kubectl get pod -n ${NS} -l app=${APP} --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')
+              APP_CONTAINER=\$(kubectl get pod "\$LIVE_POD" -n ${NS} -o jsonpath='{range .spec.containers[*]}{.name}{"\\n"}{end}' | grep -vE '^(traffic-agent|istio-proxy|linkerd-proxy)\$' | head -1)
+              echo "port-forward live app \$LIVE_POD container \$APP_CONTAINER :${CPORT} -> 127.0.0.1:18081"
+              kubectl port-forward -n ${NS} --address 127.0.0.1 --container "\$APP_CONTAINER" "pod/\$LIVE_POD" 18081:${CPORT} &
+              j=0
+              until python3 -c 'import socket;s=socket.socket();s.settimeout(1);s.connect(("127.0.0.1",18081));s.close()' 2>/dev/null; do
+                j=\$((j+1))
+                if [ "\$j" -gt 30 ]; then
+                  echo "ERROR: live app port-forward did not become ready" >&2
+                  exit 1
+                fi
+                sleep 2
+              done
               echo "Intercept active for ${APP}!"
+              echo "Intercepting HTTP header ${INTERCEPT}"
               tail -f /dev/null
             securityContext:
               runAsUser: 0
@@ -336,7 +359,7 @@ spec:
           until kubectl logs "pod/${CLIENT_NAME}" -n "$NS" 2>/dev/null \
               | grep -q "Intercept active for ${APP}!" \
             && kubectl logs "pod/${CLIENT_NAME}" -n "$NS" 2>/dev/null \
-              | grep -qiE 'HTTP requests with|Intercepting.*[Hh]eader'; do
+              | grep -qiE 'header-router listening|Intercepting HTTP header'; do
             if [ "$SECONDS" -ge "$deadline" ]; then
               echo "ERROR: intercept for ${APP} did not become active" >&2
               echo "=== client status ===" >&2
