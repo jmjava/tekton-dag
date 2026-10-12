@@ -15,11 +15,11 @@
     "@vue-flow/core": "^1.48.2",
     "pinia": "^3.0.4",
     "vue": "^3.5.43",
-    "vue-router": "^5.3.1"
+    "vue-router": "^5.4.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.63.0",
+    "@playwright/test": "^1.64.0",
     "@vitejs/plugin-vue": "^6.0.9",
-    "vite": "^8.3.1"
+    "vite": "^8.3.4"
   }
 }
