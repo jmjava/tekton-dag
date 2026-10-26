@@ -31,7 +31,7 @@
     <dependency>
       <groupId>io.opentelemetry</groupId>
       <artifactId>opentelemetry-api</artifactId>
-      <version>1.66.0</version>
+      <version>1.67.0</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
@@ -55,7 +55,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>3.6.0</version>
+        <version>3.6.1</version>
       </plugin>
     </plugins>
   </build>
