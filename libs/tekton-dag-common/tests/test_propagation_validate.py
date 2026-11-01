@@ -116,6 +116,18 @@ def test_unstructured_text_still_requires_original_value():
     assert ok.ok, ok.failures
 
 
+def test_longer_token_is_not_the_original_override():
+    report = evaluate_propagation(
+        "demo-fe release-lifecycle-demo demo-api pr-421",
+        chain=CHAIN,
+        header_value="pr-42",
+        build_apps="demo-api",
+    )
+    assert not report.ok
+    assert not report.header_found
+    assert any("missing" in f for f in report.failures)
+
+
 def test_unreachable_originator_fails_on_multi_hop():
     report = evaluate_propagation(
         '{"error":"unreachable"}',
