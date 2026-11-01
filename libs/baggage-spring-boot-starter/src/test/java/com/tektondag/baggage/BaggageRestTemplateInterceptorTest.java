@@ -51,6 +51,20 @@ class BaggageRestTemplateInterceptorTest {
   }
 
   @Test
+  void forwarderDoesNotCopyControlCharacters() throws Exception {
+    BaggageProperties props = new BaggageProperties();
+    props.setRole(BaggageRole.FORWARDER);
+    BaggageContextHolder.set("pr-42\r\nX-Injected: 1");
+
+    var interceptor = new BaggageRestTemplateInterceptor(props);
+    var request = new MockClientHttpRequest(HttpMethod.GET, URI.create("http://downstream/api"));
+    interceptor.intercept(request, EMPTY, mockExecution());
+
+    assertNull(request.getHeaders().getFirst("x-dev-session"));
+    assertFalse(request.getHeaders().toString().contains("X-Injected"));
+  }
+
+  @Test
   void forwarderPropagatesFromContext() throws Exception {
     BaggageProperties props = new BaggageProperties();
     props.setRole(BaggageRole.FORWARDER);
