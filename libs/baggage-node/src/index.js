@@ -17,6 +17,20 @@ export function firstNonBlank(...values) {
   return null
 }
 
+function refusesPropagation(value) {
+  if (value == null) return false
+  for (const ch of String(value)) {
+    const code = ch.charCodeAt(0)
+    if (code < 32 || code === 127) return true
+  }
+  return false
+}
+
+function propagated(value) {
+  if (value == null || refusesPropagation(value)) return null
+  return value
+}
+
 export function normalizeRole(role) {
   if (role == null || String(role).trim() === '') return 'forwarder'
   const text = String(role).trim().toLowerCase()
@@ -35,14 +49,15 @@ export function incomingSession({
   const resolved = normalizeRole(role)
   if (!resolved) return null
   const incoming = firstNonBlank(header, cookie, query)
-  if (resolved === 'originator') return firstNonBlank(incoming, sessionValue)
+  if (refusesPropagation(incoming)) return null
+  if (resolved === 'originator') return propagated(firstNonBlank(incoming, sessionValue))
   return incoming
 }
 
 export function outgoingSession({ role, contextValue, sessionValue } = {}) {
   const resolved = normalizeRole(role)
-  if (resolved === 'originator') return firstNonBlank(contextValue, sessionValue)
-  if (resolved === 'forwarder') return firstNonBlank(contextValue)
+  if (resolved === 'originator') return propagated(firstNonBlank(contextValue, sessionValue))
+  if (resolved === 'forwarder') return propagated(firstNonBlank(contextValue))
   return null
 }
 
