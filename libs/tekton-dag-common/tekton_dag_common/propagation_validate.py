@@ -184,6 +184,28 @@ def text_contains(haystack: str, needle: str) -> bool:
     return needle.lower() in haystack.lower()
 
 
+def _token_continue(ch: str) -> bool:
+    return bool(ch) and (ch.isalnum() or ch in "-_")
+
+
+def contains_exact_token(haystack: str, needle: str) -> bool:
+    """True when needle is its own token, not a prefix of a longer value."""
+    if not needle or not haystack:
+        return False
+    start = 0
+    size = len(needle)
+    while True:
+        index = haystack.find(needle, start)
+        if index < 0:
+            return False
+        before = haystack[index - 1] if index else ""
+        after_at = index + size
+        after = haystack[after_at] if after_at < len(haystack) else ""
+        if not _token_continue(before) and not _token_continue(after):
+            return True
+        start = index + 1
+
+
 def is_unreachable(text: str, parsed: Any) -> bool:
     if parsed == {"error": "unreachable"}:
         return True
@@ -235,7 +257,7 @@ def evaluate_propagation(
 
     header_value = (header_value or "").strip()
     header_found = bool(header_value) and (
-        header_value in sessions or header_value in text
+        header_value in sessions or contains_exact_token(text, header_value)
     )
     rewritten_values = [s for s in sessions if s != header_value]
     rewritten = bool(header_value) and bool(rewritten_values)
@@ -275,7 +297,7 @@ def evaluate_propagation(
         ]
         session = next((item.get("session") for item in matched if item.get("session")), None)
         reached = bool(matched) or any(text_contains(text, name) for name in names)
-        if session is None and header_value and header_value in text and reached:
+        if session is None and header_value and contains_exact_token(text, header_value) and reached:
             session = header_value
 
         if health_only:
