@@ -197,4 +197,16 @@ describe('createAxiosInterceptor', () => {
     const axConfig = interceptor({ headers: {} })
     expect(axConfig.headers['x-dev-session']).toBeUndefined()
   })
+
+  it('does not copy a session that would split headers', () => {
+    const poisoned = 'pr-42\r\nX-Injected: 1'
+    expect(incomingSession({ role: 'forwarder', header: poisoned, enabled: true })).toBe(null)
+    expect(outgoingSession({ role: 'forwarder', contextValue: poisoned, sessionValue: 'minted' })).toBe(null)
+    const config = createBaggageConfig({ enabled: true, role: 'forwarder' })
+    adoptIncoming({ header: poisoned }, config)
+    const axConfig = createAxiosInterceptor(config)({ headers: { Accept: 'application/json' } })
+    expect(axConfig.headers['x-dev-session']).toBeUndefined()
+    expect(axConfig.headers.baggage).toBeUndefined()
+    expect(JSON.stringify(axConfig.headers)).not.toContain('X-Injected')
+  })
 })
