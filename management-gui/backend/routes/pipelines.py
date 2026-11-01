@@ -204,6 +204,9 @@ def trigger(team):
     stack = data.get("stack")
     if not stack:
         return jsonify({"error": "stack is required"}), 400
+    allowed = team_cfg.get("stacks") or []
+    if allowed and stack not in allowed:
+        return jsonify({"error": f"Stack {stack} not allowed for team {team}"}), 403
     app_name = data.get("app")
     if not app_name and pipeline_type != "bootstrap":
         return jsonify({"error": "app is required"}), 400

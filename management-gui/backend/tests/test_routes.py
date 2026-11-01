@@ -403,6 +403,21 @@ def test_trigger_pr(mock_create, client):
     assert resp.get_json()["stackrun"] == "stackrun-pr-abc"
 
 
+@patch("k8s_client.create_stackrun")
+def test_trigger_rejects_stack_outside_team_allow_list(mock_create, client):
+    resp = client.post(
+        "/api/teams/default/trigger",
+        data=json.dumps({
+            "pipelineType": "bootstrap",
+            "stack": "stacks/other.yaml",
+        }),
+        content_type="application/json",
+    )
+    assert resp.status_code == 403
+    assert "not allowed" in resp.get_json()["error"]
+    mock_create.assert_not_called()
+
+
 def test_trigger_missing_stack(client):
     resp = client.post(
         "/api/teams/default/trigger",
