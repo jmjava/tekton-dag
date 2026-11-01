@@ -37,7 +37,7 @@ def client(tmp_path):
         "name: stack-one\n"
         "apps:\n"
         "  - name: demo-fe\n"
-        "    repo: https://github.com/jmjava/tekton-dag-vue-fe.git\n"
+        "    repo: jmjava/tekton-dag-vue-fe\n"
         "    role: frontend\n"
         "    secrets:\n"
         "      env-from: [demo-fe-db]\n"
@@ -440,7 +440,7 @@ def test_trigger_invalid_type(client):
 @patch("github_client.list_branches")
 def test_repo_branches(mock_branches, client):
     mock_branches.return_value = [{"name": "main", "sha": "abc"}]
-    resp = client.get("/api/repos/jmjava/tekton-dag/branches")
+    resp = client.get("/api/repos/jmjava/tekton-dag-vue-fe/branches")
     assert resp.status_code == 200
     assert len(resp.get_json()["items"]) == 1
 
@@ -448,22 +448,47 @@ def test_repo_branches(mock_branches, client):
 @patch("github_client.list_tags")
 def test_repo_tags(mock_tags, client):
     mock_tags.return_value = [{"name": "v1.0", "sha": "abc"}]
-    resp = client.get("/api/repos/jmjava/tekton-dag/tags")
+    resp = client.get("/api/repos/jmjava/tekton-dag-vue-fe/tags")
     assert resp.status_code == 200
 
 
 @patch("github_client.list_commits")
 def test_repo_commits(mock_commits, client):
     mock_commits.return_value = [{"sha": "abc", "message": "init", "date": None, "url": None}]
-    resp = client.get("/api/repos/jmjava/tekton-dag/commits")
+    resp = client.get("/api/repos/jmjava/tekton-dag-vue-fe/commits")
     assert resp.status_code == 200
 
 
 @patch("github_client.list_prs")
 def test_repo_prs(mock_prs, client):
     mock_prs.return_value = [{"number": 1, "title": "PR", "state": "open", "url": None}]
-    resp = client.get("/api/repos/jmjava/tekton-dag/prs")
+    resp = client.get("/api/repos/jmjava/tekton-dag-vue-fe/prs")
     assert resp.status_code == 200
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/repos/evil/private/branches",
+        "/api/repos/evil/private/tags",
+        "/api/repos/evil/private/commits",
+        "/api/repos/evil/private/prs",
+    ],
+)
+@patch("github_client.list_prs")
+@patch("github_client.list_commits")
+@patch("github_client.list_tags")
+@patch("github_client.list_branches")
+def test_repo_reads_reject_repo_outside_catalog(
+    mock_branches, mock_tags, mock_commits, mock_prs, client, path
+):
+    resp = client.get(path)
+    assert resp.status_code == 403
+    assert "not in the stack catalog" in resp.get_json()["error"]
+    mock_branches.assert_not_called()
+    mock_tags.assert_not_called()
+    mock_commits.assert_not_called()
+    mock_prs.assert_not_called()
 
 
 @patch("github_client.list_prs_all_repos")
