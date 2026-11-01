@@ -38,6 +38,19 @@ def first_nonblank(*values):
     return None
 
 
+def _refuses_propagation(value) -> bool:
+    """A session that can split an HTTP header must not be copied onward."""
+    if value is None:
+        return False
+    return any(ord(ch) < 32 or ord(ch) == 127 for ch in str(value))
+
+
+def _propagated(value):
+    if value is None or _refuses_propagation(value):
+        return None
+    return value
+
+
 def normalize_role(role):
     if role is None:
         return "forwarder"
@@ -54,17 +67,19 @@ def incoming_session(role, header=None, cookie=None, query=None, session_value=N
     if resolved is None:
         return None
     incoming = first_nonblank(header, cookie, query)
+    if _refuses_propagation(incoming):
+        return None
     if resolved == "originator":
-        return first_nonblank(incoming, session_value)
+        return _propagated(first_nonblank(incoming, session_value))
     return incoming
 
 
 def outgoing_session(role, context_value=None, session_value=None):
     resolved = normalize_role(role)
     if resolved == "originator":
-        return first_nonblank(context_value, session_value)
+        return _propagated(first_nonblank(context_value, session_value))
     if resolved == "forwarder":
-        return first_nonblank(context_value)
+        return _propagated(first_nonblank(context_value))
     return None
 
 
@@ -135,6 +150,8 @@ def _current_context():
 def _attach_headers(headers, cfg: BaggageConfig, value: str):
     if headers is None:
         headers = {}
+    if _refuses_propagation(value):
+        return dict(headers) if isinstance(headers, dict) else headers
     if isinstance(headers, dict):
         out = dict(headers)
         out[cfg.header_name] = value

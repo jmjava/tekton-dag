@@ -235,3 +235,18 @@ class TestOutgoing:
         ):
             prepared = _send(baggage.BaggageSession())
             assert "x-dev-session" not in prepared.headers
+
+    def test_control_character_session_is_not_forwarded(self):
+        poisoned = "pr-42\r\nX-Injected: 1"
+        assert baggage.incoming_session("forwarder", header=poisoned) is None
+        assert baggage.outgoing_session("forwarder", poisoned, "minted") is None
+        cfg = baggage.BaggageConfig(
+            enabled=True,
+            role="forwarder",
+            header_name="x-dev-session",
+            baggage_key="dev-session",
+            session_value="",
+        )
+        attached = baggage._attach_headers({"Accept": "application/json"}, cfg, poisoned)
+        assert attached == {"Accept": "application/json"}
+        assert "X-Injected" not in attached.get("baggage", "")
