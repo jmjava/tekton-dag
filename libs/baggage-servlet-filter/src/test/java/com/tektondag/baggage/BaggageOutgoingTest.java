@@ -31,4 +31,17 @@ class BaggageOutgoingTest {
     BaggageOutgoing.apply(headers, "x-dev-session", "dev-session", BaggageRole.TERMINAL, "minted");
     assertFalse(headers.containsKey("x-dev-session"));
   }
+
+  @Test
+  void controlCharacterSessionIsNotForwarded() {
+    String poisoned = "pr-42\r\nX-Injected: 1";
+    BaggageContextHolder.set(poisoned);
+    Map<String, String> headers = new LinkedHashMap<>();
+    headers.put("Accept", "application/json");
+    BaggageOutgoing.apply(headers, "x-dev-session", "dev-session", BaggageRole.FORWARDER, "minted");
+    assertFalse(headers.containsKey("x-dev-session"));
+    assertFalse(headers.containsKey("baggage"));
+    assertEquals("application/json", headers.get("Accept"));
+    assertFalse(headers.toString().contains("X-Injected"));
+  }
 }
