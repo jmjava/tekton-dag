@@ -87,13 +87,16 @@ def resolve_webhook_secret_status(
         return configured_secret, STATUS_OK
     if not secret_name:
         return "", STATUS_UNSET
+    # A configured name that cannot be read is not "unset". The webhook
+    # route accepts STATUS_UNAVAILABLE, so a failed lookup must surface as
+    # missing and be refused.
     if fetch_secret is None:
-        return "", STATUS_UNAVAILABLE
+        return "", STATUS_MISSING
     try:
         data = fetch_secret(secret_name, namespace=namespace)
     except Exception as exc:
-        logger.debug("Webhook secret fetch failed: %s", exc)
-        return "", STATUS_UNAVAILABLE
+        logger.warning("Webhook secret fetch failed: %s", exc)
+        return "", STATUS_MISSING
     if not data:
         return "", STATUS_MISSING
     value = _extract_secret_value(data)
