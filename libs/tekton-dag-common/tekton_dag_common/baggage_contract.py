@@ -161,11 +161,17 @@ def apply_outgoing_headers(
 
 
 def infer_role(app: Mapping[str, Any]) -> str:
-    explicit = app.get("propagation-role") or app.get("propagationRole")
-    if explicit:
-        resolved = normalize_role(str(explicit))
-        if resolved:
-            return resolved
+    if "propagation-role" in app:
+        raw = app.get("propagation-role")
+    elif "propagationRole" in app:
+        raw = app.get("propagationRole")
+    else:
+        raw = None
+    if raw is not None:
+        text = str(raw).strip().lower()
+        if text in ROLES:
+            return text
+        return "unknown"
     downstream = app.get("downstream")
     if downstream is None or downstream == []:
         return "terminal"

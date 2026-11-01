@@ -77,6 +77,20 @@ def test_infer_role_matches_resolve_stack():
     assert infer_role({"propagation-role": "originator", "downstream": []}) == "originator"
 
 
+def test_explicit_unknown_role_does_not_propagate():
+    app = {
+        "name": "fe",
+        "role": "frontend",
+        "downstream": ["api"],
+        "propagation-role": "sidecar",
+    }
+    assert infer_role(app) == "unknown"
+    assert incoming_session("unknown", header="pr-42", session_value="minted") is None
+    assert outgoing_session("unknown", "pr-42", "minted") is None
+    blank = {"role": "persistence", "downstream": [], "propagation-role": "  "}
+    assert infer_role(blank) == "unknown"
+
+
 def test_stack_one_emit_and_doctor():
     stack = load_stack_yaml(ROOT / "stacks" / "stack-one.yaml")
     assert stack is not None
