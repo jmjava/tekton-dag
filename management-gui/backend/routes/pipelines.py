@@ -243,8 +243,11 @@ def trigger(team):
             sr_kw["target_environment"] = target_environment
             sr_kw["target_registry"] = data.get("targetRegistry") or image_registry
             sr_kw["require_approval"] = bool(data.get("requireApproval", True))
-            if data.get("approvedBy"):
-                sr_kw["approved_by"] = data["approvedBy"]
+            if "approvedBy" in data:
+                approved_by = str(data.get("approvedBy") or "").strip()
+                if not approved_by:
+                    return jsonify({"error": "approvedBy is blank"}), 400
+                sr_kw["approved_by"] = approved_by
         name = k8s_client.create_stackrun(context, namespace, build_stackrun(**sr_kw))
         return jsonify({"ok": True, "pipelineRun": name, "stackrun": name, "namespace": namespace})
     except Exception as e:

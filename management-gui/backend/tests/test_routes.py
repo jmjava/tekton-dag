@@ -283,6 +283,26 @@ def test_trigger_promote(mock_create, client):
     assert manifest["spec"]["releaseVersion"] == "1.2.0"
 
 
+@patch("k8s_client.create_stackrun")
+def test_trigger_promote_rejects_blank_approver(mock_create, client):
+    resp = client.post(
+        "/api/teams/default/trigger",
+        data=json.dumps({
+            "pipelineType": "promote",
+            "stack": "stacks/stack-one.yaml",
+            "app": "demo-fe",
+            "releaseVersion": "1.2.0",
+            "targetEnvironment": "staging",
+            "requireApproval": True,
+            "approvedBy": " \t ",
+        }),
+        content_type="application/json",
+    )
+    assert resp.status_code == 400
+    assert "approvedBy" in resp.get_json()["error"]
+    mock_create.assert_not_called()
+
+
 def test_trigger_promote_missing_fields(client):
     resp = client.post(
         "/api/teams/default/trigger",
