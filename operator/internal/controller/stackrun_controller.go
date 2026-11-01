@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -142,7 +143,7 @@ func (r *StackRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 func waitingForApproval(run *tektondagv1alpha1.StackRun) bool {
 	return run.Spec.Mode == tektondagv1alpha1.StackRunModePromote &&
 		run.Spec.RequireApproval &&
-		run.Spec.ApprovedBy == ""
+		strings.TrimSpace(run.Spec.ApprovedBy) == ""
 }
 
 func (r *StackRunReconciler) pendingApproval(ctx context.Context, run *tektondagv1alpha1.StackRun) (ctrl.Result, error) {
