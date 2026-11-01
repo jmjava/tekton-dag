@@ -87,7 +87,7 @@ def test_resolve_status_missing_when_keys_empty():
     assert status == webhook_auth.STATUS_MISSING
 
 
-def test_resolve_status_unavailable_on_fetch_error():
+def test_resolve_status_missing_when_lookup_fails():
     def fetch(_name, namespace=""):
         raise RuntimeError("no kubeconfig")
 
@@ -97,7 +97,15 @@ def test_resolve_status_unavailable_on_fetch_error():
         fetch_secret=fetch,
     )
     assert secret == ""
-    assert status == webhook_auth.STATUS_UNAVAILABLE
+    assert status == webhook_auth.STATUS_MISSING
+
+    secret, status = webhook_auth.resolve_webhook_secret_status(
+        configured_secret="",
+        secret_name="github-webhook-secret",
+        fetch_secret=None,
+    )
+    assert secret == ""
+    assert status == webhook_auth.STATUS_MISSING
 
 
 def test_legacy_resolve_webhook_secret_still_returns_string():

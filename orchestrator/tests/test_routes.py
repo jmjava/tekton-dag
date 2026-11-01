@@ -591,6 +591,26 @@ def test_webhook_rejects_invalid_signature(mock_create, client, flask_app):
 
 @patch("routes.k8s_client.get_secret_data")
 @patch("routes.k8s_client.create_stackrun")
+def test_webhook_fail_closed_when_named_secret_lookup_fails(
+    mock_create, mock_get_secret, client, flask_app
+):
+    flask_app.config["WEBHOOK_SECRET"] = ""
+    flask_app.config["WEBHOOK_SECRET_NAME"] = "github-webhook-secret"
+    mock_get_secret.side_effect = RuntimeError("apiserver unreachable")
+    payload = _pr_payload("opened", repo_name="demo-fe", pr_number=1)
+    rv = client.post(
+        "/webhook/github",
+        data=json.dumps(payload),
+        content_type="application/json",
+        headers={"X-GitHub-Event": "pull_request"},
+    )
+    assert rv.status_code == 503
+    assert "webhook secret" in rv.get_json()["error"]
+    mock_create.assert_not_called()
+
+
+@patch("routes.k8s_client.get_secret_data")
+@patch("routes.k8s_client.create_stackrun")
 def test_webhook_fail_closed_when_named_secret_missing(
     mock_create, mock_get_secret, client, flask_app
 ):
