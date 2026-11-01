@@ -33,3 +33,17 @@ func TestWaitingForApproval(t *testing.T) {
 		t.Fatal("approval wait is promote-only")
 	}
 }
+
+func TestWaitingForApprovalRejectsBlankApprover(t *testing.T) {
+	run := &tektondagv1alpha1.StackRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "sr"},
+		Spec: tektondagv1alpha1.StackRunSpec{
+			Mode:            tektondagv1alpha1.StackRunModePromote,
+			RequireApproval: true,
+			ApprovedBy:      " \n\t ",
+		},
+	}
+	if !waitingForApproval(run) {
+		t.Fatal("whitespace approvedBy must not release a promote")
+	}
+}
